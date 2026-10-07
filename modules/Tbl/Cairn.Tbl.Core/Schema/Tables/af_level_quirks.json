@@ -1,0 +1,64 @@
+{
+  "file": "af_level_quirks.tbl",
+  "title": "Alpine Level Quirks",
+  "doc": "Per-level compatibility switches shipped with Alpine Faction; each line lists any number of quoted level file names.",
+  "syntax": "alpine-lines",
+  "alpine": {
+    "since": "1.0",
+    "notes": "Alpine reads this file line by line, not with the game's table parser: lines are trimmed, everything before a line that is exactly #Start is ignored, reading stops at a line that is exactly #End, blank lines and lines starting with // are skipped, and every other line is 'name: value' split at the first colon. Field order does not matter, a later line overrides an earlier one, and unknown names are only logged. Comments after a value become part of the value."
+  },
+  "sections": [
+    {
+      "name": "#Start",
+      "end": "#End",
+      "required": true,
+      "repeat": false,
+      "order": "free",
+      "entry": null,
+      "doc": "Options between #Start and #End, in any order.",
+      "fields": [
+        {
+          "name": "$P2T Fix:",
+          "type": "list",
+          "required": false,
+          "repeat": true,
+          "of": "file",
+          "file": "any",
+          "syntax": "alpine-quoted-names",
+          "doc": "Levels (quoted .rfl names) that get the power-of-two texture fix."
+        },
+        {
+          "name": "$Known Run Maps:",
+          "type": "list",
+          "required": false,
+          "repeat": true,
+          "of": "file",
+          "file": "any",
+          "syntax": "alpine-quoted-names",
+          "doc": "Levels (quoted .rfl names) treated as known run maps."
+        },
+        {
+          "name": "$Sky Fix:",
+          "type": "list",
+          "required": false,
+          "repeat": true,
+          "of": "file",
+          "file": "any",
+          "syntax": "alpine-quoted-names",
+          "doc": "Levels (quoted .rfl names) whose skybox faces lose the Show Sky flag."
+        },
+        {
+          "name": "$Stock Alpha Test:",
+          "type": "list",
+          "required": false,
+          "repeat": true,
+          "of": "file",
+          "file": "any",
+          "syntax": "alpine-quoted-names",
+          "doc": "Levels (quoted .rfl names) that keep the stock alpha test threshold.",
+          "alpineSince": "1.3"
+        }
+      ]
+    }
+  ]
+}

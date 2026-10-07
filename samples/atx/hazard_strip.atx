@@ -1,0 +1,51 @@
+# hazard_strip.atx — a clean example.
+#
+# Rename this file after the texture you want to animate: an .atx called
+# mtl_panel01.atx takes over anywhere the level asks for mtl_panel01.tga.
+
+[header]
+
+# 12.5 frames a second.
+frame_time = 80
+
+# 2 = Loop.
+animation_mode = 2
+
+# Start playing as soon as the level loads.
+initially_on = true
+
+# The frames are 24-bit with no transparency of their own, so say up front that they
+# should be stored as 32-bit — the alpha mask below needs somewhere to live.
+format = "8888"
+
+# A shared transparency mask for every frame.
+alpha_mask = "hazard_strip_mask.tga"
+
+# Footsteps and bullet impacts on this surface sound like metal.
+material = "metal"
+
+[[frame]]
+file = "hazard_strip_00.tga"
+
+[[frame]]
+file = "hazard_strip_01.tga"
+
+[[frame]]
+file = "hazard_strip_02.tga"
+
+[[frame]]
+file = "hazard_strip_03.tga"
+
+# Hold this one a little longer so the cycle has a beat.
+[[frame]]
+file = "hazard_strip_04.tga"
+frame_time = 200
+
+[[frame]]
+file = "hazard_strip_05.tga"
+
+[[frame]]
+file = "hazard_strip_06.tga"
+
+[[frame]]
+file = "hazard_strip_07.tga"

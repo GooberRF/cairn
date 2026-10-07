@@ -1,0 +1,163 @@
+<UserControl x:Class="Cairn.Atx.Ui.Views.FrameInspectorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+             xmlns:controls="clr-namespace:Cairn.Atx.Ui.Controls">
+  <UserControl.Resources>
+    <Style x:Key="InspectorLabel" TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,3" />
+    </Style>
+  </UserControl.Resources>
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Style="{StaticResource PaneHeaderBorder}">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Left" Text="FRAME INSPECTOR" Style="{StaticResource PaneHeaderText}" />
+        <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding Title}"
+                   Style="{StaticResource PaneHeaderText}" FontWeight="Normal"
+                   AutomationProperties.Name="Current selection" />
+      </DockPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,10,12,12">
+      <Grid>
+        <!-- Empty state -->
+        <TextBlock Style="{StaticResource HintText}" Text="{Binding EmptyText}"
+                   Visibility="{Binding HasSelection, Converter={StaticResource Falsy}}" />
+
+        <StackPanel Visibility="{Binding HasSelection, Converter={StaticResource Truthy}}"
+                    IsEnabled="{Binding CanEdit}">
+
+          <!-- File -->
+          <StackPanel Margin="0,0,0,14">
+            <TextBlock Style="{StaticResource InspectorLabel}" Text="File"
+                       ToolTip="{Binding FileTooltip}" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource ToolButton}" Margin="6,0,0,0"
+                      Content="Browse…" Command="{Binding BrowseFileCommand}"
+                      ToolTip="Pick the image for this frame"
+                      AutomationProperties.Name="Browse for the frame image" />
+              <TextBox VerticalContentAlignment="Center" IsUndoEnabled="False"
+                       Text="{Binding FileName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                       IsEnabled="{Binding IsFileEditable}"
+                       ToolTipService.ShowOnDisabled="True"
+                       ToolTip="{Binding FileTooltip}"
+                       AutomationProperties.Name="Frame image file name" />
+            </DockPanel>
+            <TextBlock Style="{StaticResource HintText}" Margin="0,4,0,0"
+                       Text="Several frames are selected, so they keep their own files."
+                       Visibility="{Binding IsFileMixed, Converter={StaticResource Truthy}}" />
+          </StackPanel>
+
+          <!--
+            The missing-image warning. "Locate file…" used to exist only as a quick fix on the
+            ATX010 diagnostic, which is two panels away from where a designer notices the empty
+            thumbnail; this puts it where they are already looking.
+          -->
+          <Border Margin="0,0,0,14" CornerRadius="4" Padding="10,8" BorderThickness="1"
+                  Background="{DynamicResource Severity.WarningSoft}"
+                  BorderBrush="{DynamicResource Severity.Warning}"
+                  Visibility="{Binding IsImageMissing, Converter={StaticResource Truthy}}"
+                  AutomationProperties.Name="This frame's image was not found">
+            <StackPanel>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                           Margin="0,1,7,0" VerticalAlignment="Top"
+                           Foreground="{DynamicResource Severity.Warning}" />
+                <TextBlock Grid.Column="1" Text="{Binding MissingImageText}" TextWrapping="Wrap"
+                           FontSize="12" Foreground="{DynamicResource App.Text}"
+                           AutomationProperties.Name="Missing image" />
+              </Grid>
+              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <Button Style="{StaticResource ToolButton}" Content="Locate file…"
+                        BorderBrush="{DynamicResource App.Border}"
+                        Command="{Binding LocateFileCommand}"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="Pick the image from disk. If it lives outside the search locations you are offered a copy next to the .atx."
+                        AutomationProperties.Name="Locate the missing image file" />
+                <Button Style="{StaticResource LinkButton}" Content="Search folders…" Margin="10,0,0,0"
+                        VerticalAlignment="Center" Command="{Binding SearchFoldersCommand}"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="Open Settings and add the folder the image lives in"
+                        AutomationProperties.Name="Open the search folder settings" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- Frame time -->
+          <StackPanel Margin="0,0,0,14">
+            <TextBlock Style="{StaticResource InspectorLabel}" Text="Frame time"
+                       ToolTip="{Binding FrameTimeTooltip}" />
+            <CheckBox IsThreeState="True" Margin="0,0,0,6"
+                      Content="{Binding UseDefaultTimeText}"
+                      IsChecked="{Binding UseDefaultTime, Mode=TwoWay}"
+                      ToolTip="Untick to give the selected frames their own frame time"
+                      AutomationProperties.Name="Use the texture default frame time" />
+            <cui:NumericBox x:Name="TimeBox" Decimals="0" Width="124" Minimum="1" Maximum="600000" Step="10"
+                                 Suffix="ms" Value="{Binding FrameTimeMs, Mode=TwoWay}"
+                                 IsEnabled="{Binding IsTimeEditable}"
+                                 HorizontalAlignment="Left"
+                                 ToolTip="{Binding FrameTimeTooltip}"
+                                 AutomationProperties.Name="Frame time for selected frames" />
+          </StackPanel>
+
+          <!-- Material -->
+          <StackPanel Margin="0,0,0,14">
+            <TextBlock Style="{StaticResource InspectorLabel}" Text="Material"
+                       ToolTip="{Binding MaterialTooltip}" />
+            <CheckBox IsThreeState="True" Margin="0,0,0,6"
+                      Content="{Binding UseDefaultMaterialText}"
+                      IsChecked="{Binding UseDefaultMaterial, Mode=TwoWay}"
+                      ToolTip="Untick to give the selected frames their own material"
+                      AutomationProperties.Name="Use the texture default material" />
+            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding MaterialOptions}"
+                      SelectedItem="{Binding Material, Mode=TwoWay}" DisplayMemberPath="Label"
+                      IsEnabled="{Binding IsMaterialEditable}"
+                      ToolTip="{Binding MaterialTooltip}"
+                      AutomationProperties.Name="Frame material" />
+          </StackPanel>
+
+          <!-- Image facts -->
+          <Border Visibility="{Binding HasImageFacts, Converter={StaticResource Truthy}}"
+                  Background="{DynamicResource App.ChromeBackground}"
+                  BorderBrush="{DynamicResource App.SubtleBorder}" BorderThickness="1"
+                  CornerRadius="4" Padding="10,8">
+            <StackPanel>
+              <TextBlock Text="IMAGE" Style="{StaticResource PaneHeaderText}" Margin="0,0,0,6" />
+              <ItemsControl ItemsSource="{Binding ImageFacts}"
+                            AutomationProperties.Name="Image facts">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid Margin="0,1">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="74" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="12"
+                                 Foreground="{DynamicResource App.SecondaryText}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12"
+                                 TextWrapping="Wrap" Foreground="{DynamicResource App.Text}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Style="{StaticResource HintText}" Margin="0,8,0,0"
+                         Text="{Binding SupersedeNote}"
+                         Visibility="{Binding SupersedeNote, Converter={StaticResource Truthy}}" />
+            </StackPanel>
+          </Border>
+
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

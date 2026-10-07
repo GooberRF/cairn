@@ -1,0 +1,43 @@
+<UserControl x:Class="Cairn.Ui.Controls.NumericBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="False" MinWidth="110" Height="28">
+  <Border x:Name="Chrome" CornerRadius="4" BorderThickness="1"
+          BorderBrush="{DynamicResource App.Border}"
+          Background="{DynamicResource App.WindowBackground}"
+          SnapsToDevicePixels="True">
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <TextBox x:Name="Entry" Grid.Column="0" BorderThickness="0" Background="Transparent"
+               Foreground="{DynamicResource App.Text}"
+               VerticalContentAlignment="Center" Padding="7,0,2,0"
+               IsUndoEnabled="False" TextAlignment="Left" />
+
+      <!-- Shown when the selected items disagree (IsIndeterminate) and nothing is typed. -->
+      <TextBlock x:Name="MixedText" Grid.Column="0" Text="mixed" Margin="10,0,0,0" VerticalAlignment="Center"
+                 FontStyle="Italic" Foreground="{DynamicResource App.SecondaryText}" IsHitTestVisible="False"
+                 Visibility="Collapsed" />
+
+      <TextBlock x:Name="SuffixText" Grid.Column="1" VerticalAlignment="Center" Margin="0,0,6,0"
+                 Foreground="{DynamicResource App.SecondaryText}" IsHitTestVisible="False" />
+
+      <StackPanel Grid.Column="2" Margin="0,1,1,1">
+        <RepeatButton x:Name="UpButton" Height="12" Width="18" Padding="0" FontSize="7"
+                      Content="&#xE70E;" FontFamily="Segoe MDL2 Assets"
+                      Focusable="False" Delay="350" Interval="60"
+                      AutomationProperties.Name="Increase value"
+                      ToolTip="Increase (mouse wheel or Up arrow)" />
+        <RepeatButton x:Name="DownButton" Height="12" Width="18" Padding="0" FontSize="7"
+                      Content="&#xE70D;" FontFamily="Segoe MDL2 Assets"
+                      Focusable="False" Delay="350" Interval="60"
+                      AutomationProperties.Name="Decrease value"
+                      ToolTip="Decrease (mouse wheel or Down arrow)" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

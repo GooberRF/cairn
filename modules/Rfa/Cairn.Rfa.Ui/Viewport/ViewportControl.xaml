@@ -1,0 +1,141 @@
+﻿<UserControl x:Class="Cairn.Rfa.Ui.Viewport.ViewportControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vp="clr-namespace:Cairn.Rfa.Ui.Viewport"
+             xmlns:cv="clr-namespace:Cairn.Viewport;assembly=Cairn.Viewport"
+             Focusable="True" FocusVisualStyle="{x:Null}" AllowDrop="True"
+             AutomationProperties.Name="3D viewport"
+             ToolTipService.InitialShowDelay="900">
+  <UserControl.Resources>
+    <Style x:Key="IconPath" TargetType="Path">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="Stretch" Value="None" />
+      <Setter Property="StrokeThickness" Value="1.4" />
+      <Setter Property="StrokeLineJoin" Value="Round" />
+      <Setter Property="StrokeStartLineCap" Value="Round" />
+      <Setter Property="StrokeEndLineCap" Value="Round" />
+      <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Control}}" />
+      <Setter Property="SnapsToDevicePixels" Value="False" />
+    </Style>
+    <Style x:Key="BarSeparator" TargetType="Rectangle">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Margin" Value="3,4" />
+      <Setter Property="Fill" Value="{DynamicResource App.Border}" />
+    </Style>
+  </UserControl.Resources>
+
+  <Grid x:Name="Root" ClipToBounds="True" Background="{DynamicResource Viewport.Background}">
+    <cv:GridLayer x:Name="GridLayer" />
+    <Viewport3D x:Name="View" IsHitTestVisible="False" ClipToBounds="True">
+      <Viewport3D.Camera>
+        <MatrixCamera x:Name="Camera" />
+      </Viewport3D.Camera>
+      <ModelVisual3D x:Name="SceneVisual" />
+    </Viewport3D>
+    <vp:OverlayLayer x:Name="Overlay" />
+    <!-- Pose-editing gizmos (phase 5), above the skeleton. -->
+    <cv:GizmoLayer x:Name="Gizmos" />
+
+    <!-- Compact toolbar: display toggles, LOD, background and camera. -->
+    <Border x:Name="Toolbar" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6"
+            Padding="3,2" CornerRadius="4" BorderThickness="1"
+            Background="{DynamicResource Viewport.ToolbarBackground}"
+            BorderBrush="{DynamicResource App.Border}"
+            AutomationProperties.Name="Viewport toolbar">
+      <WrapPanel Orientation="Horizontal">
+        <Button x:Name="ViewMenuButton" Style="{StaticResource ToolButton}" Height="24" MinWidth="26" Padding="4,0"
+                Click="OnViewMenuClick" ToolTip="Mesh display, lighting, background and camera presets"
+                AutomationProperties.Name="Viewport display options">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE890;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" />
+            <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="8" Margin="3,1,0,0" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Rectangle Style="{StaticResource BarSeparator}" />
+        <ToggleButton Style="{StaticResource ToolToggle}" IsChecked="{Binding Display.ShowSkeleton, Mode=TwoWay}"
+                      ToolTip="Skeleton: bones and joints. Click a joint to select its bone (Ctrl+click adds)."
+                      AutomationProperties.Name="Show skeleton">
+          <Path Style="{StaticResource IconPath}" Data="M3,13 L8,8 L13,3 M1.8,13 A1.2,1.2 0 1 1 4.2,13 A1.2,1.2 0 1 1 1.8,13 M6.8,8 A1.2,1.2 0 1 1 9.2,8 A1.2,1.2 0 1 1 6.8,8 M11.8,3 A1.2,1.2 0 1 1 14.2,3 A1.2,1.2 0 1 1 11.8,3" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource ToolToggle}" IsChecked="{Binding Display.ShowBoneNames, Mode=TwoWay}"
+                      ToolTip="Bone names (and sphere and prop point names)"
+                      AutomationProperties.Name="Show bone names">
+          <TextBlock Text="Aa" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource ToolToggle}" IsChecked="{Binding Display.ShowGrid, Mode=TwoWay}"
+                      ToolTip="Ground grid and axes (X red, Y green, Z blue)"
+                      AutomationProperties.Name="Show grid and axes">
+          <Path Style="{StaticResource IconPath}" Data="M2,5 H14 M2,8 H14 M2,11 H14 M5,2 V14 M8,2 V14 M11,2 V14" StrokeThickness="1.1" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource ToolToggle}" IsChecked="{Binding Display.ShowSpheres, Mode=TwoWay}"
+                      ToolTip="Collision spheres"
+                      AutomationProperties.Name="Show collision spheres">
+          <Path Style="{StaticResource IconPath}" Data="M2,8 A6,6 0 1 1 14,8 A6,6 0 1 1 2,8 M2,8 A6,2.4 0 1 0 14,8" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource ToolToggle}" IsChecked="{Binding Display.ShowProps, Mode=TwoWay}"
+                      ToolTip="Prop points (where weapons and effects attach)"
+                      AutomationProperties.Name="Show prop points">
+          <Path Style="{StaticResource IconPath}" Data="M8,2.5 L12,8 L8,13.5 L4,8 Z" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource ToolToggle}" IsChecked="{Binding Display.ShowRootPath, Mode=TwoWay}"
+                      ToolTip="Root motion path over the whole clip"
+                      AutomationProperties.Name="Show root motion path">
+          <Path Style="{StaticResource IconPath}" Data="M2,13 C5,13 6,7 9,7 C11,7 12,4 14,3" StrokeDashArray="2,1.5" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource ToolToggle}" IsChecked="{Binding Display.BindPose, Mode=TwoWay}"
+                      ToolTip="Bind pose: show the mesh's rest pose instead of the clip"
+                      AutomationProperties.Name="Show bind pose">
+          <Path Style="{StaticResource IconPath}" Data="M6.8,2.8 A1.2,1.2 0 1 1 9.2,2.8 A1.2,1.2 0 1 1 6.8,2.8 M8,5 V10 M2.5,6.2 H13.5 M8,10 L5.5,14 M8,10 L10.5,14" />
+        </ToggleButton>
+        <Rectangle Style="{StaticResource BarSeparator}" />
+        <ComboBox x:Name="LodBox" Height="24" MinWidth="64" Padding="6,2" VerticalContentAlignment="Center" FontSize="11"
+                  ItemsSource="{Binding Scene.LodChoices}" SelectedIndex="{Binding Scene.Lod, Mode=TwoWay}"
+                  ToolTip="Level of detail to draw (LOD 0 is the most detailed)"
+                  AutomationProperties.Name="Level of detail" />
+        <Rectangle Style="{StaticResource BarSeparator}" />
+        <ToggleButton Style="{StaticResource ToolToggle}" IsChecked="{Binding Display.Perspective, Mode=TwoWay}"
+                      ToolTip="Perspective (on) or orthographic (off) projection (5)"
+                      AutomationProperties.Name="Perspective projection">
+          <Path Style="{StaticResource IconPath}" Data="M3,5 L8,2.5 L13,5 V11 L8,13.5 L3,11 Z M3,5 L8,7.5 L13,5 M8,7.5 V13.5" StrokeThickness="1.1" />
+        </ToggleButton>
+        <Button Style="{StaticResource ToolButton}" Height="24" MinWidth="26" Padding="4,0" Click="OnFrameClick"
+                ToolTip="Frame the selection, or everything when nothing is selected (F)"
+                AutomationProperties.Name="Frame">
+          <Path Style="{StaticResource IconPath}" Data="M2,5.5 V2 H5.5 M10.5,2 H14 V5.5 M14,10.5 V14 H10.5 M5.5,14 H2 V10.5" />
+        </Button>
+        <!-- Pose editing (phase 5; clip documents only). -->
+        <Rectangle x:Name="PoseBarSeparator" Style="{StaticResource BarSeparator}" Visibility="Collapsed" />
+        <vp:PoseEditBar x:Name="PoseBar" Visibility="Collapsed" />
+      </WrapPanel>
+    </Border>
+
+    <!-- Notice (bone-count mismatch, loading, no mesh). -->
+    <Border x:Name="NoticeBox" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12,0,12,10"
+            Padding="10,6" CornerRadius="4" BorderThickness="1" MaxWidth="560"
+            Background="{DynamicResource Viewport.Notice}" BorderBrush="{DynamicResource App.Border}"
+            IsHitTestVisible="False" Visibility="Collapsed"
+            AutomationProperties.Name="Viewport notice">
+      <DockPanel>
+        <TextBlock x:Name="NoticeGlyph" DockPanel.Dock="Left" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                   Margin="0,1,8,0" VerticalAlignment="Top" />
+        <TextBlock x:Name="NoticeText" TextWrapping="Wrap" FontSize="12"
+                   Foreground="{DynamicResource Viewport.NoticeText}" />
+      </DockPanel>
+    </Border>
+
+    <!-- Pose-editing mode badge (phase 5): auto-key / layer edit / IK, or why there is no gizmo. -->
+    <vp:PoseEditBadge x:Name="PoseBadge" DataContext="{x:Null}" />
+
+    <!-- Keyboard focus: the viewport takes keys (F, 1/3/7, Space…), so it shows when it has them. -->
+    <Border x:Name="FocusFrame" BorderThickness="2" BorderBrush="{DynamicResource App.Accent}" IsHitTestVisible="False"
+            Visibility="Collapsed" />
+
+    <!-- Mode badge (bind pose). -->
+    <Border x:Name="BindBadge" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"
+            Padding="7,2" CornerRadius="3" Background="{DynamicResource Viewport.LabelBackground}"
+            IsHitTestVisible="False" Visibility="Collapsed">
+      <TextBlock Text="Bind pose" FontSize="11" Foreground="{DynamicResource Viewport.Label}" />
+    </Border>
+  </Grid>
+</UserControl>

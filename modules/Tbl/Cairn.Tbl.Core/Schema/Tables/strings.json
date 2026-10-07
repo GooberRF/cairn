@@ -1,0 +1,52 @@
+{
+  "file": "strings.tbl",
+  "title": "Interface strings",
+  "doc": "Numbered interface strings in English, German and French; the game refers to them by number.",
+  "aliases": [
+    "localized_strings.tbl"
+  ],
+  "sections": [
+    {
+      "name": "#Strings",
+      "required": true,
+      "repeat": false,
+      "doc": "Numbered strings: each entry is # followed by its number, then the three translations; the list ends at #End. The game searches for the header.",
+      "locate": "search",
+      "entry": "#",
+      "defines": "string",
+      "key": "number",
+      "end": "#End",
+      "fields": [
+        {
+          "name": "#",
+          "type": "int",
+          "required": true,
+          "min": 0,
+          "syntax": "number-after-marker",
+          "doc": "String number (written right after the #, e.g. #12)."
+        },
+        {
+          "name": "En:",
+          "type": "string",
+          "required": true,
+          "maxLength": 1023,
+          "doc": "English text."
+        },
+        {
+          "name": "Gr:",
+          "type": "string",
+          "required": true,
+          "maxLength": 1023,
+          "doc": "German text."
+        },
+        {
+          "name": "Fr:",
+          "type": "string",
+          "required": true,
+          "maxLength": 1023,
+          "doc": "French text."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,409 @@
+{
+  "file": "clutter.tbl",
+  "title": "Clutter",
+  "doc": "Destructible and decorative objects placed in levels: mesh, material, damage, effects and editor light settings.",
+  "notes": "The game reads fields up to $Debris Velocity in order, then searches for $Skin: before the next $Class Name: and skips everything between (the editor-only $RFE and $Light fields live there); text between entries is skipped too.",
+  "sections": [
+    {
+      "name": "#Clutter",
+      "required": true,
+      "repeat": false,
+      "between": "skip",
+      "doc": "All clutter classes; each entry starts at $Class Name:, and #End ends the list.",
+      "entry": "$Class Name:",
+      "defines": "clutter",
+      "fields": [
+        {
+          "name": "$Class Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Unique clutter class name used by levels."
+        },
+        {
+          "name": "$V3D Filename:",
+          "type": "file",
+          "required": true,
+          "file": "mesh",
+          "doc": "Clutter mesh."
+        },
+        {
+          "name": "$Debris Filename:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "doc": "Mesh broken into debris when destroyed."
+        },
+        {
+          "name": "$Debris Sound Set:",
+          "type": "ref",
+          "required": false,
+          "ref": "impactsoundset",
+          "doc": "Impact sound set used by the debris."
+        },
+        {
+          "name": "$Corpse Class Name:",
+          "type": "ref",
+          "required": false,
+          "ref": "clutter",
+          "doc": "Clutter class that replaces this one when it is destroyed."
+        },
+        {
+          "name": "$Emitter:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "emitter",
+          "doc": "Particle emitter attached to the clutter."
+        },
+        {
+          "name": "$Emitter Life:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds the emitters run (-1 for ever)."
+        },
+        {
+          "name": "$Material:",
+          "type": "ref",
+          "required": true,
+          "ref": "material",
+          "doc": "Material name (materials.tbl)."
+        },
+        {
+          "name": "$Radius:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Radius overriding the mesh radius."
+        },
+        {
+          "name": "$Life:",
+          "type": "float",
+          "required": true,
+          "doc": "Hit points (-1 for invulnerable)."
+        },
+        {
+          "name": "$Damage Type Factor:",
+          "type": "enum",
+          "required": false,
+          "repeat": true,
+          "values": [
+            "bash",
+            "bullet",
+            "armor piercing bullet",
+            "explosive",
+            "fire",
+            "energy",
+            "electrical",
+            "acid",
+            "scalding"
+          ],
+          "strict": false,
+          "parts": [
+            {
+              "type": "enum",
+              "values": [
+                "bash",
+                "bullet",
+                "armor piercing bullet",
+                "explosive",
+                "fire",
+                "energy",
+                "electrical",
+                "acid",
+                "scalding"
+              ],
+              "strict": false,
+              "doc": "damage type"
+            },
+            {
+              "type": "float",
+              "doc": "factor"
+            }
+          ],
+          "doc": "Damage multiplier for one damage type: type name, then factor."
+        },
+        {
+          "name": "$Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Looping foley attached to the clutter."
+        },
+        {
+          "name": "$Use Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when the clutter is used."
+        },
+        {
+          "name": "$Explode Anim:",
+          "type": "ref",
+          "required": false,
+          "ref": "vclip",
+          "doc": "Vclip played when the clutter is destroyed."
+        },
+        {
+          "name": "$Explode Anim Radius:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Radius of the explosion vclip."
+        },
+        {
+          "name": "$Explode Damage:",
+          "type": "float",
+          "required": false,
+          "doc": "Damage dealt to nearby objects when it explodes."
+        },
+        {
+          "name": "$Explode Offset:",
+          "type": "vec3",
+          "required": false,
+          "unit": "metres",
+          "doc": "Offset of the explosion in local coordinates."
+        },
+        {
+          "name": "$Glare:",
+          "type": "ref",
+          "required": false,
+          "ref": "glare",
+          "doc": "Glare effect on the clutter."
+        },
+        {
+          "name": "$Rod Glare:",
+          "type": "ref",
+          "required": false,
+          "ref": "glare",
+          "doc": "Rod-shaped glare effect."
+        },
+        {
+          "name": "$Flags:",
+          "type": "flags",
+          "required": true,
+          "values": [
+            "collectable",
+            "collide_weapon",
+            "collide_object",
+            "is_screen",
+            "shatters",
+            "has_alpha",
+            "is_switch",
+            "can_carry",
+            "is_clock"
+          ],
+          "doc": "Clutter flags; an unknown flag name stops the game."
+        },
+        {
+          "name": "$Screen Width:",
+          "type": "int",
+          "required": false,
+          "unit": "pixels",
+          "doc": "Width in pixels of the monitor image (needs is_screen)."
+        },
+        {
+          "name": "$Screen Height:",
+          "type": "int",
+          "required": false,
+          "unit": "pixels",
+          "doc": "Height in pixels of the monitor image (needs is_screen)."
+        },
+        {
+          "name": "$Use:",
+          "type": "enum",
+          "required": false,
+          "values": [
+            "none",
+            "vehicle",
+            "switch",
+            "command",
+            "turret",
+            "monitor",
+            "medic",
+            "ai response",
+            "play_sound"
+          ],
+          "strict": false,
+          "childrenWhen": "known",
+          "childrenUnless": [
+            "none"
+          ],
+          "children": [
+            {
+              "name": "+radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Distance from which it can be used; required after a known $Use value."
+            }
+          ],
+          "doc": "What happens when the player uses this clutter; \"none\" or other text means not usable and then +radius is left out."
+        },
+        {
+          "name": "$Debris Velocity:",
+          "type": "float",
+          "required": false,
+          "unit": "metres/second",
+          "doc": "Speed of the debris when destroyed."
+        },
+        {
+          "name": "$RFE Level1:",
+          "type": "string",
+          "required": false,
+          "editorOnly": true,
+          "doc": "Editor only: first-level folder of the object in the level editor."
+        },
+        {
+          "name": "$RFE Level2:",
+          "type": "string",
+          "required": false,
+          "editorOnly": true,
+          "doc": "Editor only: second-level folder (needs $RFE Level1)."
+        },
+        {
+          "name": "$Light Color:",
+          "type": "color",
+          "required": false,
+          "editorOnly": true,
+          "doc": "Editor only: colour of the light attached to this fixture."
+        },
+        {
+          "name": "$Light Type:",
+          "type": "enum",
+          "required": false,
+          "values": [
+            "Omnidirectional",
+            "Circular",
+            "Tube"
+          ],
+          "strict": false,
+          "editorOnly": true,
+          "doc": "Editor only: light shape."
+        },
+        {
+          "name": "$Light Range:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "editorOnly": true,
+          "doc": "Editor only: light range."
+        },
+        {
+          "name": "$Light FOV Range:",
+          "type": "float",
+          "required": false,
+          "editorOnly": true,
+          "doc": "Editor only: cone range of a circular light."
+        },
+        {
+          "name": "$Light FOV Dropoff:",
+          "type": "float",
+          "required": false,
+          "editorOnly": true,
+          "doc": "Editor only: cone dropoff of a circular light."
+        },
+        {
+          "name": "$Light Algo:",
+          "type": "enum",
+          "required": false,
+          "values": [
+            "linear",
+            "squared",
+            "cosine",
+            "sqrt"
+          ],
+          "strict": false,
+          "editorOnly": true,
+          "doc": "Editor only: attenuation."
+        },
+        {
+          "name": "$Light Width:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "editorOnly": true,
+          "doc": "Editor only: width of a tube light."
+        },
+        {
+          "name": "$Light On Intensity:",
+          "type": "float",
+          "required": false,
+          "min": 0,
+          "max": 10,
+          "editorOnly": true,
+          "doc": "Editor only: intensity when on (0 to 10)."
+        },
+        {
+          "name": "$Light Off Intensity:",
+          "type": "float",
+          "required": false,
+          "min": 0,
+          "max": 10,
+          "editorOnly": true,
+          "doc": "Editor only: intensity when off (0 to 10)."
+        },
+        {
+          "name": "$Light Dynamic:",
+          "type": "bool",
+          "required": false,
+          "editorOnly": true,
+          "doc": "Editor only: whether the light is dynamic."
+        },
+        {
+          "name": "$Light Shadow:",
+          "type": "bool",
+          "required": false,
+          "editorOnly": true,
+          "doc": "Editor only: whether the light casts shadows."
+        },
+        {
+          "name": "$Light Runtime Shadow:",
+          "type": "bool",
+          "required": false,
+          "editorOnly": true,
+          "doc": "Editor only: whether the light casts real-time shadows."
+        },
+        {
+          "name": "$Light Offset:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "editorOnly": true,
+          "doc": "Editor only: forward offset of the light from the prop point."
+        },
+        {
+          "name": "$Skin:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "seek": true,
+          "parts": [
+            {
+              "type": "string",
+              "doc": "skin name"
+            },
+            {
+              "type": "list",
+              "of": "file",
+              "file": "texture",
+              "maxCount": 12,
+              "doc": "replacement textures"
+            }
+          ],
+          "children": [
+            {
+              "name": "+Glare:",
+              "type": "ref",
+              "required": false,
+              "ref": "glare",
+              "doc": "Glare used with this skin."
+            }
+          ],
+          "doc": "Alternate skin: skin name, then replacement textures in order (at most 12); the game jumps straight here, skipping editor-only text."
+        }
+      ]
+    }
+  ]
+}

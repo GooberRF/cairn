@@ -1,0 +1,95 @@
+// Sample weapons table for trying the Tables module in Cairn.
+// The weapons are made up; the file names refer to the generated samples in
+// the rfa and atx folders next to this one.
+
+#Primary Weapons
+
+$Name:                   "Sample Rivet Gun"
+$Display Name:           XSTR(9001, "Rivet Gun")
+$V3D Filename:           "sample_figure.v3c"
+$Flags:                  ("alt_fire" "underwater")
+$Weapon Type:            "semi-auto"
+    $Weapon Icon:        "sample_figure.tga"
+$Damage Type:            "bullet"
+$Bitmap Filename:        "hazard_strip_00.tga"
+    $Head Radius:        0.05
+$HUD Icon Filename:      "sample_figure.tga"
+$Collision Radius:       0.02
+$Max Ammo:               120 160
+$Ammo Type:              "sample rivets"
+$AI Attack Range:        20.0 30.0
+$Mass:                   0.1
+$Velocity:               120
+$Fire Wait:              0.25
+$Damage:                 18
+$Lifetime:               1.5
+$Homing:                 false
+$Launch:                 "Sample Rivet Launch"
+$Fly Sound:              ""
+$Impact Vclips:          ("sample spark")
+$Impact Vclips Radius:   (0.5)
+$Damage Radius:          0.0
+$Sticky:                 false
+$Glow:                   false
+
+$Name:                   "Sample Hazard Lamp"
+$V3D Filename:           "sample_figure.v3c"
+$Flags:                  ("continuous_fire")
+$Damage Type:            "energy"
+$Bitmap Filename:        "hazard_strip_04.tga"
+    $Head Radius:        0.2
+$Collision Radius:       0.05
+$Max Ammo:               50
+$Ammo Type:              "sample cells"
+$AI Attack Range:        8.0
+$Mass:                   0.0
+$Velocity:               40
+$Fire Wait:              0.1
+$Damage:                 4.5
+$Lifetime:               0.4
+$Homing:                 false
+$Launch:                 "Sample Lamp Hum"
+$Fly Sound:              ""
+$Impact Vclips:          ()
+$Impact Vclips Radius:   ()
+$Damage Radius:          1.0
+$Sticky:                 false
+$Glow:                   true
+    +Inner Radius:       0.5
+    +Outer Radius:       2.0
+    +Color:              {255, 200, 40}
+
+#End
+
+#Secondary Weapons
+
+$Name:                   "Sample Flare"
+$V3D Filename:           "sample_figure.v3c"
+$Flags:                  ("gravity" "underwater")
+$Weapon Type:            "explosive"
+    $Weapon Icon:        "hazard_strip_07.tga"
+$Damage Type:            "fire"
+$Bitmap Filename:        "hazard_strip_02.tga"
+    $Head Radius:        0.3
+$Collision Radius:       0.05
+$Max Ammo:               5
+$Ammo Type:              "sample flares"
+$AI Attack Range:        15.0
+$Mass:                   0.3
+$Velocity:               12
+$Fire Wait:              1.0
+$Damage:                 60
+$Lifetime:               8.0
+$Homing:                 false
+$Launch:                 "Sample Flare Launch"
+$Fly Sound:              ""
+$Impact Vclips:          ("sample spark")
+$Impact Vclips Radius:   (1.5)
+$Damage Radius:          3.0
+$Sticky:                 true
+$Glow:                   true
+    +Inner Radius:       1.0
+    +Outer Radius:       6.0
+    +Color:              {255, 90, 30}
+
+#End

@@ -1,0 +1,125 @@
+{
+  "file": "explosion.tbl",
+  "title": "Particle explosions",
+  "doc": "Particle explosions built from emitters.tbl entries; vclips and other effects spawn them by name.",
+  "sections": [
+    {
+      "name": "#explosion types",
+      "required": true,
+      "repeat": false,
+      "doc": "List of explosions; the game finds each entry by searching for the exact text $Name: and stops when none is left.",
+      "entry": "$Name:",
+      "defines": "explosion",
+      "end": "#End",
+      "entrySearch": true,
+      "maxEntries": 12,
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 31,
+          "doc": "Unique explosion name."
+        },
+        {
+          "name": "$Flags:",
+          "type": "flags",
+          "required": true,
+          "values": [
+            "no_trails"
+          ],
+          "doc": "Explosion options; () for none."
+        },
+        {
+          "name": "$Explosion_play_time:",
+          "type": "float",
+          "required": true,
+          "unit": "seconds",
+          "doc": "Duration of the explosion."
+        },
+        {
+          "name": "+Central_Emitter:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "emitter",
+          "maxLength": 63,
+          "children": [
+            {
+              "name": "+process_per_frame:",
+              "type": "bool",
+              "required": true,
+              "doc": "Update the emitter every frame."
+            },
+            {
+              "name": "+min_size_before_use:",
+              "type": "float",
+              "required": false,
+              "doc": "Smallest explosion size that uses this emitter."
+            },
+            {
+              "name": "+play_time_factor:",
+              "type": "float",
+              "required": false,
+              "doc": "Part of the play time during which the emitter runs."
+            },
+            {
+              "name": "+rand_pos_factor:",
+              "type": "float",
+              "required": false,
+              "doc": "Random offset of the emitter position."
+            }
+          ],
+          "doc": "Emitter at the centre of the explosion; repeat for several. The emitter must exist."
+        },
+        {
+          "name": "$Sparks_Emitter:",
+          "type": "ref",
+          "required": false,
+          "ref": "emitter",
+          "maxLength": 63,
+          "children": [
+            {
+              "name": "+number:",
+              "type": "int",
+              "required": true,
+              "doc": "Number of sparks."
+            }
+          ],
+          "doc": "Emitter for flying sparks."
+        },
+        {
+          "name": "$Trail_Head_Emitter:",
+          "type": "ref",
+          "required": false,
+          "ref": "emitter",
+          "maxLength": 63,
+          "children": [
+            {
+              "name": "+time_to_emit_head_parts:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "How long the head emits."
+            },
+            {
+              "name": "+rand_pos_factor:",
+              "type": "float",
+              "required": false,
+              "doc": "Random offset of the trail head."
+            }
+          ],
+          "doc": "Emitter at the head of each trail."
+        },
+        {
+          "name": "$Trail_Tail_Emitter:",
+          "type": "ref",
+          "required": false,
+          "ref": "emitter",
+          "maxLength": 63,
+          "doc": "Emitter along each trail."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <!-- WPF comes in through Cairn.Formats imaging (PNG/JPEG decode); no UI types live here. -->
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Atx</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Tomlyn" Version="2.10.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Cairn.Formats\Cairn.Formats.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Workspace\Cairn.Workspace.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Assets\Cairn.Assets.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cairn.Atx.Tests" />
+  </ItemGroup>
+
+</Project>

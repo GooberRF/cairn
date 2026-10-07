@@ -1,0 +1,315 @@
+<Window x:Class="Cairn.Rfa.Ui.Views.Retarget.RetargetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cv="clr-namespace:Cairn.Viewport;assembly=Cairn.Viewport"
+        xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls"
+        xmlns:viewport="clr-namespace:Cairn.Rfa.Ui.Viewport"
+        xmlns:local="clr-namespace:Cairn.Rfa.Ui.Views.Retarget"
+        Title="Retarget" Width="1280" Height="820" MinWidth="980" MinHeight="600"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource App.WindowBackground}" Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="RetargetSetupTemplates.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid Margin="16,14,16,12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="560" MinWidth="440" />
+      <ColumnDefinition Width="Auto" />
+      <ColumnDefinition Width="*" MinWidth="320" />
+    </Grid.ColumnDefinitions>
+
+    <StackPanel Grid.ColumnSpan="3" Margin="0,0,0,10">
+      <TextBlock Style="{StaticResource DialogHeading}" Text="Retarget a clip onto another skeleton" />
+      <TextBlock Style="{StaticResource HintText}"
+                 Text="Transfers the motion bone by bone (mapped by name), aligns the two rest poses and gives the result the target's own proportions; the preset decides what stays put (a rider's hands and feet on the controls, or a walker's feet on the ground). Nothing is written until you save." />
+    </StackPanel>
+
+    <!-- Settings, in tabs -->
+    <TabControl x:Name="Pages" Grid.Row="1" Grid.Column="0" Style="{StaticResource PanelTabControl}" AutomationProperties.Name="Retarget settings">
+      <TabItem Header="_Source &amp; target" Style="{StaticResource PanelTabItem}" ToolTip="The clip, the two rigs and where the result goes"
+               AutomationProperties.Name="Source and target">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="2,8,10,4" Focusable="False">
+          <StackPanel>
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="CLIP TO RETARGET" />
+              <TextBox Text="{Binding SourceClips.Filter, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4" Height="26" VerticalContentAlignment="Center"
+                       ToolTip="Filter the clips (substring or wildcard, e.g. *jeep*)" AutomationProperties.Name="Filter the clips" />
+              <ListBox x:Name="ClipList" ItemsSource="{Binding SourceClips.Items}" SelectedItem="{Binding SourceClips.Selected, Mode=TwoWay}" Height="130"
+                       SelectionChanged="OnClipSelectionChanged"
+                       BorderThickness="1" BorderBrush="{DynamicResource App.Border}" Background="{DynamicResource App.PaneBackground}"
+                       VirtualizingPanel.IsVirtualizing="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       AutomationProperties.Name="Clips to retarget">
+                <ListBox.ItemContainerStyle>
+                  <Style TargetType="ListBoxItem" BasedOn="{StaticResource PaneListBoxItem}">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="6,1" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding Label}" />
+                  </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel ToolTip="{Binding ToolTip}">
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource App.SecondaryText}" />
+                      <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource App.Text}" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </StackPanel>
+            <ContentControl Content="{Binding Setup}" ContentTemplate="{StaticResource PresetTemplate}" Focusable="False" IsTabStop="False" />
+            <ContentControl Content="{Binding Setup}" ContentTemplate="{StaticResource RigsTemplate}" Focusable="False" IsTabStop="False" />
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="OUTPUT" />
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="104" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource RtLabel}" Text="File name" />
+                <TextBox Grid.Column="1" Grid.ColumnSpan="2" Height="26" Margin="0,2" VerticalContentAlignment="Center"
+                         Text="{Binding OutputName, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="The new clip's file name (clip names are global in the game; keep it unique and at most 59 characters)"
+                         AutomationProperties.Name="Output file name" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource InlineDiagnosticText}" Text="{Binding OutputNameProblem}"
+                           Foreground="{DynamicResource Severity.Warning}" Visibility="{Binding OutputNameProblem, Converter={StaticResource Truthy}}" />
+                <TextBlock Grid.Row="2" Style="{StaticResource RtLabel}" Text="Save folder" />
+                <TextBox Grid.Row="2" Grid.Column="1" Height="26" Margin="0,2" VerticalContentAlignment="Center" IsReadOnly="True"
+                         Text="{Binding OutputFolder, Mode=OneWay}" ToolTip="Where Save as… starts (never the game directory)"
+                         AutomationProperties.Name="Save folder" />
+                <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource DialogSmallButton}" Margin="6,2,0,2" Content="Browse…" Command="{Binding BrowseFolderCommand}"
+                        ToolTip="Choose the folder Save as… starts in" AutomationProperties.Name="Browse for the save folder" />
+                <TextBlock Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource InlineDiagnosticText}" Text="{Binding OutputFolderProblem}"
+                           Foreground="{DynamicResource Severity.Warning}" Visibility="{Binding OutputFolderProblem, Converter={StaticResource Truthy}}" />
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="_Bone map" Style="{StaticResource PanelTabItem}" ToolTip="Which source bone drives each target bone" AutomationProperties.Name="Bone map">
+        <local:BoneMapTable DataContext="{Binding Setup.Map}" Margin="2,8,4,4" />
+      </TabItem>
+
+      <TabItem Header="_Options" Style="{StaticResource PanelTabItem}" ToolTip="Rest alignment, IK, root motion, bone lengths, keys" AutomationProperties.Name="Options">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="2,8,10,4" Focusable="False">
+          <ContentControl Content="{Binding Setup}" ContentTemplate="{StaticResource OptionsTemplate}" Focusable="False" IsTabStop="False" />
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Re_port" Style="{StaticResource PanelTabItem}" ToolTip="How closely the result follows the source" AutomationProperties.Name="Report">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="2,8,10,4" Focusable="False">
+          <StackPanel>
+            <TextBlock Text="{Binding ReportSummary}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8" AutomationProperties.Name="Report summary" />
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="OUTPUT CHECKLIST" />
+              <ItemsControl ItemsSource="{Binding Checks}" Focusable="False" AutomationProperties.Name="Output checklist">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Margin="0,1" ToolTip="{Binding Message}">
+                      <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,2,7,0"
+                                 Foreground="{Binding BrushKey, Converter={StaticResource BrushKey}}" />
+                      <TextBlock TextWrapping="Wrap" FontSize="12">
+                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=": " /><Run Text="{Binding Message, Mode=OneWay}" Foreground="{DynamicResource App.SecondaryText}" />
+                      </TextBlock>
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="PINNED CONTACTS (WHAT IK HELD, WORST DISTANCE)" />
+              <ItemsControl ItemsSource="{Binding PinnedContacts}" Focusable="False" AutomationProperties.Name="Pinned contacts">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="0,1">
+                      <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding ErrorText}" FontFamily="{StaticResource MonoFont}" FontSize="12" />
+                        <TextBlock FontSize="12" TextTrimming="CharacterEllipsis">
+                          <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" held to " Foreground="{DynamicResource App.SecondaryText}" /><Run Text="{Binding HeldTo, Mode=OneWay}" Foreground="{DynamicResource App.SecondaryText}" />
+                        </TextBlock>
+                      </DockPanel>
+                      <DockPanel Margin="14,0,0,0" Visibility="{Binding HasNote, Converter={StaticResource Truthy}}">
+                        <TextBlock DockPanel.Dock="Left" Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,2,6,0" Foreground="{DynamicResource Severity.Warning}" />
+                        <TextBlock Text="{Binding Note}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource App.SecondaryText}" />
+                      </DockPanel>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Style="{StaticResource HintText}" Text="{Binding PinnedContactsEmptyText}" Visibility="{Binding PinnedContactsEmptyText, Converter={StaticResource Truthy}}" />
+              <TextBlock Style="{StaticResource HintText}" Margin="0,4,0,0"
+                         Text="Should be about 0 cm. More means the limb could not reach (fully stretched): the joint stops as close as it can." />
+            </StackPanel>
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="HANDS, FEET AND HEAD FROM THE SOURCE'S (MODEL SPACE)" />
+              <ItemsControl ItemsSource="{Binding JointOffsets}" Focusable="False" AutomationProperties.Name="Joint offsets from the source">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Margin="0,1">
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding OffsetText}" FontFamily="{StaticResource MonoFont}" FontSize="12" />
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" FontSize="11" Margin="0,1,12,0" Foreground="{DynamicResource App.SecondaryText}" />
+                      <TextBlock Text="{Binding Name}" FontSize="12" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Style="{StaticResource HintText}" Margin="0,4,0,0"
+                         Text="Information, not errors: a joint nothing pins lands where the target's proportions put it (the head of a shorter rig sits lower)." />
+            </StackPanel>
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="JOINTS (CM; DIRECTION IN DEGREES)" />
+              <Grid Background="{DynamicResource Table.HeaderBackground}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="70" />
+                  <ColumnDefinition Width="70" />
+                  <ColumnDefinition Width="70" />
+                  <ColumnDefinition Width="150" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource TableHeaderText}" Margin="4,3" Text="Bone" />
+                <TextBlock Grid.Column="1" Style="{StaticResource TableHeaderText}" Margin="4,3" Text="Pelvis max" ToolTip="Largest difference of the joint relative to the pelvis" />
+                <TextBlock Grid.Column="2" Style="{StaticResource TableHeaderText}" Margin="4,3" Text="Mean" ToolTip="Mean difference relative to the pelvis" />
+                <TextBlock Grid.Column="3" Style="{StaticResource TableHeaderText}" Margin="4,3" Text="Model max" ToolTip="Largest difference in model space" />
+                <TextBlock Grid.Column="4" Style="{StaticResource TableHeaderText}" Margin="4,3" Text="Segment direction" ToolTip="Largest angle of the bone towards its primary child" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Joints}" Focusable="False" AutomationProperties.Name="Joint errors">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid Margin="0,1">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="150" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Margin="4,0" Text="{Binding Bone}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Margin="4,0" Text="{Binding PelvisMax}" FontSize="12" FontFamily="{StaticResource MonoFont}" />
+                      <TextBlock Grid.Column="2" Margin="4,0" Text="{Binding PelvisMean}" FontSize="12" FontFamily="{StaticResource MonoFont}" />
+                      <TextBlock Grid.Column="3" Margin="4,0" Text="{Binding ModelMax}" FontSize="12" FontFamily="{StaticResource MonoFont}" />
+                      <TextBlock Grid.Column="4" Margin="4,0" Text="{Binding SegmentDirection}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Style="{StaticResource HintText}" Margin="0,4,0,0"
+                         Text="Limb IK moves elbows and knees on purpose (it holds hands or feet), so upper and lower limb directions differ by the proportions." />
+            </StackPanel>
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="WHAT THE RETARGET DID" />
+              <ItemsControl ItemsSource="{Binding ReportLines}" Focusable="False" AutomationProperties.Name="Retarget report lines">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" Margin="0,1" Foreground="{DynamicResource App.SecondaryText}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+
+    <GridSplitter Grid.Row="1" Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent"
+                  ResizeBehavior="PreviousAndNext" Focusable="False" ToolTip="Drag to resize" AutomationProperties.Name="Resize the panels" />
+
+    <!-- The live preview: target mesh with the result, source skeleton as a ghost (or the source beside it) -->
+    <DockPanel Grid.Row="1" Grid.Column="2">
+      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+        <ToggleButton DockPanel.Dock="Right" Style="{StaticResource ToolToggle}" Height="26" Padding="8,0" IsChecked="{Binding IsSideBySide, Mode=TwoWay}"
+                      ToolTip="Show the source mesh playing the source clip beside the target, instead of the source skeleton as a ghost"
+                      AutomationProperties.Name="Side by side">
+          <TextBlock Text="Side by side" FontSize="12" />
+        </ToggleButton>
+        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="12"
+                   Foreground="{DynamicResource App.SecondaryText}" AutomationProperties.Name="Preview status" />
+      </DockPanel>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button DockPanel.Dock="Left" Style="{StaticResource ToolButton}" MinWidth="32" Margin="0,0,6,0" VerticalAlignment="Center"
+                Command="{Binding Preview.Playback.PlayPauseCommand}" ToolTip="Play or pause the preview" AutomationProperties.Name="Play or pause the preview">
+          <TextBlock Text="{Binding Preview.Playback.PlayGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+        </Button>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding Preview.Playback.TimeText}" FontFamily="{StaticResource MonoFont}" FontSize="12"
+                   Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="90" TextAlignment="Right"
+                   Foreground="{DynamicResource App.SecondaryText}" AutomationProperties.Name="Preview time" />
+        <Border BorderBrush="{DynamicResource App.Border}" BorderThickness="1" CornerRadius="4" Background="{DynamicResource App.ChromeBackground}">
+          <cv:TimeScrubber DataContext="{Binding Preview.Playback}" Margin="0,1" />
+        </Border>
+      </DockPanel>
+      <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource HintText}" Margin="0,6,0,0" Text="{Binding GhostCaption}" />
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition x:Name="SourceColumn" Width="0" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Border x:Name="SourceViewBorder" BorderBrush="{DynamicResource App.Border}" BorderThickness="1" Margin="0,0,6,0" Visibility="Collapsed">
+          <Grid>
+            <viewport:ViewportControl DataContext="{Binding SourcePreview}" AutomationProperties.Name="Source preview" />
+            <Border Margin="0,8,8,0" Padding="7,2" CornerRadius="3" HorizontalAlignment="Right" VerticalAlignment="Top" IsHitTestVisible="False"
+                    Background="{DynamicResource Viewport.LabelBackground}">
+              <TextBlock Text="Source" FontSize="11" Foreground="{DynamicResource Viewport.Label}" />
+            </Border>
+          </Grid>
+        </Border>
+        <Border Grid.Column="1" BorderBrush="{DynamicResource App.Border}" BorderThickness="1">
+          <Grid>
+            <viewport:ViewportControl DataContext="{Binding Preview}" AutomationProperties.Name="Result preview" />
+            <Border Margin="0,8,8,0" Padding="7,2" CornerRadius="3" HorizontalAlignment="Right" VerticalAlignment="Top" IsHitTestVisible="False"
+                    Background="{DynamicResource Viewport.LabelBackground}">
+              <TextBlock Text="Result" FontSize="11" Foreground="{DynamicResource Viewport.Label}" />
+            </Border>
+          </Grid>
+        </Border>
+      </Grid>
+    </DockPanel>
+
+    <!-- Why it cannot run / what it warns about -->
+    <Border Grid.Row="2" Grid.ColumnSpan="3" Style="{StaticResource DialogCard}" Padding="10,6" Margin="0,10,0,0" AutomationProperties.Name="Result"
+            Visibility="{Binding ShowResultCard, Converter={StaticResource Truthy}}">
+      <StackPanel>
+        <TextBlock Style="{StaticResource HintText}" Text="Working out the result…" Visibility="{Binding IsBusy, Converter={StaticResource Truthy}}" />
+        <DockPanel Visibility="{Binding HasError, Converter={StaticResource Truthy}}">
+          <TextBlock DockPanel.Dock="Left" Text="&#xE783;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,2,7,0" Foreground="{DynamicResource Severity.Error}" />
+          <TextBlock Text="{Binding Error}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource Severity.Error}" AutomationProperties.Name="Why the retarget cannot run" />
+        </DockPanel>
+        <ItemsControl ItemsSource="{Binding Warnings}" Focusable="False" AutomationProperties.Name="Warnings">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <DockPanel Margin="0,1">
+                <TextBlock DockPanel.Dock="Left" Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,2,7,0" Foreground="{DynamicResource Severity.Warning}" />
+                <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" />
+              </DockPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Grid.Row="3" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Style="{StaticResource DialogButton}" Content="Save _as…" Click="OnSaveAs" IsEnabled="{Binding CanRetarget}"
+              ToolTipService.ShowOnDisabled="True" ToolTip="Write the result to a file now and open it" AutomationProperties.Name="Save as" />
+      <Button Style="{StaticResource DialogButton}" Content="_Retarget" IsDefault="True" Click="OnRetarget" IsEnabled="{Binding CanRetarget}"
+              ToolTipService.ShowOnDisabled="True" ToolTip="Open the result as a new, unsaved clip tab (previewed on the target mesh)"
+              AutomationProperties.Name="Retarget" />
+      <Button Style="{StaticResource DialogButton}" Content="Cancel" IsCancel="True" ToolTip="Close without making anything (Esc)" AutomationProperties.Name="Cancel" />
+    </StackPanel>
+  </Grid>
+</Window>

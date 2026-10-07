@@ -1,0 +1,42 @@
+<UserControl x:Class="Cairn.Rfa.Ui.Views.ClipTools.ClipToolsHeader"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="False">
+  <!--
+    The clip tools' part of the viewport header (DataContext: ClipDocumentViewModel): a "Preview" badge
+    while a clip tool shows its result instead of the document, and the "Compare: clip" chip of
+    Clip › Compare With… with show/hide and clear buttons.
+  -->
+  <StackPanel Orientation="Horizontal">
+    <Border Background="{DynamicResource App.AccentSoft}" BorderBrush="{DynamicResource App.Accent}" BorderThickness="1"
+            CornerRadius="11" Padding="9,0" Height="22" Margin="10,0,0,0" VerticalAlignment="Center"
+            Visibility="{Binding Scene.PreviewClip, Converter={StaticResource Truthy}}"
+            ToolTip="The viewport is playing a clip tool's result. The clip itself changes only when you press OK in the tool."
+            AutomationProperties.Name="Previewing a clip tool's result">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="&#xE890;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"
+                   Foreground="{DynamicResource App.Accent}" />
+        <TextBlock Text="Preview" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource App.Text}" />
+      </StackPanel>
+    </Border>
+
+    <Border Background="{DynamicResource Badge.Background}" CornerRadius="11" Padding="8,0,2,0" Height="22" Margin="10,0,0,0"
+            VerticalAlignment="Center" Visibility="{Binding Compare.IsActive, Converter={StaticResource Truthy}}"
+            ToolTip="{Binding Compare.ChipToolTip}" AutomationProperties.Name="Compared clip">
+      <StackPanel Orientation="Horizontal">
+        <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource Viewport.GhostCompare}" />
+        <TextBlock Text="{Binding Compare.ChipText}" FontSize="11" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource Badge.Foreground}" />
+        <Button Style="{StaticResource ToolButton}" Height="20" MinWidth="22" Padding="2,0" Margin="6,0,0,0"
+                Command="{Binding Compare.ToggleVisibleCommand}" ToolTip="{Binding Compare.VisibilityToolTip}"
+                AutomationProperties.Name="Show or hide the compared clip">
+          <TextBlock Text="{Binding Compare.VisibilityGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource Badge.Foreground}" />
+        </Button>
+        <Button Style="{StaticResource ToolButton}" Height="20" MinWidth="22" Padding="2,0"
+                Command="{Binding Compare.ClearCommand}" ToolTip="Stop comparing (remove the ghost)" AutomationProperties.Name="Stop comparing">
+          <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="9" Foreground="{DynamicResource Badge.Foreground}" />
+        </Button>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

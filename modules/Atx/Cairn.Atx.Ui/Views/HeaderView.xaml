@@ -1,0 +1,348 @@
+<UserControl x:Class="Cairn.Atx.Ui.Views.HeaderView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+             xmlns:controls="clr-namespace:Cairn.Atx.Ui.Controls"
+             IsEnabled="{Binding IsEnabled}">
+  <!--
+    A two-column form: label left, control right, reset button in a narrow third column. The three
+    columns are shared-size groups, so every label and every reset button lines up down the panel
+    whichever field it belongs to, and the whole form fits the pane without scrolling at ordinary
+    window heights. Spacing is on the 8px grid (4px for a hint tucked under its control).
+
+    Descriptions of the pixel formats and materials live in the drop-down rows and the tooltip
+    rather than under the closed control: six always-visible paragraphs is what made this panel
+    taller than the pane it lives in.
+  -->
+  <UserControl.Resources>
+    <Style x:Key="Field" TargetType="StackPanel">
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style x:Key="LastField" TargetType="StackPanel">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style x:Key="ResetButton" TargetType="Button" BasedOn="{StaticResource ToolButton}">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="MinWidth" Value="22" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="4,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="ResetGlyph" TargetType="TextBlock">
+      <Setter Property="Text" Value="&#xE894;" />
+      <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style x:Key="RowHint" TargetType="TextBlock" BasedOn="{StaticResource HintText}">
+      <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+
+    <!--
+      One row of a token drop-down. The description shows in the list, where it helps the choice,
+      and is dropped from the closed box, where it would cost the panel two lines of height: the
+      selection box has no ComboBoxItem above it, which is what the trigger tests.
+    -->
+    <DataTemplate x:Key="TokenOptionTemplate">
+      <StackPanel>
+        <TextBlock Text="{Binding Label}" />
+        <TextBlock x:Name="Description" Text="{Binding Description}"
+                   Style="{StaticResource HintText}" MaxWidth="260" Margin="0,1,0,0" />
+      </StackPanel>
+      <DataTemplate.Triggers>
+        <DataTrigger Value="{x:Null}"
+                     Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}}">
+          <Setter TargetName="Description" Property="Visibility" Value="Collapsed" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Disabled" Padding="0"
+                AutomationProperties.Name="Texture settings">
+    <ScrollViewer.Resources>
+      <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+    </ScrollViewer.Resources>
+    <!--
+      The padding is a margin on the content rather than on the ScrollViewer, so the bottom 12px
+      scrolls with the form: when the pane is too short the last row is followed by clear space
+      instead of ending flush against the edge.
+    -->
+    <StackPanel x:Name="Form" Margin="12,10,12,12" Grid.IsSharedSizeScope="True">
+
+      <!-- Frame time -->
+      <StackPanel Style="{StaticResource Field}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormLabel" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormReset" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource FormLabel}" Text="Frame time"
+                     ToolTip="{Binding FrameTimeTooltip}" />
+          <Grid Grid.Column="1">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <!-- Narrower than the control's own minimum: at the pane's minimum width the fps
+                 readout beside it needs the room more than a four-digit box does. -->
+            <cui:NumericBox x:Name="FrameTimeBox" Decimals="0" Grid.Column="0" MinWidth="96"
+                                 Minimum="1" Maximum="600000"
+                                 Step="10" Suffix="ms" Value="{Binding FrameTimeMs, Mode=TwoWay}"
+                                 ToolTip="{Binding FrameTimeTooltip}"
+                                 AutomationProperties.Name="Frame time in milliseconds" />
+            <TextBlock Grid.Column="1" Text="{Binding FpsText}" VerticalAlignment="Center"
+                       Margin="8,0,0,0" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource App.SecondaryText}"
+                       ToolTip="Frames a second at this frame time"
+                       AutomationProperties.Name="Frames per second" />
+          </Grid>
+          <Button Grid.Column="2" Style="{StaticResource ResetButton}"
+                  Command="{Binding ResetFrameTimeCommand}"
+                  Visibility="{Binding HasFrameTimeKey, Converter={StaticResource Truthy}}"
+                  ToolTip="Reset to the default (removes frame_time from the file)"
+                  AutomationProperties.Name="Reset frame time to default">
+            <TextBlock Style="{StaticResource ResetGlyph}" />
+          </Button>
+        </Grid>
+        <TextBlock Style="{StaticResource InlineDiagnosticText}" Text="{Binding FrameTimeDiagnostic}"
+                   Foreground="{Binding FrameTimeSeverity, Converter={StaticResource SeverityBrush}}"
+                   Visibility="{Binding FrameTimeDiagnostic, Converter={StaticResource Truthy}}" />
+      </StackPanel>
+
+      <!-- Animation mode -->
+      <StackPanel Style="{StaticResource Field}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormLabel" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormReset" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource FormLabel}" Text="Mode"
+                     VerticalAlignment="Top" Margin="0,5,8,0"
+                     ToolTip="{Binding AnimationModeTooltip}" />
+          <!--
+            Two rows of two rather than one row of four: four segments side by side need about
+            300px, which this column does not have at the pane's minimum width, and a segmented
+            control that ellipsises "Ping-Pong" is worse than one that wraps.
+          -->
+          <Border Grid.Column="1" BorderBrush="{DynamicResource App.Border}" BorderThickness="1"
+                  CornerRadius="5" HorizontalAlignment="Left" VerticalAlignment="Top"
+                  Background="{DynamicResource App.WindowBackground}">
+            <ListBox ItemsSource="{Binding ModeOptions}" SelectedItem="{Binding SelectedMode, Mode=TwoWay}"
+                     BorderThickness="0" Background="Transparent" Padding="1"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                     ToolTip="{Binding AnimationModeTooltip}"
+                     AutomationProperties.Name="Animation mode">
+              <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Rows="2" Columns="2" />
+                </ItemsPanelTemplate>
+              </ListBox.ItemsPanel>
+              <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                  <Setter Property="Padding" Value="0" />
+                  <Setter Property="Margin" Value="0" />
+                  <Setter Property="AutomationProperties.Name" Value="{Binding Label}" />
+                  <Setter Property="ToolTip" Value="{Binding Description}" />
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Seg" CornerRadius="3" Margin="1" Padding="8,4"
+                                Background="Transparent" SnapsToDevicePixels="True">
+                          <TextBlock Text="{Binding Label}" FontSize="12" TextAlignment="Center"
+                                     Foreground="{DynamicResource App.Text}" x:Name="Label" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Seg" Property="Background"
+                                    Value="{DynamicResource App.Hover}" />
+                          </Trigger>
+                          <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Seg" Property="Background"
+                                    Value="{DynamicResource App.Accent}" />
+                            <Setter TargetName="Label" Property="Foreground"
+                                    Value="{DynamicResource App.AccentForeground}" />
+                          </Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
+                </Style>
+              </ListBox.ItemContainerStyle>
+            </ListBox>
+          </Border>
+          <Button Grid.Column="2" Style="{StaticResource ResetButton}" VerticalAlignment="Top"
+                  Command="{Binding ResetAnimationModeCommand}"
+                  Visibility="{Binding HasAnimationModeKey, Converter={StaticResource Truthy}}"
+                  ToolTip="Reset to the default (removes animation_mode from the file)"
+                  AutomationProperties.Name="Reset animation mode to default">
+            <TextBlock Style="{StaticResource ResetGlyph}" />
+          </Button>
+        </Grid>
+        <TextBlock Style="{StaticResource RowHint}" Text="{Binding ModeDescription}"
+                   AutomationProperties.Name="Animation mode description" />
+        <TextBlock Style="{StaticResource InlineDiagnosticText}" Text="{Binding AnimationModeDiagnostic}"
+                   Foreground="{Binding AnimationModeSeverity, Converter={StaticResource SeverityBrush}}"
+                   Visibility="{Binding AnimationModeDiagnostic, Converter={StaticResource Truthy}}" />
+      </StackPanel>
+
+      <!-- Start playing on level load -->
+      <StackPanel Style="{StaticResource Field}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormLabel" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormReset" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource FormLabel}" Text="On load"
+                     ToolTipService.ShowOnDisabled="True" ToolTip="{Binding InitiallyOnTooltip}" />
+          <CheckBox Grid.Column="1" Content="Start playing" MinHeight="22"
+                    IsChecked="{Binding InitiallyOn, Mode=TwoWay}"
+                    IsEnabled="{Binding IsInitiallyOnRelevant}"
+                    ToolTipService.ShowOnDisabled="True"
+                    ToolTip="{Binding InitiallyOnTooltip}"
+                    AutomationProperties.Name="Start playing on level load"
+                    VerticalAlignment="Center" VerticalContentAlignment="Center" />
+          <Button Grid.Column="2" Style="{StaticResource ResetButton}"
+                  Command="{Binding ResetInitiallyOnCommand}"
+                  Visibility="{Binding HasInitiallyOnKey, Converter={StaticResource Truthy}}"
+                  ToolTip="Reset to the default (removes initially_on from the file)"
+                  AutomationProperties.Name="Reset start playing to default">
+            <TextBlock Style="{StaticResource ResetGlyph}" />
+          </Button>
+        </Grid>
+        <TextBlock Style="{StaticResource InlineDiagnosticText}" Text="{Binding InitiallyOnDiagnostic}"
+                   Foreground="{Binding InitiallyOnSeverity, Converter={StaticResource SeverityBrush}}"
+                   Visibility="{Binding InitiallyOnDiagnostic, Converter={StaticResource Truthy}}" />
+      </StackPanel>
+
+      <!-- Pixel format -->
+      <StackPanel Style="{StaticResource Field}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormLabel" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormReset" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource FormLabel}" Text="Format"
+                     ToolTip="{Binding FormatTooltip}" />
+          <ComboBox Grid.Column="1" ItemsSource="{Binding FormatOptions}"
+                    HorizontalAlignment="Stretch" MinHeight="26"
+                    SelectedItem="{Binding Format, Mode=TwoWay}"
+                    ItemTemplate="{StaticResource TokenOptionTemplate}"
+                    ToolTip="{Binding FormatHelp}"
+                    AutomationProperties.Name="Pixel format" />
+          <Button Grid.Column="2" Style="{StaticResource ResetButton}"
+                  Command="{Binding ResetFormatCommand}"
+                  Visibility="{Binding HasFormatKey, Converter={StaticResource Truthy}}"
+                  ToolTip="Reset to the default (removes format from the file)"
+                  AutomationProperties.Name="Reset pixel format to default">
+            <TextBlock Style="{StaticResource ResetGlyph}" />
+          </Button>
+        </Grid>
+        <TextBlock Style="{StaticResource InlineDiagnosticText}" Text="{Binding FormatDiagnostic}"
+                   Foreground="{Binding FormatSeverity, Converter={StaticResource SeverityBrush}}"
+                   Visibility="{Binding FormatDiagnostic, Converter={StaticResource Truthy}}" />
+      </StackPanel>
+
+      <!-- Alpha mask -->
+      <StackPanel Style="{StaticResource Field}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormLabel" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormReset" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource FormLabel}" Text="Alpha mask"
+                     ToolTip="{Binding AlphaMaskTooltip}" />
+          <DockPanel Grid.Column="1">
+            <Border DockPanel.Dock="Left" Width="30" Height="26" CornerRadius="3" Margin="0,0,6,0"
+                    Background="{DynamicResource Frames.ThumbnailBackground}"
+                    BorderBrush="{DynamicResource App.SubtleBorder}" BorderThickness="1">
+              <Image Source="{Binding MaskThumbnail}" Stretch="Uniform" Margin="2"
+                     RenderOptions.BitmapScalingMode="HighQuality"
+                     AutomationProperties.Name="Alpha mask preview" />
+            </Border>
+            <!--
+              The same two ways in the frames list offers: a mask can just as easily live inside a
+              .vpp as next to the .atx, and the browse button was the only way to either.
+            -->
+            <cui:SplitToolButton DockPanel.Dock="Right" Margin="4,0,0,0" Glyph="&#xE712;"
+                    GlyphSize="12"
+                    PrimaryCommand="{Binding BrowseAlphaMaskCommand}"
+                    SecondaryCommand="{Binding BrowseAlphaMaskFromVppCommand}"
+                    PrimaryLabel="_Browse…" SecondaryLabel="From _VPP…"
+                    PrimaryToolTip="Pick an 8-bit greyscale image to use as the alpha mask"
+                    SecondaryToolTip="Pick the alpha mask out of a .vpp archive"
+                    MenuToolTip="More ways to choose an alpha mask" />
+            <TextBox MinHeight="26" VerticalContentAlignment="Center" IsUndoEnabled="False"
+                     Text="{Binding AlphaMask, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     ToolTip="{Binding AlphaMaskTooltip}"
+                     AutomationProperties.Name="Alpha mask file name" />
+          </DockPanel>
+          <Button Grid.Column="2" Style="{StaticResource ResetButton}"
+                  Command="{Binding ClearAlphaMaskCommand}"
+                  Visibility="{Binding HasAlphaMaskKey, Converter={StaticResource Truthy}}"
+                  ToolTip="Remove the alpha mask from the file"
+                  AutomationProperties.Name="Clear the alpha mask">
+            <TextBlock Style="{StaticResource ResetGlyph}" />
+          </Button>
+        </Grid>
+        <TextBlock Style="{StaticResource InlineDiagnosticText}" Text="{Binding AlphaMaskDiagnostic}"
+                   Foreground="{Binding AlphaMaskSeverity, Converter={StaticResource SeverityBrush}}"
+                   Visibility="{Binding AlphaMaskDiagnostic, Converter={StaticResource Truthy}}" />
+        <!--
+          The two actions the "mask not found" message names, next to the message itself rather
+          than only as quick fixes on the ATX012 diagnostic in the Problems panel.
+        -->
+        <StackPanel Orientation="Horizontal" Margin="0,5,0,0"
+                    Visibility="{Binding IsAlphaMaskMissing, Converter={StaticResource Truthy}}">
+          <Button Style="{StaticResource ToolButton}" Content="Locate file…"
+                  BorderBrush="{DynamicResource App.Border}"
+                  Command="{Binding LocateAlphaMaskCommand}"
+                  ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Pick the mask image from disk. If it lives outside the search locations you are offered a copy next to the .atx."
+                  AutomationProperties.Name="Locate the missing alpha mask" />
+          <Button Style="{StaticResource LinkButton}" Content="Search folders…" Margin="10,0,0,0"
+                  VerticalAlignment="Center" Command="{Binding SearchFoldersCommand}"
+                  ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Open Settings and add the folder the mask lives in"
+                  AutomationProperties.Name="Open the search folder settings" />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Material -->
+      <StackPanel Style="{StaticResource LastField}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormLabel" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FormReset" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource FormLabel}" Text="Material"
+                     ToolTip="{Binding MaterialTooltip}" />
+          <ComboBox Grid.Column="1" ItemsSource="{Binding MaterialOptions}"
+                    HorizontalAlignment="Stretch" MinHeight="26"
+                    SelectedItem="{Binding Material, Mode=TwoWay}"
+                    ItemTemplate="{StaticResource TokenOptionTemplate}"
+                    ToolTip="{Binding MaterialHelp}"
+                    AutomationProperties.Name="Material" />
+          <Button Grid.Column="2" Style="{StaticResource ResetButton}"
+                  Command="{Binding ResetMaterialCommand}"
+                  Visibility="{Binding HasMaterialKey, Converter={StaticResource Truthy}}"
+                  ToolTip="Reset to the default (removes material from the file)"
+                  AutomationProperties.Name="Reset material to default">
+            <TextBlock Style="{StaticResource ResetGlyph}" />
+          </Button>
+        </Grid>
+        <TextBlock Style="{StaticResource InlineDiagnosticText}" Text="{Binding MaterialDiagnostic}"
+                   Foreground="{Binding MaterialSeverity, Converter={StaticResource SeverityBrush}}"
+                   Visibility="{Binding MaterialDiagnostic, Converter={StaticResource Truthy}}" />
+      </StackPanel>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,18 @@
+<Application x:Class="Cairn.Shell.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:Cairn.Ui;assembly=Cairn.Ui"
+             ShutdownMode="OnMainWindowClose">
+  <Application.Resources>
+    <ResourceDictionary>
+      <!-- Value converters shared by every view. ThemeService merges the theme and control dictionaries. -->
+      <ui:TruthyToVisibilityConverter x:Key="Truthy" />
+      <ui:TruthyToVisibilityConverter x:Key="Falsy" Invert="True" />
+      <ui:SeverityToBrushConverter x:Key="SeverityBrush" />
+      <ui:SeverityToGlyphConverter x:Key="SeverityGlyph" />
+      <ui:FileNameConverter x:Key="FileName" />
+      <ui:NotConverter x:Key="Not" />
+      <ui:BrushKeyConverter x:Key="BrushKey" />
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

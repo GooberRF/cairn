@@ -1,0 +1,127 @@
+{
+  "file": "game.tbl",
+  "title": "Game constants",
+  "doc": "Global gameplay constants: fall damage, footsteps, liquids, the first level, menu music and multiplayer tuning.",
+  "fields": [
+    {
+      "name": "$Min Fall Damage Height:",
+      "type": "float",
+      "required": true,
+      "unit": "metres",
+      "doc": "Fall height at which damage starts."
+    },
+    {
+      "name": "$Max Fall Damage Height:",
+      "type": "float",
+      "required": true,
+      "unit": "metres",
+      "doc": "Fall height that kills."
+    },
+    {
+      "name": "$Max Entity Jump Height:",
+      "type": "float",
+      "required": true,
+      "unit": "metres",
+      "doc": "Highest jump of an entity."
+    },
+    {
+      "name": "$Player Footstep Pan:",
+      "type": "float",
+      "required": true,
+      "doc": "Stereo pan of the player's footsteps."
+    },
+    {
+      "name": "$Player Step Distance:",
+      "type": "float",
+      "required": true,
+      "unit": "metres",
+      "doc": "Distance between footstep sounds."
+    },
+    {
+      "name": "$Player Step Distance Climb:",
+      "type": "float",
+      "required": true,
+      "unit": "metres",
+      "doc": "Distance between climbing sounds."
+    },
+    {
+      "name": "$First Level Filename:",
+      "type": "file",
+      "required": true,
+      "file": "level",
+      "doc": "Level a new game starts in."
+    },
+    {
+      "name": "$Lava Damage Per Second:",
+      "type": "float",
+      "required": true,
+      "doc": "Damage per second in lava."
+    },
+    {
+      "name": "$Acid Damage Per Second:",
+      "type": "float",
+      "required": true,
+      "doc": "Damage per second in acid."
+    },
+    {
+      "name": "$Legs Pos Y:",
+      "type": "float",
+      "required": true,
+      "doc": "Height offset of the first person legs view."
+    },
+    {
+      "name": "$Legs Pos Z:",
+      "type": "float",
+      "required": true,
+      "doc": "Forward offset of the first person legs view."
+    },
+    {
+      "name": "$Legs FOV:",
+      "type": "float",
+      "required": true,
+      "unit": "degrees",
+      "doc": "Field of view of the legs view."
+    },
+    {
+      "name": "$Main Menu Music Filename:",
+      "type": "file",
+      "required": true,
+      "file": "sound",
+      "doc": "Music of the main menu."
+    },
+    {
+      "name": "$Intro Movie Filename:",
+      "type": "file",
+      "required": false,
+      "file": "video",
+      "doc": "Movie played at start-up."
+    },
+    {
+      "name": "$Default Player Weapon:",
+      "type": "ref",
+      "required": true,
+      "ref": "weapon",
+      "doc": "Weapon every player starts with."
+    },
+    {
+      "name": "$Multi Damage Modifier:",
+      "type": "float",
+      "required": true,
+      "doc": "Damage multiplier in multiplayer."
+    },
+    {
+      "name": "$Multi Player Acceleration:",
+      "type": "float",
+      "required": true,
+      "doc": "Player acceleration in multiplayer."
+    },
+    {
+      "name": "+No Geomod Limit",
+      "type": "none",
+      "required": false,
+      "valueless": true,
+      "doc": "Marker without a value (and without a colon) that lifts the limit on geomod craters."
+    }
+  ],
+  "notes": "The fields are not inside any section header."
+}

@@ -1,0 +1,281 @@
+<Window x:Class="Cairn.Atx.Ui.Views.Dialogs.VbmImportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+        xmlns:controls="clr-namespace:Cairn.Atx.Ui.Controls"
+        Title="Import VBM as ATX" Width="900" Height="700" MinWidth="720" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Grid Margin="20,18,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" MinHeight="220" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Heading: what this is and where it came from -->
+    <StackPanel Grid.Row="0" Margin="0,0,0,14">
+      <TextBlock Style="{StaticResource DialogHeading}" Text="Import VBM as ATX" />
+      <TextBlock Style="{StaticResource HintText}" TextWrapping="Wrap"
+                 Text="Each frame of the .vbm is written out as a TGA, and a matching .atx is generated to play them." />
+      <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource App.Text}"
+                 Text="{Binding SourceSummary}"
+                 AutomationProperties.Name="Source summary" />
+      <TextBlock Style="{StaticResource HintText}" TextTrimming="CharacterEllipsis"
+                 Text="{Binding SourceOrigin}" ToolTip="{Binding SourceOrigin}"
+                 AutomationProperties.Name="Where the file came from" />
+    </StackPanel>
+
+    <!-- Preview | output -->
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="300" MinWidth="220" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" MinWidth="320" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Left: the source, playing -->
+      <Grid Grid.Column="0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource DialogCard}" Padding="0" MinHeight="160"
+                Background="{DynamicResource Preview.CheckerBrush}">
+          <Grid>
+            <Image Source="{Binding PreviewImage}" Stretch="Uniform" Margin="8"
+                   RenderOptions.BitmapScalingMode="NearestNeighbor"
+                   Visibility="{Binding HasPreviewImage, Converter={StaticResource Truthy}}"
+                   ToolTip="{Binding SourceSummary}"
+                   AutomationProperties.Name="Source frame preview" />
+            <TextBlock Style="{StaticResource HintText}" TextAlignment="Center" Margin="16"
+                       TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="{Binding PreviewPlaceholder}"
+                       Visibility="{Binding HasPreviewImage, Converter={StaticResource Falsy}}"
+                       AutomationProperties.Name="Preview status" />
+          </Grid>
+        </Border>
+
+        <DockPanel Grid.Row="1" Margin="0,8,0,0"
+                   Visibility="{Binding IsAnimated, Converter={StaticResource Truthy}}">
+          <Button DockPanel.Dock="Left" Style="{StaticResource ToolButton}" Margin="0,0,8,0"
+                  Command="{Binding PlayPauseCommand}"
+                  ToolTip="Play or pause the preview"
+                  AutomationProperties.Name="Play or pause the preview">
+            <TextBlock Text="{Binding PlayPauseGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+          </Button>
+          <Slider Minimum="0" Maximum="{Binding MaxFrameIndex}" IsSnapToTickEnabled="True"
+                  TickFrequency="1" VerticalAlignment="Center"
+                  Value="{Binding PreviewFrame, Mode=TwoWay}"
+                  ToolTip="Scrub through the VBM's frames"
+                  AutomationProperties.Name="Preview frame" />
+        </DockPanel>
+
+        <TextBlock Grid.Row="2" Margin="0,6,0,0" Style="{StaticResource HintText}"
+                   Text="{Binding PreviewFrameText}"
+                   Visibility="{Binding IsAnimated, Converter={StaticResource Truthy}}"
+                   AutomationProperties.Name="Preview position" />
+      </Grid>
+
+      <GridSplitter Grid.Column="1" Style="{StaticResource VerticalSplitter}"
+                    AutomationProperties.Name="Resize the preview" />
+
+      <!-- Right: where it all goes -->
+      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+        <StackPanel>
+          <TextBlock Style="{StaticResource DialogSubheading}" Text="OUTPUT" />
+
+          <TextBlock Style="{StaticResource DialogLabel}" Text="Folder" Margin="0,0,0,4" />
+          <DockPanel Margin="0,0,0,10">
+            <Button DockPanel.Dock="Right" Style="{StaticResource DialogSmallButton}"
+                    Margin="8,0,0,0" Content="_Browse…" Command="{Binding BrowseFolderCommand}"
+                    ToolTip="Choose the folder the frames and the .atx are written into"
+                    AutomationProperties.Name="Browse for the output folder" />
+            <TextBox MinHeight="30" Text="{Binding OutputFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Where the frames and the .atx are written"
+                     AutomationProperties.Name="Output folder" />
+          </DockPanel>
+
+          <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="ATX name" Margin="0,0,0,4" />
+              <TextBox x:Name="AtxNameBox" MinHeight="30"
+                       Text="{Binding AtxName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="The generated file. Keep the .vbm's own name to replace that texture in game."
+                       AutomationProperties.Name="ATX file name" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="Frame name" Margin="0,0,0,4" />
+              <TextBox MinHeight="30"
+                       Text="{Binding FrameBaseName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="Frames are named &lt;this&gt;_00.tga, _01.tga and so on"
+                       AutomationProperties.Name="Frame file name stem" />
+            </StackPanel>
+          </Grid>
+
+          <!-- Whether this actually replaces the original texture -->
+          <Border Padding="10,8" CornerRadius="4" Margin="0,0,0,10"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource App.Border}"
+                  Background="{DynamicResource App.ChromeBackground}">
+            <TextBlock TextWrapping="Wrap" FontSize="12"
+                       Text="{Binding SupersedeNote}"
+                       AutomationProperties.Name="What this does to the original texture">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Foreground" Value="{DynamicResource Severity.Warning}" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding ReplacesSource}" Value="True">
+                      <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+          </Border>
+
+          <TextBlock Style="{StaticResource DialogSubheading}" Text="FILES THAT WILL BE WRITTEN" />
+          <Border Style="{StaticResource DialogCard}" Padding="10,8" Margin="0,0,0,6">
+            <TextBlock Style="{StaticResource MonoText}" Text="{Binding FileListText}"
+                       AutomationProperties.Name="Files that will be written" />
+          </Border>
+          <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,4"
+                     Text="{Binding FileTotalsText}"
+                     AutomationProperties.Name="Total size" />
+          <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,10"
+                     Text="{Binding TimingSummary}"
+                     AutomationProperties.Name="Frame timing" />
+
+          <TextBlock Style="{StaticResource DialogSubheading}" Text="OPTIONS" />
+
+          <CheckBox Margin="0,0,0,8" IsChecked="{Binding SetFormatToMatchSource, Mode=TwoWay}"
+                    ToolTip="{Binding SetFormatToolTip}"
+                    AutomationProperties.Name="Set the format to match the source">
+            <AccessText Text="{Binding SetFormatLabel}" />
+          </CheckBox>
+
+          <TextBlock Style="{StaticResource DialogLabel}" Text="Animation mode" Margin="0,0,0,4" />
+          <WrapPanel Margin="0,0,0,2">
+            <RadioButton GroupName="Mode" Margin="0,0,14,6"
+                         IsChecked="{Binding IsLoop, Mode=TwoWay}"
+                         ToolTip="Plays forward and starts again at frame 0"
+                         AutomationProperties.Name="Loop">
+              <AccessText Text="_Loop" />
+            </RadioButton>
+            <RadioButton GroupName="Mode" Margin="0,0,14,6"
+                         IsChecked="{Binding IsPingPong, Mode=TwoWay}"
+                         ToolTip="Plays forward then backward, over and over"
+                         AutomationProperties.Name="Ping-Pong">
+              <AccessText Text="_Ping-Pong" />
+            </RadioButton>
+            <RadioButton GroupName="Mode" Margin="0,0,14,6"
+                         IsChecked="{Binding IsPlayOnce, Mode=TwoWay}"
+                         ToolTip="Plays forward once and holds on the last frame"
+                         AutomationProperties.Name="Play Once">
+              <AccessText Text="Play _Once" />
+            </RadioButton>
+            <RadioButton GroupName="Mode" Margin="0,0,0,6"
+                         IsChecked="{Binding IsStatic, Mode=TwoWay}"
+                         ToolTip="Never advances on its own; level events change the frame"
+                         AutomationProperties.Name="Static">
+              <AccessText Text="_Static" />
+            </RadioButton>
+          </WrapPanel>
+          <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,10" TextWrapping="Wrap"
+                     Text="{Binding AnimationModeDescription}"
+                     AutomationProperties.Name="What this mode does" />
+
+          <CheckBox Margin="0,0,0,8" IsChecked="{Binding IncludeComments, Mode=TwoWay}"
+                    ToolTip="Two comment lines saying where the file came from and what it replaces"
+                    AutomationProperties.Name="Add explanatory comments">
+            <AccessText Text="Add explanatory _comments" />
+          </CheckBox>
+
+          <CheckBox IsChecked="{Binding UseFrameRange, Mode=TwoWay}"
+                    IsEnabled="{Binding IsAnimated}"
+                    ToolTipService.ShowOnDisabled="True"
+                    ToolTip="Export only part of the animation"
+                    AutomationProperties.Name="Only part of the animation">
+            <AccessText Text="Only part of the _animation" />
+          </CheckBox>
+          <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
+                      Visibility="{Binding RangeEnabled, Converter={StaticResource Truthy}}">
+            <TextBlock Style="{StaticResource DialogLabel}" Text="From frame" VerticalAlignment="Center"
+                       Margin="0,0,8,0" />
+            <cui:NumericBox Decimals="0" Width="86" Value="{Binding RangeFirst, Mode=TwoWay}"
+                                 Minimum="0" Maximum="{Binding MaxFrameIndex}"
+                                 AutomationProperties.Name="First frame to export" />
+            <TextBlock Style="{StaticResource DialogLabel}" Text="to" VerticalAlignment="Center"
+                       Margin="10,0,8,0" />
+            <cui:NumericBox Decimals="0" Width="86" Value="{Binding RangeLast, Mode=TwoWay}"
+                                 Minimum="0" Maximum="{Binding MaxFrameIndex}"
+                                 AutomationProperties.Name="Last frame to export" />
+          </StackPanel>
+
+          <TextBlock Style="{StaticResource HintText}" Margin="0,10,0,0" TextWrapping="Wrap"
+                     Text="{Binding SingleFrameNote}"
+                     Visibility="{Binding IsAnimated, Converter={StaticResource Falsy}}"
+                     AutomationProperties.Name="Single frame note" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- Validation and progress -->
+    <StackPanel Grid.Row="2" Margin="0,12,0,0">
+      <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding ValidationText}"
+                 Visibility="{Binding HasValidationText, Converter={StaticResource Truthy}}"
+                 AutomationProperties.Name="Validation messages">
+        <TextBlock.Style>
+          <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource App.SecondaryText}" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding HasBlockingProblem}" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource Severity.Error}" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </TextBlock.Style>
+      </TextBlock>
+
+      <Grid Margin="0,8,0,0"
+            Visibility="{Binding IsImporting, Converter={StaticResource Truthy}}">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ProgressBar Grid.Row="0" Height="6" Minimum="0" Maximum="1"
+                     Value="{Binding Progress, Mode=OneWay}"
+                     AutomationProperties.Name="Import progress" />
+        <TextBlock Grid.Row="1" Margin="0,4,0,0" Style="{StaticResource HintText}"
+                   Text="{Binding ProgressText}"
+                   AutomationProperties.Name="Import progress detail" />
+      </Grid>
+    </StackPanel>
+
+    <!-- Buttons -->
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+      <Button x:Name="ImportButton" Style="{StaticResource DialogButton}" Content="_Import"
+              IsDefault="True" Command="{Binding ImportCommand}"
+              Visibility="{Binding IsImporting, Converter={StaticResource Falsy}}"
+              ToolTipService.ShowOnDisabled="True"
+              ToolTip="Write the frames and the .atx, then open it in a new tab"
+              AutomationProperties.Name="Import" />
+      <Button Style="{StaticResource DialogButton}" Content="Stop"
+              Command="{Binding CancelImportCommand}"
+              Visibility="{Binding IsImporting, Converter={StaticResource Truthy}}"
+              ToolTip="Stop the import. Nothing it created is left behind."
+              AutomationProperties.Name="Stop the import" />
+      <Button Style="{StaticResource DialogButton}" Content="Cancel" IsCancel="True"
+              AutomationProperties.Name="Cancel" />
+    </StackPanel>
+  </Grid>
+</Window>

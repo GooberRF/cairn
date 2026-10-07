@@ -1,0 +1,43 @@
+{
+  "file": "ponr.tbl",
+  "title": "Points of no return",
+  "doc": "For each single player level, which earlier levels stay in the save game when it is entered.",
+  "sections": [
+    {
+      "name": "#Red Faction PONR",
+      "required": true,
+      "repeat": false,
+      "doc": "One entry per level; each starts at $Level: and the list ends at #End.",
+      "entry": "$Level:",
+      "defines": "ponr",
+      "end": "#End",
+      "fields": [
+        {
+          "name": "$Level:",
+          "type": "file",
+          "required": true,
+          "file": "level",
+          "maxLength": 31,
+          "doc": "Level file name."
+        },
+        {
+          "name": "$Levels to save:",
+          "type": "int",
+          "required": true,
+          "min": 0,
+          "doc": "Number of +Save: lines that follow."
+        },
+        {
+          "name": "+Save:",
+          "type": "file",
+          "required": true,
+          "repeat": true,
+          "file": "level",
+          "maxLength": 31,
+          "countFrom": "$Levels to save:",
+          "doc": "Level whose state is kept."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "file": "ammo.tbl",
+  "title": "Ammunition",
+  "doc": "Ammunition types that weapons and items refer to by name.",
+  "sections": [
+    {
+      "name": "#Ammo",
+      "required": true,
+      "repeat": false,
+      "entry": "$Name:",
+      "defines": "ammo",
+      "doc": "Each entry starts at $Name:; the list ends at #End.",
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Unique ammunition name used by $Ammo Type: in weapons.tbl."
+        },
+        {
+          "name": "$HUD Icon Filename:",
+          "type": "file",
+          "nameSuffix": "_0",
+          "required": true,
+          "file": "texture",
+          "doc": "HUD icon for this ammunition."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "file": "af_ui.tbl",
+  "title": "Alpine Interface Options",
+  "doc": "Menu options for a total conversion mod, read by Alpine Faction only when a mod is loaded.",
+  "syntax": "alpine-lines",
+  "alpine": {
+    "since": "1.0",
+    "notes": "Alpine reads this file line by line, not with the game's table parser: lines are trimmed, everything before a line that is exactly #Start is ignored, reading stops at a line that is exactly #End, blank lines and lines starting with // are skipped, and every other line is 'name: value' split at the first colon. Field order does not matter, a later line overrides an earlier one, and unknown names are only logged. Comments after a value become part of the value."
+  },
+  "sections": [
+    {
+      "name": "#Start",
+      "end": "#End",
+      "required": true,
+      "repeat": false,
+      "order": "free",
+      "entry": null,
+      "doc": "Options between #Start and #End, in any order.",
+      "fields": [
+        {
+          "name": "$Disable Multiplayer Button:",
+          "type": "bool",
+          "required": false,
+          "syntax": "alpine-bool",
+          "doc": "Hide the main menu Multiplayer button. 1, true or True mean yes; anything else means no."
+        },
+        {
+          "name": "$Disable Singleplayer Buttons:",
+          "type": "bool",
+          "required": false,
+          "syntax": "alpine-bool",
+          "doc": "Hide New Game, Load and Save. 1, true or True mean yes; anything else means no."
+        },
+        {
+          "name": "$Summoner Trailer Button Action:",
+          "type": "int",
+          "required": false,
+          "values": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ],
+          "doc": "What the Extras trailer button does: 1 open URL, 2 disable, 3 remove, 4 load level, other plays a video."
+        },
+        {
+          "name": "+Summoner Trailer Button URL:",
+          "type": "string",
+          "required": false,
+          "quotes": "optional",
+          "doc": "URL opened by action 1."
+        },
+        {
+          "name": "+Summoner Trailer Button Bink Filename:",
+          "type": "file",
+          "required": false,
+          "file": "any",
+          "quotes": "optional",
+          "doc": "Video played by the default action."
+        },
+        {
+          "name": "+Summoner Trailer Button Level Filename:",
+          "type": "file",
+          "required": false,
+          "file": "any",
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Level loaded by action 4."
+        }
+      ]
+    }
+  ]
+}

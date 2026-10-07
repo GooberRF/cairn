@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+dist/
+artifacts/
+
+# IDE and user files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Private research material, game data and machine-specific paths
+research/
+
+# Test results
+TestResults/
+*.trx

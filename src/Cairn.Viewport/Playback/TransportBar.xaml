@@ -1,0 +1,87 @@
+<UserControl x:Class="Cairn.Viewport.TransportBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Cairn.Viewport"
+             xmlns:vm="clr-namespace:Cairn.Viewport"
+             xmlns:views="clr-namespace:Cairn.Viewport">
+  <UserControl.Resources>
+    <Style x:Key="TransportButton" TargetType="Button" BasedOn="{StaticResource ToolButton}">
+      <Setter Property="MinWidth" Value="26" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Padding" Value="4,0" />
+    </Style>
+    <Style x:Key="KeyIcon" TargetType="Path">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="StrokeThickness" Value="1.3" />
+      <Setter Property="StrokeLineJoin" Value="Round" />
+      <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+    </Style>
+  </UserControl.Resources>
+
+  <Border Background="{DynamicResource App.ChromeBackground}" BorderBrush="{DynamicResource App.Border}"
+          BorderThickness="0,1,0,0" Padding="6,2,6,3" AutomationProperties.Name="Transport">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <controls:TimeScrubber Grid.Row="0" Margin="0,0,0,2" />
+      <WrapPanel Grid.Row="1" Orientation="Horizontal">
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+        <Button Style="{StaticResource TransportButton}" Command="{Binding FirstCommand}"
+                ToolTip="First frame (Home)" AutomationProperties.Name="First frame">
+          <TextBlock Text="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+        </Button>
+        <Button Style="{StaticResource TransportButton}" Command="{Binding PreviousKeyCommand}"
+                ToolTip="Previous key (any bone)" AutomationProperties.Name="Previous key">
+          <Path Style="{StaticResource KeyIcon}" Data="M6,3 L1.5,8 L6,13 M12,4 L15,8 L12,12 L9,8 Z" />
+        </Button>
+        <Button Style="{StaticResource TransportButton}" Command="{Binding StepBackCommand}"
+                ToolTip="Step back one frame (Left)" AutomationProperties.Name="Step back">
+          <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+        </Button>
+        <Button Style="{StaticResource TransportButton}" Command="{Binding PlayPauseCommand}" MinWidth="32"
+                ToolTip="{Binding PlayToolTip}" AutomationProperties.Name="Play or pause">
+          <TextBlock Text="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+        </Button>
+        <Button Style="{StaticResource TransportButton}" Command="{Binding StepForwardCommand}"
+                ToolTip="Step forward one frame (Right)" AutomationProperties.Name="Step forward">
+          <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+        </Button>
+        <Button Style="{StaticResource TransportButton}" Command="{Binding NextKeyCommand}"
+                ToolTip="Next key (any bone)" AutomationProperties.Name="Next key">
+          <Path Style="{StaticResource KeyIcon}" Data="M10,3 L14.5,8 L10,13 M4,4 L7,8 L4,12 L1,8 Z" />
+        </Button>
+        <Button Style="{StaticResource TransportButton}" Command="{Binding LastCommand}"
+                ToolTip="Last frame (End)" AutomationProperties.Name="Last frame">
+          <TextBlock Text="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+        </Button>
+        <ToggleButton Style="{StaticResource ToolToggle}" Height="26" Margin="4,0,0,0" IsChecked="{Binding Loop, Mode=TwoWay}"
+                      ToolTip="Loop: start again at the first frame after the last" AutomationProperties.Name="Loop">
+          <TextBlock Text="&#xE8EE;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+        </ToggleButton>
+      </StackPanel>
+
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Style="{StaticResource ToolButton}" Command="{Binding CycleUnitCommand}" MinWidth="96" Padding="6,0"
+                ToolTip="{Binding TimeToolTip}" AutomationProperties.Name="Current time; click to change the unit">
+          <TextBlock Text="{Binding TimeText}" FontFamily="{StaticResource MonoFont}" FontSize="12" />
+        </Button>
+        <ComboBox Width="68" Height="26" Margin="6,0,0,0" Padding="6,2" FontSize="12" VerticalContentAlignment="Center"
+                  ItemsSource="{x:Static vm:PlaybackViewModel.Speeds}" SelectedItem="{Binding Speed, Mode=TwoWay}"
+                  ToolTip="Playback speed" AutomationProperties.Name="Playback speed">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding StringFormat={}{0:0.##}×}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+
+      <!-- Module-specific controls after the speed box (RFA: the layered preview). -->
+      <ContentPresenter VerticalAlignment="Center" Margin="12,0,0,0" Content="{Binding ExtraContent, RelativeSource={RelativeSource AncestorType=views:TransportBar}}" />
+      </WrapPanel>
+    </Grid>
+  </Border>
+</UserControl>

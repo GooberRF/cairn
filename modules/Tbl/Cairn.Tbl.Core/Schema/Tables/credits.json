@@ -1,0 +1,40 @@
+{
+  "file": "credits.tbl",
+  "title": "Credits",
+  "doc": "Text of the credits screen, one section per language.",
+  "aliases": [
+    "localized_credits.tbl"
+  ],
+  "sections": [
+    {
+      "name": "#English",
+      "required": false,
+      "repeat": false,
+      "doc": "Credits text for one language: plain lines up to a line that is exactly #End (case-sensitive); the game searches for the header of the current language only.",
+      "locate": "search",
+      "layout": "text",
+      "end": "#End",
+      "endMatch": "whole line, case-sensitive"
+    },
+    {
+      "name": "#French",
+      "required": false,
+      "repeat": false,
+      "doc": "Credits text for one language: plain lines up to a line that is exactly #End (case-sensitive); the game searches for the header of the current language only.",
+      "locate": "search",
+      "layout": "text",
+      "end": "#End",
+      "endMatch": "whole line, case-sensitive"
+    },
+    {
+      "name": "#German",
+      "required": false,
+      "repeat": false,
+      "doc": "Credits text for one language: plain lines up to a line that is exactly #End (case-sensitive); the game searches for the header of the current language only.",
+      "locate": "search",
+      "layout": "text",
+      "end": "#End",
+      "endMatch": "whole line, case-sensitive"
+    }
+  ]
+}

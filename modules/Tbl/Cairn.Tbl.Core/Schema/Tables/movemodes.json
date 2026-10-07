@@ -1,0 +1,121 @@
+{
+  "file": "movemodes.tbl",
+  "title": "Movement modes",
+  "doc": "How player input moves and turns the player in each built-in movement mode.",
+  "sections": [
+    {
+      "name": "#movement modes",
+      "required": true,
+      "repeat": false,
+      "doc": "One entry per built-in movement mode; each starts at $name: and the list ends at #end.",
+      "entry": "$name:",
+      "defines": "movemode",
+      "end": "#end",
+      "fields": [
+        {
+          "name": "$name:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "none",
+            "run",
+            "climb",
+            "fall",
+            "swim",
+            "apc",
+            "apc fall",
+            "sub",
+            "sub fall",
+            "fighter",
+            "turret",
+            "robot fly",
+            "hover",
+            "freelookcam",
+            "deadcam",
+            "john's descent flying mode"
+          ],
+          "strict": false,
+          "doc": "Built-in movement mode this entry configures; an entry with an unknown name is read and then ignored."
+        },
+        {
+          "name": "$move x ref:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "none",
+            "eye",
+            "body",
+            "parent"
+          ],
+          "strict": false,
+          "doc": "Frame for sideways movement. An unknown name silently counts as none."
+        },
+        {
+          "name": "$move y ref:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "none",
+            "eye",
+            "body",
+            "parent"
+          ],
+          "strict": false,
+          "doc": "Frame for vertical movement. An unknown name silently counts as none."
+        },
+        {
+          "name": "$move z ref:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "none",
+            "eye",
+            "body",
+            "parent"
+          ],
+          "strict": false,
+          "doc": "Frame for forward movement. An unknown name silently counts as none."
+        },
+        {
+          "name": "$rot x ref:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "none",
+            "eye-obj",
+            "body-obj",
+            "body-world"
+          ],
+          "strict": false,
+          "doc": "Frame for pitch. An unknown name silently counts as none."
+        },
+        {
+          "name": "$rot y ref:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "none",
+            "eye-obj",
+            "body-obj",
+            "body-world"
+          ],
+          "strict": false,
+          "doc": "Frame for heading. An unknown name silently counts as none."
+        },
+        {
+          "name": "$rot z ref:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "none",
+            "eye-obj",
+            "body-obj",
+            "body-world"
+          ],
+          "strict": false,
+          "doc": "Frame for roll. An unknown name silently counts as none."
+        }
+      ]
+    }
+  ]
+}

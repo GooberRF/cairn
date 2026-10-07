@@ -1,0 +1,144 @@
+<UserControl x:Class="Cairn.Rfa.Ui.Views.KeyInspectorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+             xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls"
+             xmlns:vm="clr-namespace:Cairn.Rfa.Ui.ViewModels">
+  <UserControl.Resources>
+    <!-- One multi-selection number: label above a box (used in the 3- and 4-wide grids). -->
+    <DataTemplate x:Key="CompactField">
+      <StackPanel Margin="0,0,4,0" IsEnabled="{Binding IsAvailable}">
+        <TextBlock Text="{Binding Caption}" FontSize="10.5" Foreground="{DynamicResource App.SecondaryText}" Margin="1,0,0,2"
+                   TextTrimming="CharacterEllipsis" ToolTip="{Binding ToolTip}" />
+        <cui:NumericBox MinWidth="0" Value="{Binding Value, Mode=TwoWay}" IsIndeterminate="{Binding IsMixed}"
+                             Decimals="{Binding Decimals}" Suffix="{Binding Suffix}" Step="{Binding Step}"
+                             Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" IsReadOnly="{Binding IsReadOnly}"
+                             ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding Label}"
+                             InteractionStarted="OnInteractionStarted" InteractionEnded="OnInteractionEnded" />
+      </StackPanel>
+    </DataTemplate>
+    <ItemsPanelTemplate x:Key="ThreeWide">
+      <UniformGrid Columns="3" />
+    </ItemsPanelTemplate>
+    <ItemsPanelTemplate x:Key="FourWide">
+      <UniformGrid Columns="4" />
+    </ItemsPanelTemplate>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="10,10,10,6">
+    <ScrollViewer.Resources>
+      <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+    </ScrollViewer.Resources>
+    <StackPanel>
+      <TextBlock Text="{Binding Title}" Style="{StaticResource DialogHeading}" FontSize="14" TextTrimming="CharacterEllipsis"
+                 AutomationProperties.Name="Selected keys" />
+      <TextBlock Text="{Binding Detail}" Style="{StaticResource HintText}" Margin="0,0,0,10" />
+
+      <StackPanel Visibility="{Binding HasKeys, Converter={StaticResource Truthy}}">
+        <!-- Time -->
+        <TextBlock Text="TIME" Style="{StaticResource DialogSubheading}" />
+        <Grid Margin="0,0,0,10">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <cui:NumericBox DataContext="{Binding Time}" MinWidth="0" Value="{Binding Value, Mode=TwoWay}" IsIndeterminate="{Binding IsMixed}"
+                               Decimals="{Binding Decimals}" Suffix="{Binding Suffix}" Step="{Binding Step}"
+                               Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" IsReadOnly="{Binding IsReadOnly}"
+                               ToolTip="{Binding DataContext.TimeToolTip, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               AutomationProperties.Name="Key time"
+                               InteractionStarted="OnInteractionStarted" InteractionEnded="OnInteractionEnded" />
+          <Button Grid.Column="1" Style="{StaticResource ToolButton}" Margin="6,0,0,0" Height="28" Padding="8,0" Command="{Binding SeekCommand}"
+                  ToolTip="Move the playhead to the (earliest) selected key" AutomationProperties.Name="Go to key">
+            <TextBlock Text="Go to" FontSize="12" />
+          </Button>
+        </Grid>
+
+        <!-- Rotation -->
+        <StackPanel Visibility="{Binding HasRotationKeys, Converter={StaticResource Truthy}}">
+          <TextBlock Text="ROTATION" Style="{StaticResource DialogSubheading}" ToolTip="{x:Static vm:KeyInspectorViewModel.EulerConvention}" />
+          <ItemsControl ItemsSource="{Binding Euler}" ItemTemplate="{StaticResource CompactField}" ItemsPanel="{StaticResource ThreeWide}"
+                        Focusable="False" Margin="0,0,0,6" AutomationProperties.Name="Rotation as Euler angles" />
+          <ItemsControl ItemsSource="{Binding Quaternion}" ItemTemplate="{StaticResource CompactField}" ItemsPanel="{StaticResource FourWide}"
+                        Focusable="False" Margin="0,0,0,10" AutomationProperties.Name="Rotation as a quaternion" />
+
+          <TextBlock Text="EASES" Style="{StaticResource DialogSubheading}" />
+          <Grid Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="70" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="86" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <!-- The slider spans 0-100 % (SliderValue never leaves it, so a negative stored byte is shown at its
+                 left end without being rewritten); the box and the byte readout show the true signed value. -->
+            <TextBlock Grid.Row="0" Text="Ease in" Style="{StaticResource FormLabel}" ToolTip="{Binding EaseIn.ToolTip}" />
+            <Slider Grid.Row="0" Grid.Column="1" DataContext="{Binding EaseIn}" Minimum="0" Maximum="100"
+                    Value="{Binding SliderValue, Mode=TwoWay}"
+                    IsEnabled="{Binding IsReadOnly, Converter={StaticResource Not}}" VerticalAlignment="Center" SmallChange="1" LargeChange="10"
+                    ToolTip="{Binding ToolTip}" AutomationProperties.Name="Ease in"
+                    Thumb.DragStarted="OnSliderDragStarted" Thumb.DragCompleted="OnSliderDragCompleted" />
+            <cui:NumericBox Grid.Row="0" Grid.Column="2" Margin="6,2,0,2" MinWidth="0" DataContext="{Binding EaseIn}"
+                                 Value="{Binding Value, Mode=TwoWay}" IsIndeterminate="{Binding IsMixed}" Decimals="0" Suffix="%" Step="5"
+                                 Minimum="{Binding Minimum, Mode=OneTime}" Maximum="100" IsReadOnly="{Binding IsReadOnly}" ToolTip="{Binding ToolTip}"
+                                 AutomationProperties.Name="Ease in percent"
+                                 InteractionStarted="OnInteractionStarted" InteractionEnded="OnInteractionEnded" />
+            <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding EaseInByteText}" FontSize="10.5" Foreground="{DynamicResource App.SecondaryText}"
+                       VerticalAlignment="Center" Margin="6,0,0,0" ToolTip="The ease-in byte as stored in the file (signed, −128…127; 127 = 100 %)."
+                       AutomationProperties.Name="Stored ease in byte" />
+            <TextBlock Grid.Row="1" Text="Ease out" Style="{StaticResource FormLabel}" ToolTip="{Binding EaseOut.ToolTip}" />
+            <Slider Grid.Row="1" Grid.Column="1" DataContext="{Binding EaseOut}" Minimum="0" Maximum="100"
+                    Value="{Binding SliderValue, Mode=TwoWay}"
+                    IsEnabled="{Binding IsReadOnly, Converter={StaticResource Not}}" VerticalAlignment="Center" SmallChange="1" LargeChange="10"
+                    ToolTip="{Binding ToolTip}" AutomationProperties.Name="Ease out"
+                    Thumb.DragStarted="OnSliderDragStarted" Thumb.DragCompleted="OnSliderDragCompleted" />
+            <cui:NumericBox Grid.Row="1" Grid.Column="2" Margin="6,2,0,2" MinWidth="0" DataContext="{Binding EaseOut}"
+                                 Value="{Binding Value, Mode=TwoWay}" IsIndeterminate="{Binding IsMixed}" Decimals="0" Suffix="%" Step="5"
+                                 Minimum="{Binding Minimum, Mode=OneTime}" Maximum="100" IsReadOnly="{Binding IsReadOnly}" ToolTip="{Binding ToolTip}"
+                                 AutomationProperties.Name="Ease out percent"
+                                 InteractionStarted="OnInteractionStarted" InteractionEnded="OnInteractionEnded" />
+            <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding EaseOutByteText}" FontSize="10.5" Foreground="{DynamicResource App.SecondaryText}"
+                       VerticalAlignment="Center" Margin="6,0,0,0" ToolTip="The ease-out byte as stored in the file (signed, −128…127; 127 = 100 %)."
+                       AutomationProperties.Name="Stored ease out byte" />
+          </Grid>
+          <TextBlock Text="{Binding NegativeEaseNote}" Visibility="{Binding HasNegativeEase, Converter={StaticResource Truthy}}"
+                     Foreground="{DynamicResource Severity.Warning}" TextWrapping="Wrap" FontSize="11.5" Margin="0,2,0,4"
+                     ToolTip="{Binding EaseOut.ToolTip}" AutomationProperties.Name="Negative ease warning" />
+          <controls:EaseCurvePreview Margin="0,4,0,12" InA="{Binding CurveInA}" InB="{Binding CurveInB}"
+                                     OutA="{Binding CurveOutA}" OutB="{Binding CurveOutB}"
+                                     HasIn="{Binding CurveHasIn}" HasOut="{Binding CurveHasOut}" />
+        </StackPanel>
+
+        <!-- Position -->
+        <StackPanel Visibility="{Binding HasPositionKeys, Converter={StaticResource Truthy}}">
+          <TextBlock Text="POSITION" Style="{StaticResource DialogSubheading}" />
+          <ItemsControl ItemsSource="{Binding Position}" ItemTemplate="{StaticResource CompactField}" ItemsPanel="{StaticResource ThreeWide}"
+                        Focusable="False" Margin="0,0,0,8" AutomationProperties.Name="Position" />
+          <TextBlock Text="CONTROL POINTS" Style="{StaticResource DialogSubheading}"
+                     ToolTip="The Bezier control points around the key, absolute, in the parent bone's frame (metres)." />
+          <ItemsControl ItemsSource="{Binding InControl}" ItemTemplate="{StaticResource CompactField}" ItemsPanel="{StaticResource ThreeWide}"
+                        Focusable="False" Margin="0,0,0,6" AutomationProperties.Name="In control point" />
+          <ItemsControl ItemsSource="{Binding OutControl}" ItemTemplate="{StaticResource CompactField}" ItemsPanel="{StaticResource ThreeWide}"
+                        Focusable="False" Margin="0,0,0,6" AutomationProperties.Name="Out control point" />
+          <WrapPanel Margin="0,0,0,12">
+            <Button Style="{StaticResource DialogSmallButton}" Content="Auto (linear)" Command="{Binding AutoLinearCommand}"
+                    ToolTip="Put each selected key's control points a third of the way to its neighbours: straight segments at even speed"
+                    AutomationProperties.Name="Auto control points, linear" />
+            <Button Style="{StaticResource DialogSmallButton}" Content="Auto (smooth)" Command="{Binding AutoSmoothCommand}"
+                    ToolTip="Catmull-Rom style control points: the curve passes smoothly through each key (C1 in time)"
+                    AutomationProperties.Name="Auto control points, smooth" />
+          </WrapPanel>
+        </StackPanel>
+
+        <!-- Model space -->
+        <TextBlock Text="JOINT IN MODEL SPACE" Style="{StaticResource DialogSubheading}" ToolTip="{Binding ModelPositionToolTip}" />
+        <TextBox Style="{StaticResource FactValue}" Text="{Binding ModelPositionText, Mode=OneWay}" FontFamily="{StaticResource MonoFont}"
+                 ToolTip="{Binding ModelPositionToolTip}" AutomationProperties.Name="Joint position in model space" />
+        <TextBlock Text="{Binding ModelPositionNote}" Style="{StaticResource HintText}" Margin="0,0,0,8" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,275 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+                    xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls"
+                    xmlns:local="clr-namespace:Cairn.Rfa.Ui.Views.Retarget">
+  <!--
+    Pieces shared by the retarget dialog and the batch retarget dialog (both bind a RetargetSetupViewModel
+    as "Setup"): the source mesh / target rows, the options page. Theme brushes only.
+  -->
+  <Style x:Key="RtLabel" TargetType="TextBlock" BasedOn="{StaticResource DialogLabel}">
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,8,0" />
+  </Style>
+
+  <Style x:Key="RtCombo" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,2" />
+    <Setter Property="IsTextSearchEnabled" Value="True" />
+    <Setter Property="TextSearch.TextPath" Value="Label" />
+  </Style>
+
+  <DataTemplate x:Key="RigMeshTemplate">
+    <DockPanel ToolTip="{Binding ToolTip}">
+      <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource App.SecondaryText}" />
+      <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource App.Text}" />
+    </DockPanel>
+  </DataTemplate>
+
+  <!-- The first choice: the preset (radio rows with a line each), the suggestion for the clip, the two-handed grip.
+       DataContext: RetargetSetupViewModel. -->
+  <DataTemplate x:Key="PresetTemplate">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="KIND OF CLIP (PRESET)" />
+      <ItemsControl ItemsSource="{Binding Presets}" Focusable="False" AutomationProperties.Name="Retarget preset">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Margin="0,2,0,4" Visibility="{Binding IsVisible, Converter={StaticResource Truthy}}">
+              <!-- One group per row; the view-model keeps exactly one selected. -->
+              <RadioButton IsChecked="{Binding IsSelected, Mode=TwoWay}" ToolTip="{Binding Description}" AutomationProperties.Name="{Binding Title}">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+              </RadioButton>
+              <TextBlock Style="{StaticResource HintText}" Margin="22,0,0,0" Text="{Binding Description}" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Style="{StaticResource HintText}" Margin="0,2,0,4" Text="{Binding SuggestionText}" FontStyle="Italic"
+                 Visibility="{Binding SuggestionText, Converter={StaticResource Truthy}}" AutomationProperties.Name="Suggested preset" />
+      <CheckBox IsChecked="{Binding OffHandFollowsMainHand, Mode=TwoWay}" Margin="0,4,0,0"
+                ToolTip="IK the left hand onto the point the source's left hand held relative to its right hand, while the source's hands are within 45 cm (two-handed weapons). On by default with Standing / locomotion; once you tick or clear it, your choice holds for every preset"
+                AutomationProperties.Name="Keep the off hand on a two-handed weapon">
+        <AccessText Text="Keep the off hand on a two-han_ded weapon" />
+      </CheckBox>
+      <TextBlock Style="{StaticResource HintText}" Margin="22,0,0,0"
+                 Text="The left hand stays where the source's held the weapon relative to the right hand, whatever the target's arm lengths (stock rifles, shotguns: off by 12-30 cm without it)." />
+      <TextBlock Style="{StaticResource HintText}" Margin="0,6,0,0" Text="Changing any option behind the preset (Options tab) makes it Custom." />
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- Source mesh + rest + profile; target mesh + rest + hint + reference clip + profile. DataContext: RetargetSetupViewModel. -->
+  <DataTemplate x:Key="RigsTemplate">
+    <StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="SOURCE RIG" />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="104" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Grid.Row="3" Style="{StaticResource RtLabel}" Text="Reference clip" />
+          <ComboBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource RtCombo}" ItemsSource="{Binding SourceReferenceClipOptions}"
+                    SelectedItem="{Binding SelectedSourceReferenceClip, Mode=TwoWay}" ItemTemplate="{StaticResource RigMeshTemplate}"
+                    ToolTip="The source rig's stand clip: where its feet meet the ground, which the hip-height root measures heights from"
+                    AutomationProperties.Name="Source reference clip" />
+          <TextBlock Style="{StaticResource RtLabel}" Text="Source mesh" />
+          <ComboBox Grid.Column="1" Style="{StaticResource RtCombo}" ItemsSource="{Binding SourceMeshOptions}" SelectedItem="{Binding SelectedSourceMesh, Mode=TwoWay}"
+                    ItemTemplate="{StaticResource RigMeshTemplate}"
+                    ToolTip="The mesh the clip was made for (its bone list must match the clip's)" AutomationProperties.Name="Source mesh" />
+          <Button Grid.Column="2" Style="{StaticResource DialogSmallButton}" Margin="6,2,0,2" Content="Browse…" Command="{Binding BrowseSourceCommand}"
+                  ToolTip="Pick a source mesh (.v3c) from disk" AutomationProperties.Name="Browse for the source mesh" />
+          <TextBlock Grid.Row="1" Style="{StaticResource RtLabel}" Text="Rest mesh" />
+          <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource RtCombo}" ItemsSource="{Binding SourceRestOptions}"
+                    SelectedItem="{Binding SelectedSourceRest, Mode=TwoWay}" ItemTemplate="{StaticResource RigMeshTemplate}"
+                    ToolTip="The mesh of the same skeleton whose bind pose (ideally a T-pose) the source is measured against"
+                    AutomationProperties.Name="Source rest mesh" />
+          <TextBlock Grid.Row="2" Style="{StaticResource RtLabel}" Text="Profile" />
+          <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource RtCombo}" ItemsSource="{Binding ProfileOptions}"
+                    SelectedItem="{Binding SelectedSourceProfile, Mode=TwoWay}" DisplayMemberPath="Label"
+                    ToolTip="How the source's bone names become canonical names, its pelvis and root (built-in for the stock humanoid rigs, else generated)"
+                    AutomationProperties.Name="Source rig profile" />
+        </Grid>
+      </StackPanel>
+
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="TARGET RIG" />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="104" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Style="{StaticResource RtLabel}" Text="Target mesh" />
+          <ComboBox Grid.Column="1" Style="{StaticResource RtCombo}" ItemsSource="{Binding TargetMeshOptions}" SelectedItem="{Binding SelectedTargetMesh, Mode=TwoWay}"
+                    ItemTemplate="{StaticResource RigMeshTemplate}"
+                    ToolTip="The mesh the motion is transferred onto (the note names its skeleton family)" AutomationProperties.Name="Target mesh" />
+          <Button Grid.Column="2" Style="{StaticResource DialogSmallButton}" Margin="6,2,0,2" Content="Browse…" Command="{Binding BrowseTargetCommand}"
+                  ToolTip="Pick a target mesh (.v3c) from disk" AutomationProperties.Name="Browse for the target mesh" />
+          <TextBlock Grid.Row="1" Style="{StaticResource RtLabel}" Text="Rest mesh" />
+          <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource RtCombo}" ItemsSource="{Binding TargetRestOptions}"
+                    SelectedItem="{Binding SelectedTargetRest, Mode=TwoWay}" ItemTemplate="{StaticResource RigMeshTemplate}"
+                    ToolTip="A mesh of the target's skeleton whose bind pose is a T-pose (the rest the retarget measures limb directions against)"
+                    AutomationProperties.Name="Target rest mesh" />
+          <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource HintText}" Margin="0,0,0,4" Text="{Binding RestHint}"
+                     AutomationProperties.Name="Rest mesh advice" />
+          <TextBlock Grid.Row="3" Style="{StaticResource RtLabel}" Text="Reference clip" />
+          <ComboBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource RtCombo}" ItemsSource="{Binding ReferenceClipOptions}"
+                    SelectedItem="{Binding SelectedReferenceClip, Mode=TwoWay}" ItemTemplate="{StaticResource RigMeshTemplate}"
+                    ToolTip="The target rig's stand clip: it supplies bone lengths and the pose of bones the source lacks"
+                    AutomationProperties.Name="Reference clip for bone lengths" />
+          <TextBlock Grid.Row="4" Style="{StaticResource RtLabel}" Text="Profile" />
+          <ComboBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource RtCombo}" ItemsSource="{Binding ProfileOptions}"
+                    SelectedItem="{Binding SelectedTargetProfile, Mode=TwoWay}" DisplayMemberPath="Label"
+                    ToolTip="The target's canonical names, primary children (rest alignment), IK chains, root and pelvis"
+                    AutomationProperties.Name="Target rig profile" />
+        </Grid>
+        <StackPanel Orientation="Horizontal" Margin="104,6,0,0">
+          <Button Style="{StaticResource DialogSmallButton}" Content="Save pro_file…" Command="{Binding SaveProfileCommand}" Margin="0,0,6,0"
+                  ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Save both rig profiles, the bone map and the options as JSON (default folder %APPDATA%\Cairn\profiles)"
+                  AutomationProperties.Name="Save profile" />
+          <Button Style="{StaticResource DialogSmallButton}" Content="_Load profile…" Command="{Binding LoadProfileCommand}"
+                  ToolTip="Load a saved retarget profile (or a bare rig profile, used for the target)" AutomationProperties.Name="Load profile" />
+        </StackPanel>
+        <TextBlock Style="{StaticResource HintText}" Margin="104,4,0,0" Text="{Binding ProfileMessage}"
+                   Visibility="{Binding ProfileMessage, Converter={StaticResource Truthy}}" />
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- Every RetargetOptions setting with what it means. DataContext: RetargetSetupViewModel. -->
+  <DataTemplate x:Key="OptionsTemplate">
+    <StackPanel>
+      <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PresetTemplate}" Focusable="False" IsTabStop="False" />
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="POSE" />
+        <CheckBox IsChecked="{Binding RestAlignment, Mode=TwoWay}" Margin="0,2"
+                  ToolTip="Swing each target bone's rest so it points like the source's before transferring (stock T-poses disagree by up to 16° per limb)"
+                  AutomationProperties.Name="Rest alignment">
+          <AccessText Text="_Rest alignment" />
+        </CheckBox>
+        <TextBlock Style="{StaticResource HintText}" Margin="22,0,0,6"
+                   Text="Removes the difference between the two rest poses, so a limb that points forward on the source points forward on the target too. Leave on unless both rests are identical." />
+        <CheckBox IsChecked="{Binding Ik, Mode=TwoWay}" Margin="0,2"
+                  ToolTip="After the transfer, bend arms and legs so hands and feet land where they should: on the source's positions (anchor pelvis), or feet on the target's ground (hip height)"
+                  AutomationProperties.Name="Limb IK">
+          <AccessText Text="Limb _IK (hands and feet held in place)" />
+        </CheckBox>
+        <StackPanel Orientation="Horizontal" Margin="22,2,0,0" IsEnabled="{Binding Ik}">
+          <CheckBox IsChecked="{Binding IkArms, Mode=TwoWay}" Margin="0,0,16,0" ToolTip="Hold the hands (arm chains); off lets the arms follow the source's rotations"
+                    AutomationProperties.Name="IK on the arms">
+            <AccessText Text="_Arms" />
+          </CheckBox>
+          <CheckBox IsChecked="{Binding IkLegs, Mode=TwoWay}" ToolTip="Hold the feet (leg chains); with the hip-height root, a foot is held only while the source's touches the ground"
+                    AutomationProperties.Name="IK on the legs">
+            <AccessText Text="_Legs" />
+          </CheckBox>
+        </StackPanel>
+        <ItemsControl ItemsSource="{Binding IkChains}" Margin="22,4,0,0" IsEnabled="{Binding Ik}" Focusable="False" AutomationProperties.Name="IK chains">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <DockPanel Margin="0,2">
+                <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Enabled, Mode=TwoWay}" Content="{Binding Label}" MinWidth="250" VerticalAlignment="Center"
+                          ToolTip="Run two-bone IK on this chain" AutomationProperties.Name="{Binding Label}" />
+                <StackPanel Orientation="Horizontal" IsEnabled="{Binding Enabled}" ToolTip="Pole bias: model-space metres added to the bend direction as the source limb straightens, so a longer limb does not fold sideways (arms: 0.15 m down)">
+                  <TextBlock Text="pole" Style="{StaticResource RtLabel}" Margin="8,0,6,0" />
+                  <cui:NumericBox Width="72" Value="{Binding PoleX, Mode=TwoWay}" Decimals="3" Step="0.01" Suffix="x" AutomationProperties.Name="Pole bias X" />
+                  <cui:NumericBox Width="72" Margin="4,0" Value="{Binding PoleY, Mode=TwoWay}" Decimals="3" Step="0.01" Suffix="y" AutomationProperties.Name="Pole bias Y" />
+                  <cui:NumericBox Width="72" Value="{Binding PoleZ, Mode=TwoWay}" Decimals="3" Step="0.01" Suffix="z" AutomationProperties.Name="Pole bias Z" />
+                </StackPanel>
+              </DockPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Style="{StaticResource HintText}" Margin="22,2,0,0" Text="The target profile has no IK chains (not a humanoid, or its limbs could not be recognised)."
+                   Visibility="{Binding IkChains.Count, Converter={StaticResource Falsy}}" />
+      </StackPanel>
+
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="PROPORTIONS AND ROOT" />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="128" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Style="{StaticResource RtLabel}" Text="Root motion" />
+          <ComboBox Grid.Column="1" Style="{StaticResource RtCombo}" ItemsSource="{Binding RootModes}" SelectedValuePath="Value"
+                    SelectedValue="{Binding RootMode, Mode=TwoWay}" DisplayMemberPath="Label"
+                    ToolTip="Where the target root's translation comes from" AutomationProperties.Name="Root mode" />
+          <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,6">
+            <TextBlock Style="{StaticResource HintText}" Text="{Binding RootModeDescription}" />
+            <CheckBox IsChecked="{Binding ScaleStride, Mode=TwoWay}" IsEnabled="{Binding IsHipHeight}" Margin="0,4,0,0"
+                      ToolTip="Scale the root's travel and the feet's horizontal positions by the leg ratio too: strides stay in proportion to the legs, but the feet then move at a different speed than the entity the game moves"
+                      AutomationProperties.Name="Scale strides with the leg length">
+              <AccessText Text="Scale strides with the leg length" />
+            </CheckBox>
+            <TextBlock Style="{StaticResource HintText}" Margin="22,0,0,0"
+                       Text="Off keeps the source's ground speed: the game moves the entity per class, and the stock runs of all four rigs move their feet at the same speed. On suits a much longer- or shorter-legged target that also moves faster or slower." />
+          </StackPanel>
+          <TextBlock Grid.Row="2" Style="{StaticResource RtLabel}" Text="Bone lengths" />
+          <ComboBox Grid.Row="2" Grid.Column="1" Style="{StaticResource RtCombo}" ItemsSource="{Binding BoneLengthSources}" SelectedValuePath="Value"
+                    SelectedValue="{Binding BoneLengths, Mode=TwoWay}" DisplayMemberPath="Label"
+                    ToolTip="Where the target's bone offsets (position keys of non-root bones) come from" AutomationProperties.Name="Bone length source" />
+          <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource HintText}" Margin="0,0,0,6" Text="{Binding BoneLengthsDescription}" />
+          <TextBlock Grid.Row="4" Style="{StaticResource RtLabel}" Text="Extra bones" />
+          <ComboBox Grid.Row="4" Grid.Column="1" Style="{StaticResource RtCombo}" ItemsSource="{Binding ExtraPoses}" SelectedValuePath="Value"
+                    SelectedValue="{Binding ExtraPose, Mode=TwoWay}" DisplayMemberPath="Label"
+                    ToolTip="The still pose of target bones with no source bone" AutomationProperties.Name="Extra bone pose" />
+          <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource HintText}" Text="{Binding ExtraPoseDescription}" />
+        </Grid>
+      </StackPanel>
+
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="KEYS" />
+        <StackPanel Orientation="Horizontal" Margin="0,2">
+          <CheckBox IsChecked="{Binding Resample, Mode=TwoWay}" VerticalAlignment="Center"
+                    ToolTip="Replace every rotation track by evenly spaced samples (eases become 0); off keeps the source's key times and eases where the maths allows"
+                    AutomationProperties.Name="Resample rotation tracks">
+            <AccessText Text="Re_sample rotations at" />
+          </CheckBox>
+          <cui:NumericBox Width="96" Margin="8,0,0,0" Value="{Binding ResampleFps, Mode=TwoWay}" Decimals="1" Minimum="1" Maximum="480" Step="5" Suffix="fps"
+                               IsEnabled="{Binding Resample}" ToolTip="Samples per second (30 fps = one key every 160 ticks)" AutomationProperties.Name="Resample rate" />
+        </StackPanel>
+        <TextBlock Style="{StaticResource HintText}" Margin="22,0,0,6" Text="Off (recommended) keeps the source's key times and eases wherever the hierarchy allows; IK tracks are always resampled." />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="128" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Style="{StaticResource RtLabel}" Text="Rounding" />
+          <ComboBox Grid.Column="1" Style="{StaticResource RtCombo}" ItemsSource="{Binding Quantizations}" SelectedValuePath="Value"
+                    SelectedValue="{Binding Quantization, Mode=TwoWay}" DisplayMemberPath="Label"
+                    ToolTip="How rotation keys are rounded to the file's 16-bit components" AutomationProperties.Name="Key quantisation" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource HintText}" Text="{Binding QuantizationDescription}" />
+        </Grid>
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+</ResourceDictionary>

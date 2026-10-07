@@ -1,0 +1,38 @@
+{
+  "file": "hud_personas.tbl",
+  "title": "HUD personas",
+  "doc": "Speaker portraits shown next to radio messages.",
+  "sections": [
+    {
+      "name": "#Personas",
+      "required": true,
+      "repeat": false,
+      "doc": "List of up to 10 personas; each starts at $Name: and the list ends at #End.",
+      "entry": "$Name:",
+      "defines": "hudpersona",
+      "end": "#End",
+      "maxEntries": 10,
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "doc": "Persona name used by message events."
+        },
+        {
+          "name": "$Display Name:",
+          "type": "string",
+          "required": false,
+          "doc": "Name shown on screen when it differs from $Name:."
+        },
+        {
+          "name": "$Image:",
+          "type": "file",
+          "required": true,
+          "file": "texture",
+          "doc": "Portrait image."
+        }
+      ]
+    }
+  ]
+}

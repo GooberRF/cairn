@@ -1,0 +1,227 @@
+<UserControl x:Class="Cairn.Atx.Ui.Views.FrameListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+             xmlns:controls="clr-namespace:Cairn.Atx.Ui.Controls">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Header + toolbar -->
+    <Border Grid.Row="0" Style="{StaticResource PaneHeaderBorder}">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Left" Text="FRAMES" Style="{StaticResource PaneHeaderText}" />
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+          <cui:SplitToolButton GlyphSize="12"
+                  PrimaryCommand="{Binding AddFramesCommand}"
+                  SecondaryCommand="{Binding AddFramesFromVppCommand}"
+                  PrimaryLabel="_Browse…" SecondaryLabel="From _VPP…"
+                  PrimaryToolTip="Add frames from image files (Insert)"
+                  SecondaryToolTip="Add frames from a .vpp archive (Ctrl+Shift+V)"
+                  MenuToolTip="More ways to add frames" />
+          <Button Style="{StaticResource ToolButton}" Command="{Binding DuplicateCommand}"
+                  ToolTip="Duplicate the selected frames (Ctrl+D)"
+                  AutomationProperties.Name="Duplicate frames">
+            <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+          </Button>
+          <Button Style="{StaticResource ToolButton}" Command="{Binding MoveUpCommand}"
+                  ToolTip="Move the selection up (Alt+Up)"
+                  AutomationProperties.Name="Move frames up">
+            <TextBlock Text="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="11" />
+          </Button>
+          <Button Style="{StaticResource ToolButton}" Command="{Binding MoveDownCommand}"
+                  ToolTip="Move the selection down (Alt+Down)"
+                  AutomationProperties.Name="Move frames down">
+            <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="11" />
+          </Button>
+          <Button Style="{StaticResource ToolButton}" Command="{Binding RemoveCommand}"
+                  ToolTip="Remove the selected frames (Delete)"
+                  AutomationProperties.Name="Remove frames">
+            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+          </Button>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- The list -->
+    <Grid Grid.Row="1">
+      <!--
+        No IsSelected binding on the container. The list is virtualised and recycled, so such a
+        binding only ever reaches the dozen rows on screen: selecting everything and then clicking
+        one row left the list box showing one selected row and the view-model still holding 489,
+        which is what Delete then removed. The list box owns the selection; the code-behind pushes
+        it into the view-model, and the view-model asks for changes through SetSelection.
+      -->
+      <controls:FramesListBox x:Name="List" ItemsSource="{Binding Rows}" SelectionMode="Extended"
+               BorderThickness="0" Background="Transparent" AllowDrop="True"
+               HorizontalContentAlignment="Stretch" Padding="0,2"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+               VirtualizingStackPanel.IsVirtualizing="True"
+               VirtualizingStackPanel.VirtualizationMode="Recycling"
+               AutomationProperties.Name="Frames">
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding FileName}" />
+          </Style>
+        </ListBox.ItemContainerStyle>
+
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid Height="40" Background="Transparent" ToolTip="{Binding FileName}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="38" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="22" />
+              </Grid.ColumnDefinitions>
+
+              <!-- Drag grip, with the playing marker riding the same column -->
+              <TextBlock Grid.Column="0" Text="&#xE76F;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                         Foreground="{DynamicResource Frames.Grip}" HorizontalAlignment="Center"
+                         VerticalAlignment="Center" ToolTip="Drag to reorder"
+                         Visibility="{Binding IsPlayingFrame, Converter={StaticResource Falsy}}"
+                         AutomationProperties.Name="Drag to reorder" />
+              <Border Grid.Column="0" Width="3" Height="24" CornerRadius="2"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Background="{DynamicResource Frames.PlayingMarker}"
+                      Visibility="{Binding IsPlayingFrame, Converter={StaticResource Truthy}}"
+                      ToolTip="The preview is showing this frame"
+                      AutomationProperties.Name="Playing" />
+
+              <!-- Index -->
+              <TextBlock Grid.Column="1" Text="{Binding IndexText}" VerticalAlignment="Center"
+                         HorizontalAlignment="Right" Margin="0,0,8,0" FontSize="11"
+                         Foreground="{DynamicResource App.SecondaryText}"
+                         ToolTip="Frame number, as ATX_Set_Frame uses it" />
+
+              <!-- Thumbnail -->
+              <Border Grid.Column="2" Width="32" Height="32" CornerRadius="3"
+                      Background="{DynamicResource Frames.ThumbnailBackground}"
+                      BorderBrush="{DynamicResource App.SubtleBorder}" BorderThickness="1">
+                <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="1"
+                       RenderOptions.BitmapScalingMode="HighQuality" />
+              </Border>
+
+              <!-- File name (with inline rename editor) -->
+              <Grid Grid.Column="3" Margin="8,0,8,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource App.Text}"
+                           Visibility="{Binding IsEditingName, Converter={StaticResource Falsy}}" />
+                <TextBox Text="{Binding EditText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsUndoEnabled="False" Tag="edit"
+                         Visibility="{Binding IsEditingName, Converter={StaticResource Truthy}}"
+                         AutomationProperties.Name="{Binding NameEditorName}" />
+              </Grid>
+
+              <!-- Effective time (with inline editor) -->
+              <Grid Grid.Column="4" MinWidth="64" VerticalAlignment="Center">
+                <TextBlock Text="{Binding TimeText}" HorizontalAlignment="Right"
+                           Visibility="{Binding IsEditingTime, Converter={StaticResource Falsy}}"
+                           FontWeight="{Binding IsTimeOverridden,
+                                        Converter={StaticResource BoldWhenTrue}}"
+                           Foreground="{Binding IsTimeOverridden,
+                                        Converter={StaticResource TimeBrush}}"
+                           ToolTip="Effective frame time. Bold means this frame overrides the texture default." />
+                <TextBox Text="{Binding EditText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsUndoEnabled="False" Tag="edit" TextAlignment="Right"
+                         Visibility="{Binding IsEditingTime, Converter={StaticResource Truthy}}"
+                         AutomationProperties.Name="{Binding TimeEditorName}" />
+              </Grid>
+
+              <!-- Material badge -->
+              <Border Grid.Column="5" Style="{StaticResource BadgeBorder}" Margin="8,0,0,0"
+                      Visibility="{Binding HasMaterialBadge, Converter={StaticResource Truthy}}"
+                      ToolTip="This frame overrides the texture material">
+                <TextBlock Text="{Binding MaterialBadge}" Style="{StaticResource BadgeText}" />
+              </Border>
+
+              <!-- Problem icon -->
+              <TextBlock Grid.Column="6" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Text="{Binding Severity, Converter={StaticResource SeverityGlyph}}"
+                         Foreground="{Binding Severity, Converter={StaticResource SeverityBrush}}"
+                         ToolTip="{Binding ProblemTooltip}"
+                         Visibility="{Binding HasProblem, Converter={StaticResource Truthy}}"
+                         AutomationProperties.Name="{Binding ProblemTooltip}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+
+        <ListBox.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="_Add Frames">
+              <MenuItem Header="_Browse…" InputGestureText="Insert"
+                        Command="{Binding AddFramesCommand}"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="Pick image files from disk" />
+              <MenuItem Header="From _VPP…" InputGestureText="Ctrl+Shift+V"
+                        Command="{Binding AddFramesFromVppCommand}"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="Browse the .vpp archives the game searches and pick images out of them" />
+            </MenuItem>
+            <MenuItem Header="_Rename…" InputGestureText="F2" Command="{Binding RenameCommand}" />
+            <MenuItem Header="Edit frame _time…" Command="{Binding EditTimeCommand}" />
+            <MenuItem Header="_Locate File…" Command="{Binding LocateFileCommand}"
+                      ToolTipService.ShowOnDisabled="True"
+                      ToolTip="Pick the image for a frame whose file cannot be found. Available when one such frame is selected." />
+            <Separator />
+            <MenuItem Header="Cu_t" InputGestureText="Ctrl+X" Command="{Binding CutCommand}" />
+            <MenuItem Header="_Copy" InputGestureText="Ctrl+C" Command="{Binding CopyCommand}" />
+            <MenuItem Header="_Paste" InputGestureText="Ctrl+V" Command="{Binding PasteCommand}" />
+            <MenuItem Header="_Duplicate" InputGestureText="Ctrl+D" Command="{Binding DuplicateCommand}" />
+            <MenuItem Header="Re_move" InputGestureText="Del" Command="{Binding RemoveCommand}" />
+            <Separator />
+            <MenuItem Header="Move _up" InputGestureText="Alt+Up" Command="{Binding MoveUpCommand}" />
+            <MenuItem Header="Move do_wn" InputGestureText="Alt+Down" Command="{Binding MoveDownCommand}" />
+            <MenuItem Header="Re_verse selection" Command="{Binding ReverseCommand}" />
+            <MenuItem Header="_Sort selection by name" Command="{Binding SortCommand}" />
+          </ContextMenu>
+        </ListBox.ContextMenu>
+      </controls:FramesListBox>
+
+      <!-- Drag insertion indicator -->
+      <Canvas x:Name="Indicator" IsHitTestVisible="False">
+        <Rectangle x:Name="InsertLine" Height="2" Visibility="Collapsed"
+                   Fill="{DynamicResource Frames.InsertionIndicator}" />
+      </Canvas>
+
+      <!-- Empty state -->
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16"
+                  Visibility="{Binding IsEmpty, Converter={StaticResource Truthy}}">
+        <TextBlock Text="&#xE8B9;" FontFamily="Segoe MDL2 Assets" FontSize="28"
+                   HorizontalAlignment="Center" Foreground="{DynamicResource App.SecondaryText}"
+                   IsHitTestVisible="False" />
+        <TextBlock Style="{StaticResource HintText}" TextAlignment="Center" Margin="0,8,0,10"
+                   IsHitTestVisible="False"
+                   Text="Drop image files here, or add some:" />
+        <!-- Both ways in, as buttons: the empty state is exactly where a first frame comes from. -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+          <Button Style="{StaticResource DialogSmallButton}" Content="_Browse…"
+                  Command="{Binding AddFramesCommand}"
+                  ToolTip="Add frames from image files (Insert)"
+                  AutomationProperties.Name="Add frames by browsing for image files" />
+          <Button Style="{StaticResource DialogSmallButton}" Margin="0" Content="From _VPP…"
+                  Command="{Binding AddFramesFromVppCommand}"
+                  ToolTip="Add frames from a .vpp archive (Ctrl+Shift+V)"
+                  AutomationProperties.Name="Add frames from a VPP archive" />
+        </StackPanel>
+      </StackPanel>
+    </Grid>
+
+    <!-- Footer -->
+    <Border Grid.Row="2" Background="{DynamicResource App.ChromeBackground}"
+            BorderBrush="{DynamicResource App.Border}" BorderThickness="0,1,0,0" Padding="8,4">
+      <TextBlock Text="{Binding FooterText}" FontSize="11"
+                 Foreground="{DynamicResource App.SecondaryText}"
+                 AutomationProperties.Name="Frame summary" />
+    </Border>
+  </Grid>
+</UserControl>

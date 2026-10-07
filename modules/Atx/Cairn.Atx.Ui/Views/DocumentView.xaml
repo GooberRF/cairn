@@ -1,0 +1,242 @@
+﻿<UserControl x:Class="Cairn.Atx.Ui.Views.DocumentView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:Cairn.Atx.Ui.Views"
+             Background="{DynamicResource App.WindowBackground}">
+  <UserControl.Resources>
+    <Style x:Key="BannerText" TargetType="TextBlock">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource Banner.Foreground}" />
+    </Style>
+  </UserControl.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" MinHeight="120" />
+      <RowDefinition x:Name="ProblemsSplitterRow" Height="Auto" />
+      <RowDefinition x:Name="ProblemsRow" Height="170" MinHeight="90" />
+    </Grid.RowDefinitions>
+
+    <!-- Banners -->
+    <StackPanel Grid.Row="0">
+      <Border Padding="12,8" Margin="6,6,6,0" CornerRadius="4" BorderThickness="1"
+              Background="{DynamicResource Banner.ErrorBackground}"
+              BorderBrush="{DynamicResource Banner.ErrorBorder}"
+              Visibility="{Binding HasSyntaxErrors, Converter={StaticResource Truthy}}"
+              AutomationProperties.Name="Syntax error">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Left" Text="&#xE783;" FontFamily="Segoe MDL2 Assets"
+                     VerticalAlignment="Center" Margin="0,0,10,0"
+                     Foreground="{DynamicResource Severity.Error}" />
+          <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Margin="12,0,0,0"
+                  Content="Go to the error" Command="{Binding GoToSyntaxErrorCommand}"
+                  ToolTip="Put the caret on the problem in the source"
+                  AutomationProperties.Name="Go to the error" />
+          <TextBlock Style="{StaticResource BannerText}" Text="{Binding SyntaxErrorText}" />
+        </DockPanel>
+      </Border>
+
+      <Border Padding="12,8" Margin="6,6,6,0" CornerRadius="4" BorderThickness="1"
+              Background="{DynamicResource Banner.NoticeBackground}"
+              BorderBrush="{DynamicResource Banner.NoticeBorder}"
+              AutomationProperties.Name="Non-standard layout">
+        <Border.Style>
+          <Style TargetType="Border">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Binding="{Binding IsCanonical}" Value="False" />
+                  <Condition Binding="{Binding HasSyntaxErrors}" Value="False" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Visible" />
+              </MultiDataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Border.Style>
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Left" Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
+                     VerticalAlignment="Center" Margin="0,0,10,0"
+                     Foreground="{DynamicResource Severity.Warning}" />
+          <Button DockPanel.Dock="Right" Margin="12,0,0,0" Padding="10,3"
+                  Content="Convert to standard layout" Command="{Binding ConvertLayoutCommand}"
+                  ToolTip="Rewrite the file as [header] and [[frame]] blocks, keeping your comments"
+                  AutomationProperties.Name="Convert to standard layout" />
+          <TextBlock Style="{StaticResource BannerText}" Text="{Binding NonCanonicalText}" />
+        </DockPanel>
+      </Border>
+
+      <Border Padding="12,8" Margin="6,6,6,0" CornerRadius="4" BorderThickness="1"
+              Background="{DynamicResource Banner.InfoBackground}"
+              BorderBrush="{DynamicResource Banner.InfoBorder}"
+              Visibility="{Binding HasExternalChange, Converter={StaticResource Truthy}}"
+              AutomationProperties.Name="File changed on disk">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Left" Text="&#xE946;" FontFamily="Segoe MDL2 Assets"
+                     VerticalAlignment="Center" Margin="0,0,10,0"
+                     Foreground="{DynamicResource Severity.Info}" />
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+            <Button Content="Reload" Padding="10,3" Margin="0,0,6,0" Command="{Binding ReloadCommand}"
+                    ToolTip="Throw away your changes and re-read the file from disk"
+                    AutomationProperties.Name="Reload from disk" />
+            <Button Content="Keep mine" Padding="10,3" Command="{Binding KeepMineCommand}"
+                    ToolTip="Keep the version in this tab; the file on disk is left alone"
+                    AutomationProperties.Name="Keep my version" />
+          </StackPanel>
+          <TextBlock Style="{StaticResource BannerText}"
+                     Text="This file changed on disk while you were editing it." />
+        </DockPanel>
+      </Border>
+
+      <!--
+        The file this tab came from is gone. Saving would recreate it at the old path, which is
+        almost never what a rename meant, so the tab says so and offers a new name instead.
+      -->
+      <Border Padding="12,8" Margin="6,6,6,0" CornerRadius="4" BorderThickness="1"
+              Background="{DynamicResource Banner.NoticeBackground}"
+              BorderBrush="{DynamicResource Banner.NoticeBorder}"
+              Visibility="{Binding IsMissingOnDisk, Converter={StaticResource Truthy}}"
+              AutomationProperties.Name="File deleted or renamed">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Left" Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
+                     VerticalAlignment="Center" Margin="0,0,10,0"
+                     Foreground="{DynamicResource Severity.Warning}" />
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+            <Button Content="Save a copy…" Padding="10,3" Margin="0,0,6,0"
+                    Command="{Binding SaveACopyCommand}"
+                    ToolTip="Choose where to write this tab's contents"
+                    AutomationProperties.Name="Save a copy" />
+            <Button Content="Keep editing" Padding="10,3" Command="{Binding KeepEditingCommand}"
+                    ToolTip="Hide this notice; the tab keeps its unsaved changes"
+                    AutomationProperties.Name="Keep editing" />
+          </StackPanel>
+          <TextBlock Style="{StaticResource BannerText}" Text="{Binding MissingFileText}" />
+        </DockPanel>
+      </Border>
+
+      <!--
+        The file was not UTF-8. The game's TOML parser only reads UTF-8, so this app converts on
+        save — which is a change to the bytes on disk, and worth one sentence before it happens.
+      -->
+      <Border Padding="12,8" Margin="6,6,6,0" CornerRadius="4" BorderThickness="1"
+              Background="{DynamicResource Banner.InfoBackground}"
+              BorderBrush="{DynamicResource Banner.InfoBorder}"
+              Visibility="{Binding HasEncodingNotice, Converter={StaticResource Truthy}}"
+              AutomationProperties.Name="File encoding">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Left" Text="&#xE946;" FontFamily="Segoe MDL2 Assets"
+                     VerticalAlignment="Center" Margin="0,0,10,0"
+                     Foreground="{DynamicResource Severity.Info}" />
+          <Button DockPanel.Dock="Right" Content="Dismiss" Padding="10,3" Margin="12,0,0,0"
+                  Command="{Binding DismissEncodingNoticeCommand}"
+                  ToolTip="Hide this notice for this tab"
+                  AutomationProperties.Name="Dismiss the encoding notice" />
+          <TextBlock Style="{StaticResource BannerText}" Text="{Binding EncodingNoticeText}" />
+        </DockPanel>
+      </Border>
+
+      <!--
+        A large file's first parse runs on a worker thread, so the window stays usable while it
+        happens. Until it lands the panels have nothing to show, and this says why.
+      -->
+      <Border Padding="12,8" Margin="6,6,6,0" CornerRadius="4" BorderThickness="1"
+              Background="{DynamicResource Banner.InfoBackground}"
+              BorderBrush="{DynamicResource Banner.InfoBorder}"
+              Visibility="{Binding IsOpening, Converter={StaticResource Truthy}}"
+              AutomationProperties.Name="Opening">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Left" Text="&#xE916;" FontFamily="Segoe MDL2 Assets"
+                     VerticalAlignment="Center" Margin="0,0,10,0"
+                     Foreground="{DynamicResource Severity.Info}" />
+          <TextBlock Style="{StaticResource BannerText}" Text="{Binding OpeningText}" />
+        </DockPanel>
+      </Border>
+    </StackPanel>
+
+    <!-- Three panes -->
+    <Grid Grid.Row="1" Margin="6,6,6,0">
+      <Grid.ColumnDefinitions>
+        <!-- The minimum is what the texture settings form needs before its labels, segmented
+             control and drop-downs start trimming their own text. -->
+        <ColumnDefinition x:Name="LeftColumn" Width="360" MinWidth="300" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition x:Name="MiddleColumn" Width="340" MinWidth="220" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" MinWidth="220" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Left: texture settings + frames -->
+      <Border x:Name="LeftPane" Grid.Column="0" Style="{StaticResource PaneBorder}" ClipToBounds="True">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <!--
+              The settings row sizes itself to the form (Auto) up to a cap the code-behind keeps at
+              roughly half the column, so the form is whole at ordinary window heights instead of
+              being handed a proportional share that clips it mid-control. Past the cap it scrolls.
+              The frames list keeps the rest and never drops below a usable height. Dragging the
+              splitter turns both rows into stars and that share is what gets remembered.
+            -->
+            <RowDefinition x:Name="SettingsRow" Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition x:Name="FramesRow" Height="*" MinHeight="220" />
+          </Grid.RowDefinitions>
+          <Border x:Name="SettingsHeader" Grid.Row="0" Style="{StaticResource PaneHeaderBorder}">
+            <DockPanel>
+              <ToggleButton x:Name="SettingsChevron" DockPanel.Dock="Right"
+                            Style="{StaticResource PaneCollapseToggle}"
+                            IsChecked="{Binding Shell.IsSettingsExpanded, Mode=TwoWay}" />
+              <TextBlock Text="TEXTURE SETTINGS" Style="{StaticResource PaneHeaderText}" />
+            </DockPanel>
+          </Border>
+          <views:HeaderView x:Name="SettingsPane" Grid.Row="1" DataContext="{Binding Header}" />
+          <GridSplitter x:Name="SettingsSplitter" Grid.Row="2"
+                        Style="{StaticResource HorizontalSplitter}" Height="5"
+                        AutomationProperties.Name="Resize the texture settings" />
+          <views:FrameListView Grid.Row="3" DataContext="{Binding Frames}" />
+        </Grid>
+      </Border>
+
+      <GridSplitter x:Name="LeftSplitter" Grid.Column="1"
+                    Style="{StaticResource VerticalSplitter}" />
+
+      <!-- Middle: preview + inspector -->
+      <Border Grid.Column="2" Style="{StaticResource PaneBorder}" ClipToBounds="True">
+        <Grid>
+          <Grid.RowDefinitions>
+            <!-- The preview carries a canvas, a transport and a readout, so it needs the
+                 larger share and a minimum tall enough for all three. -->
+            <RowDefinition x:Name="PreviewRow" Height="1.4*" MinHeight="266" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="1*" MinHeight="132" />
+          </Grid.RowDefinitions>
+          <views:PreviewView Grid.Row="0" />
+          <GridSplitter x:Name="PreviewSplitter" Grid.Row="1"
+                        Style="{StaticResource HorizontalSplitter}"
+                        AutomationProperties.Name="Resize the preview" />
+          <views:FrameInspectorView Grid.Row="2" DataContext="{Binding Inspector}" />
+        </Grid>
+      </Border>
+
+      <GridSplitter x:Name="MiddleSplitter" Grid.Column="3"
+                    Style="{StaticResource VerticalSplitter}" />
+
+      <!-- Right: source -->
+      <Border Grid.Column="4" Style="{StaticResource PaneBorder}" ClipToBounds="True">
+        <views:SourceEditorView x:Name="Source" />
+      </Border>
+    </Grid>
+
+    <!-- Problems splitter -->
+    <GridSplitter x:Name="ProblemsSplitter" Grid.Row="2" Style="{StaticResource HorizontalSplitter}" />
+
+    <!-- Problems panel -->
+    <Border x:Name="ProblemsPane" Grid.Row="3" Margin="6,0,6,6"
+            Style="{StaticResource PaneBorder}" ClipToBounds="True">
+      <views:ProblemsView DataContext="{Binding Problems}" />
+    </Border>
+  </Grid>
+</UserControl>
+

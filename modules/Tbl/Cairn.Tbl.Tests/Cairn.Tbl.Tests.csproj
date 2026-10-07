@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Tbl.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Collections.Immutable" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Tbl.Core\Cairn.Tbl.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Workspace\Cairn.Workspace.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Assets\Cairn.Assets.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Formats\Cairn.Formats.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,40 @@
+{
+  "file": "sounds.tbl",
+  "title": "Game sounds",
+  "doc": "Numbered list of built-in game sounds; the game refers to them by their position, so rows must not be added, removed or reordered.",
+  "sections": [
+    {
+      "name": "#Sounds Start",
+      "required": true,
+      "repeat": false,
+      "doc": "One row per sound, read until #Sounds End; there are no field markers.",
+      "layout": "rows",
+      "defines": "sound",
+      "key": "index",
+      "end": "#Sounds End",
+      "maxEntries": 2048,
+      "columns": [
+        {
+          "type": "file",
+          "file": "sound",
+          "maxLength": 255,
+          "doc": "sound file name"
+        },
+        {
+          "type": "float",
+          "unit": "metres",
+          "doc": "distance at which a 3D sound starts to fade"
+        },
+        {
+          "type": "float",
+          "min": 0,
+          "doc": "default volume, normally 0 to 1"
+        },
+        {
+          "type": "float",
+          "doc": "rolloff factor; below 1 fades sooner, above 1 later"
+        }
+      ]
+    }
+  ]
+}

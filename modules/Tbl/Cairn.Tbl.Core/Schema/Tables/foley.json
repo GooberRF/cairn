@@ -1,0 +1,145 @@
+{
+  "file": "foley.tbl",
+  "title": "Foley sounds",
+  "doc": "Named sounds and sound sets (footsteps, voices, impacts) used by entities, weapons, clutter and vclips, plus the impact sound sets of debris.",
+  "sections": [
+    {
+      "name": "#Entity Sounds",
+      "required": true,
+      "repeat": false,
+      "doc": "Named sounds; the game finds each entry by searching for the exact text $Name: (case-sensitive) and stops when none is left.",
+      "entry": "$Name:",
+      "defines": "foley",
+      "end": "#End",
+      "entrySearch": true,
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 31,
+          "doc": "Unique sound name."
+        },
+        {
+          "name": "$Sounds:",
+          "type": "int",
+          "required": false,
+          "min": 1,
+          "default": "1",
+          "doc": "Number of $Sound: lines that follow (1 when omitted)."
+        },
+        {
+          "name": "$Material:",
+          "type": "enum",
+          "required": false,
+          "values": [
+            "default",
+            "rock",
+            "metal",
+            "flesh",
+            "water",
+            "laval",
+            "solid",
+            "sand",
+            "ice",
+            "glass",
+            "ladder",
+            "chain fence"
+          ],
+          "strict": true,
+          "doc": "Material this sound belongs to (footsteps and impacts); an unknown name stops the game."
+        },
+        {
+          "name": "$Sound:",
+          "type": "file",
+          "required": true,
+          "repeat": true,
+          "file": "sound",
+          "countFrom": "$Sounds:",
+          "parts": [
+            {
+              "type": "file",
+              "file": "sound",
+              "doc": "the sound file; \"\" means none, and then no numbers follow"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "unit": "metres",
+              "doc": "distance in metres at which the sound starts to fade"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "min": 0,
+              "doc": "volume, normally 0 to 1"
+            }
+          ],
+          "doc": "One sound of the set: file, minimum distance and volume."
+        }
+      ]
+    },
+    {
+      "name": "#Custom Sound Sets",
+      "required": false,
+      "repeat": false,
+      "doc": "Impact sound sets, read by a second pass that searches the file for this header; entries use lower-case $name: so the first pass skips them.",
+      "locate": "search",
+      "entry": "$name:",
+      "defines": "impactsoundset",
+      "end": "#End",
+      "fields": [
+        {
+          "name": "$name:",
+          "type": "string",
+          "required": true,
+          "doc": "Unique sound set name (clutter $Debris Sound Set: refers to it)."
+        },
+        {
+          "name": "+sound:",
+          "type": "list",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "string",
+              "ref": "material",
+              "doc": "material name or \"all\""
+            },
+            {
+              "type": "int",
+              "min": 1,
+              "max": 4,
+              "doc": "number of sound rows that follow"
+            }
+          ],
+          "doc": "Sounds for one material: the material name (or \"all\") and a count of 1 to 4, then that many unmarked sound rows.",
+          "rows": [
+            {
+              "type": "file",
+              "file": "sound",
+              "doc": "one sound file; \"\" means none, and then no numbers follow"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "unit": "metres",
+              "doc": "distance in metres at which the sound starts to fade"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "min": 0,
+              "doc": "volume, normally 0 to 1"
+            }
+          ],
+          "rowsCountFromPart": 1
+        }
+      ]
+    }
+  ]
+}

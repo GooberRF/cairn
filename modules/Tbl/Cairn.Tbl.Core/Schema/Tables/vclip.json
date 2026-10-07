@@ -1,0 +1,327 @@
+{
+  "file": "vclip.tbl",
+  "title": "Video clips",
+  "doc": "Visual effect clips (animated bitmaps, VFX meshes and particle bursts) that weapons, clutter and events play by name.",
+  "sections": [
+    {
+      "name": "#Vclips",
+      "required": true,
+      "repeat": false,
+      "doc": "List of clips; each starts at $Name: and the list ends at #End.",
+      "entry": "$Name:",
+      "defines": "vclip",
+      "end": "#End",
+      "maxEntries": 64,
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Unique clip name that other tables refer to."
+        },
+        {
+          "name": "$Flags:",
+          "type": "flags",
+          "required": false,
+          "values": [
+            "liquid_surface",
+            "radius_in_multiples",
+            "no_z_check",
+            "code_explode"
+          ],
+          "doc": "Clip options."
+        },
+        {
+          "name": "$damage:",
+          "type": "float",
+          "required": false,
+          "doc": "Damage per metre of radius when the clip is an explosion."
+        },
+        {
+          "name": "$VBM Filename:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Animated bitmap shown as a sprite."
+        },
+        {
+          "name": "$VBM Glow:",
+          "type": "bool",
+          "required": false,
+          "doc": "Draw the animated bitmap additively (glow)."
+        },
+        {
+          "name": "$Explosion Name:",
+          "type": "ref",
+          "required": false,
+          "ref": "explosion",
+          "maxLength": 31,
+          "doc": "Particle explosion spawned with the clip."
+        },
+        {
+          "name": "$VFX Filename:",
+          "type": "file",
+          "required": false,
+          "file": "vfx",
+          "doc": "Animated VFX mesh played by the clip."
+        },
+        {
+          "name": "$VFX Radius:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Radius of the VFX used for visibility culling."
+        },
+        {
+          "name": "$Foley Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Sound played with the clip."
+        },
+        {
+          "name": "$particle count:",
+          "type": "int",
+          "required": false,
+          "children": [
+            {
+              "name": "$pos:",
+              "type": "vec3",
+              "required": true,
+              "doc": "Emitter position relative to its parent."
+            },
+            {
+              "name": "$dir:",
+              "type": "vec3",
+              "required": true,
+              "doc": "Main emission direction (normalised by the game)."
+            },
+            {
+              "name": "$dir_rand:",
+              "type": "float",
+              "required": true,
+              "doc": "Spread around the direction; -1 emits in every direction."
+            },
+            {
+              "name": "$min_vel:",
+              "type": "float",
+              "required": true,
+              "unit": "metres per second",
+              "doc": "Lowest starting speed of a particle."
+            },
+            {
+              "name": "$max_vel:",
+              "type": "float",
+              "required": true,
+              "unit": "metres per second",
+              "doc": "Highest starting speed of a particle."
+            },
+            {
+              "name": "$spawn_radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius of the sphere particles start in."
+            },
+            {
+              "name": "$min_spawn_delay:",
+              "type": "float",
+              "required": false,
+              "unit": "seconds",
+              "children": [
+                {
+                  "name": "$max_spawn_delay:",
+                  "type": "float",
+                  "required": true,
+                  "unit": "seconds",
+                  "doc": "Longest time between two particles; read only after $min_spawn_delay:."
+                }
+              ],
+              "doc": "Shortest time between two particles."
+            },
+            {
+              "name": "$emitter_flags:",
+              "type": "string",
+              "required": true,
+              "values": [
+                "immediate",
+                "continuous",
+                "dirdepend",
+                "dont_move_with_parent",
+                "accel_with_parent"
+              ],
+              "syntax": "substring-flags",
+              "doc": "Emitter options; the game looks for each option name inside the quoted text, so any separator works."
+            },
+            {
+              "name": "$initially_on:",
+              "type": "bool",
+              "required": true,
+              "doc": "Whether the emitter starts emitting."
+            },
+            {
+              "name": "$alternate_states:",
+              "type": "bool",
+              "required": true,
+              "when": "children read only when the value is true",
+              "if": "true",
+              "children": [
+                {
+                  "name": "$on_time:",
+                  "type": "float",
+                  "required": true,
+                  "unit": "seconds",
+                  "doc": "Time spent emitting."
+                },
+                {
+                  "name": "$on_time_variance:",
+                  "type": "float",
+                  "required": true,
+                  "unit": "seconds",
+                  "doc": "Random variation of the on time."
+                },
+                {
+                  "name": "$off_time:",
+                  "type": "float",
+                  "required": true,
+                  "unit": "seconds",
+                  "doc": "Time spent idle."
+                },
+                {
+                  "name": "$off_time_variance:",
+                  "type": "float",
+                  "required": true,
+                  "unit": "seconds",
+                  "doc": "Random variation of the off time."
+                }
+              ],
+              "doc": "Whether the emitter switches on and off by itself."
+            },
+            {
+              "name": "$min_life_secs:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "Shortest particle life."
+            },
+            {
+              "name": "$max_life_secs:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "Longest particle life."
+            },
+            {
+              "name": "$min_pradius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Smallest particle radius."
+            },
+            {
+              "name": "$max_pradius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Largest particle radius."
+            },
+            {
+              "name": "$growth_rate:",
+              "type": "float",
+              "required": true,
+              "doc": "How fast particles grow (negative shrinks)."
+            },
+            {
+              "name": "$acceleration:",
+              "type": "float",
+              "required": true,
+              "doc": "Acceleration along the travel direction (negative slows)."
+            },
+            {
+              "name": "$gravity_scale:",
+              "type": "float",
+              "required": true,
+              "doc": "Multiplier on gravity for particles with the gravity flag."
+            },
+            {
+              "name": "$bitmap:",
+              "type": "file",
+              "required": true,
+              "file": "texture",
+              "doc": "Particle image: a bitmap, or a .vbm animation."
+            },
+            {
+              "name": "$particle color:",
+              "type": "color",
+              "required": true,
+              "doc": "Starting tint {r, g, b, a}."
+            },
+            {
+              "name": "$particle color dest:",
+              "type": "color",
+              "required": false,
+              "doc": "Tint at the end of the life (used with clr_change)."
+            },
+            {
+              "name": "$particle flags:",
+              "type": "string",
+              "required": true,
+              "values": [
+                "glow",
+                "clr_change",
+                "gravity",
+                "collide",
+                "collide_liquid",
+                "collide_and_die",
+                "wind",
+                "accelerate",
+                "loop",
+                "explode",
+                "random_orient",
+                "vel_stretch",
+                "no_z_check",
+                "damages",
+                "hold_last_frame",
+                "fire_damage"
+              ],
+              "syntax": "substring-flags",
+              "doc": "Particle options; the game looks for each option name inside the quoted text (so collide also matches collide_liquid)."
+            },
+            {
+              "name": "$bounciness:",
+              "type": "int",
+              "required": false,
+              "doc": "Bounce strength for colliding particles."
+            },
+            {
+              "name": "$stickiness:",
+              "type": "int",
+              "required": false,
+              "doc": "Chance of sticking to what a colliding particle hits."
+            },
+            {
+              "name": "$swirliness:",
+              "type": "int",
+              "required": false,
+              "doc": "Amount of random swirl."
+            },
+            {
+              "name": "$damage_factor:",
+              "type": "int",
+              "required": false,
+              "doc": "Damage dealt by particles with the damages flag."
+            },
+            {
+              "name": "$age_pct_to_finish_vbm:",
+              "type": "float",
+              "required": false,
+              "doc": "Fraction of the life over which a .vbm animation plays once."
+            }
+          ],
+          "doc": "Particles per metre of radius; when present, a full set of particle emitter fields follows."
+        }
+      ]
+    }
+  ]
+}

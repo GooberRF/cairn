@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Atx.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Atx.Core\Cairn.Atx.Core.csproj" />
+    <ProjectReference Include="..\Cairn.Atx.Fuzz\Cairn.Atx.Fuzz.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\tools\Cairn.Atx.SampleGen\TinyImageWriter.cs" Link="TinyImageWriter.cs" />
+    <Compile Include="..\..\..\tools\Cairn.Atx.SampleGen\SampleSet.cs" Link="SampleSet.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,113 @@
+<UserControl x:Class="Cairn.Rfa.Ui.Views.ClipInspectorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+             xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls">
+  <UserControl.Resources>
+    <!-- One editable row: label, number box, reset; the validation line under it. -->
+    <DataTemplate x:Key="NumberRow">
+      <StackPanel Margin="0,0,0,8">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="112" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="28" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource FormLabel}" Text="{Binding Label}" ToolTip="{Binding ToolTip}"
+                     TextWrapping="Wrap" />
+          <cui:NumericBox Grid.Column="1" MinWidth="80" Value="{Binding Value, Mode=TwoWay}"
+                               Decimals="{Binding Decimals}" Suffix="{Binding Suffix}" Step="{Binding Step}"
+                               Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" IsReadOnly="{Binding IsReadOnly}"
+                               ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding Label}"
+                               Tag="{Binding FieldId}"
+                               InteractionStarted="OnInteractionStarted" InteractionEnded="OnInteractionEnded" />
+          <Button Grid.Column="2" Style="{StaticResource ToolButton}" Width="24" MinWidth="24" Height="24" Margin="4,0,0,0"
+                  Command="{Binding ResetCommand}"
+                  Visibility="{Binding IsModified, Converter={StaticResource Truthy}}"
+                  ToolTip="Put back the value the file had when it was opened or last saved"
+                  AutomationProperties.Name="{Binding Label, StringFormat=Reset {0}}">
+            <TextBlock Text="&#xE7A7;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                       Foreground="{DynamicResource App.SecondaryText}" />
+          </Button>
+        </Grid>
+        <TextBlock Margin="112,3,0,0" Style="{StaticResource InlineDiagnosticText}" Text="{Binding Validation}"
+                   Foreground="{Binding ValidationSeverity, Converter={StaticResource SeverityBrush}}"
+                   Visibility="{Binding HasValidation, Converter={StaticResource Truthy}}" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                Focusable="False" Padding="10,10,10,6">
+    <ScrollViewer.Resources>
+      <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+    </ScrollViewer.Resources>
+    <StackPanel>
+      <TextBlock Text="FORMAT" Style="{StaticResource DialogSubheading}" />
+      <Grid Margin="0,0,0,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="112" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="28" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Style="{StaticResource FormLabel}" Text="Version" ToolTip="{Binding VersionToolTip}" />
+        <ComboBox x:Name="VersionBox" Grid.Column="1" Height="28" Padding="8,3" VerticalContentAlignment="Center" ItemsSource="{Binding Versions}"
+                  SelectedItem="{Binding Version, Mode=TwoWay}" IsEnabled="{Binding IsReadOnly, Converter={StaticResource Not}}"
+                  ToolTip="{Binding VersionToolTip}" AutomationProperties.Name="Version" Tag="rfa.version" />
+        <Button Grid.Column="2" Style="{StaticResource ToolButton}" Width="24" MinWidth="24" Height="24" Margin="4,0,0,0"
+                Command="{Binding ResetVersionCommand}"
+                Visibility="{Binding IsVersionModified, Converter={StaticResource Truthy}}"
+                ToolTip="Convert back to the version the file had" AutomationProperties.Name="Reset version">
+          <TextBlock Text="&#xE7A7;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource App.SecondaryText}" />
+        </Button>
+      </Grid>
+      <TextBlock Margin="112,-4,0,8" Style="{StaticResource InlineDiagnosticText}" Text="{Binding VersionValidation}"
+                 Foreground="{DynamicResource Severity.Error}"
+                 Visibility="{Binding HasVersionValidation, Converter={StaticResource Truthy}}" />
+
+      <TextBlock Text="TIMING" Style="{StaticResource DialogSubheading}" Margin="0,6,0,6" />
+      <ContentControl Focusable="False" Content="{Binding Start}" ContentTemplate="{StaticResource NumberRow}" />
+      <ContentControl Focusable="False" Content="{Binding End}" ContentTemplate="{StaticResource NumberRow}" />
+      <Grid Margin="0,0,0,10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="112" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Style="{StaticResource FormLabel}" Text="Duration" ToolTip="{Binding DurationToolTip}" />
+        <TextBox Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding DurationText, Mode=OneWay}"
+                 VerticalAlignment="Center" ToolTip="{Binding DurationToolTip}" AutomationProperties.Name="Duration" />
+      </Grid>
+      <ContentControl Focusable="False" Content="{Binding RampIn}" ContentTemplate="{StaticResource NumberRow}" />
+      <ContentControl Focusable="False" Content="{Binding RampOut}" ContentTemplate="{StaticResource NumberRow}" />
+
+      <TextBlock Text="EXPORTER TOLERANCES" Style="{StaticResource DialogSubheading}" Margin="0,6,0,6" />
+      <ContentControl Focusable="False" Content="{Binding PosReduction}" ContentTemplate="{StaticResource NumberRow}" />
+      <ContentControl Focusable="False" Content="{Binding RotReduction}" ContentTemplate="{StaticResource NumberRow}" />
+
+      <Expander Margin="0,4,0,8" IsExpanded="{Binding IsAdvancedExpanded, Mode=TwoWay}"
+                Header="Advanced (not read by the game)" ToolTip="Total rotation and translation: exporter leftovers the game never reads"
+                Foreground="{DynamicResource App.Text}" AutomationProperties.Name="Advanced header fields">
+        <StackPanel Margin="0,8,0,0">
+          <ItemsControl ItemsSource="{Binding TotalRotationRows}" ItemTemplate="{StaticResource NumberRow}" Focusable="False" />
+          <ItemsControl ItemsSource="{Binding TotalTranslationRows}" ItemTemplate="{StaticResource NumberRow}" Focusable="False" />
+        </StackPanel>
+      </Expander>
+
+      <TextBlock Text="FACTS" Style="{StaticResource DialogSubheading}" Margin="0,6,0,4" />
+      <ItemsControl ItemsSource="{Binding Facts}" Focusable="False" AutomationProperties.Name="Clip facts">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Grid ToolTip="{Binding ToolTip}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="112" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Style="{StaticResource FactLabel}" Text="{Binding Label}" />
+              <TextBox Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding Value, Mode=OneWay}"
+                       AutomationProperties.Name="{Binding Label}" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

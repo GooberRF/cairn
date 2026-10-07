@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Previews</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <!-- Shared read-only previews of a file given by bytes or by name (images, text, audio, hex, other
+       modules' previews). No module is referenced: modules reach each other through IAssetPreviewProvider. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Ui\Cairn.Ui.csproj" />
+    <ProjectReference Include="..\Cairn.Viewport\Cairn.Viewport.csproj" />
+    <ProjectReference Include="..\Cairn.Assets\Cairn.Assets.csproj" />
+    <ProjectReference Include="..\Cairn.Formats\Cairn.Formats.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,111 @@
+<UserControl x:Class="Cairn.Rfa.Ui.Views.BoneInspectorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+             xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="10,10,10,6">
+    <ScrollViewer.Resources>
+      <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+    </ScrollViewer.Resources>
+    <StackPanel>
+      <TextBlock Text="{Binding Title}" Style="{StaticResource DialogHeading}" FontSize="14" TextTrimming="CharacterEllipsis"
+                 AutomationProperties.Name="Selected bones" />
+      <TextBlock Text="Select bones in the viewport (click a joint), in the timeline's rows or in the Problems panel to see and edit them here."
+                 Style="{StaticResource HintText}" Margin="0,0,0,8"
+                 Visibility="{Binding HasSelection, Converter={StaticResource Falsy}}" />
+
+      <StackPanel Visibility="{Binding HasSelection, Converter={StaticResource Truthy}}">
+        <Grid Margin="0,0,0,10">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="92" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" Style="{StaticResource FactLabel}" Text="Index" ToolTip="{Binding IndexToolTip}" />
+          <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding IndexText, Mode=OneWay}"
+                   ToolTip="{Binding IndexToolTip}" AutomationProperties.Name="Bone index" />
+          <TextBlock Grid.Row="1" Style="{StaticResource FactLabel}" Text="Parent" ToolTip="The bone this one hangs from in the preview mesh's skeleton" />
+          <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding ParentText, Mode=OneWay}"
+                   ToolTip="The bone this one hangs from in the preview mesh's skeleton" AutomationProperties.Name="Parent bone" />
+          <TextBlock Grid.Row="2" Style="{StaticResource FactLabel}" Text="Keys" ToolTip="{Binding KeysToolTip}" />
+          <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding KeysText, Mode=OneWay}"
+                   ToolTip="{Binding KeysToolTip}" AutomationProperties.Name="Key counts" />
+        </Grid>
+
+        <TextBlock Text="WEIGHT IN THIS CLIP" Style="{StaticResource DialogSubheading}" ToolTip="{Binding Weight.ToolTip}" />
+        <Grid Margin="0,0,0,6">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <cui:NumericBox DataContext="{Binding Weight}" MinWidth="0" Value="{Binding Value, Mode=TwoWay}" IsIndeterminate="{Binding IsMixed}"
+                               Decimals="{Binding Decimals}" Step="{Binding Step}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+                               IsReadOnly="{Binding IsReadOnly}" ToolTip="{Binding ToolTip}" AutomationProperties.Name="Bone weight"
+                               InteractionStarted="OnInteractionStarted" InteractionEnded="OnInteractionEnded" />
+          <ItemsControl Grid.Column="1" ItemsSource="{Binding ValuePresets}" Focusable="False" Margin="6,0,0,0" AutomationProperties.Name="Weight values">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Style="{StaticResource ToolButton}" Height="28" MinWidth="30" Margin="2,0,0,0" Command="{Binding Run}"
+                        Content="{Binding Label}" ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding ToolTip}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Grid>
+        <CheckBox Content="Apply to children" IsChecked="{Binding IncludeChildren, Mode=TwoWay}" IsEnabled="{Binding CanIncludeChildren}"
+                  Foreground="{DynamicResource App.Text}" Margin="0,0,0,8" ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Weight edits also go to every bone below the selected ones (needs a preview mesh that fits the clip, for the hierarchy)"
+                  AutomationProperties.Name="Apply weight to children" />
+        <TextBlock Text="Give the weight above to:" Style="{StaticResource HintText}" Margin="0,0,0,4" />
+        <ItemsControl ItemsSource="{Binding BodyPresets}" Focusable="False" Margin="0,0,0,12" AutomationProperties.Name="Weight presets">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Style="{StaticResource DialogSmallButton}" Margin="0,0,6,4" Command="{Binding Run}" Content="{Binding Label}"
+                      ToolTip="{Binding ToolTip}" ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="{Binding Label}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="OFFSET FROM PARENT" Style="{StaticResource DialogSubheading}" ToolTip="{Binding OffsetToolTip}" />
+        <ItemsControl ItemsSource="{Binding Offsets}" Focusable="False" Margin="0,0,0,12" AutomationProperties.Name="Bone offsets">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Grid ToolTip="{Binding ToolTip}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="112" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource FactLabel}" Text="{Binding Label}" />
+                <TextBox Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding Value, Mode=OneWay}" AutomationProperties.Name="{Binding Label}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="KEYS" Style="{StaticResource DialogSubheading}" />
+        <WrapPanel>
+          <Button Style="{StaticResource DialogSmallButton}" Margin="0,0,6,4" Content="Key at playhead" Command="{Binding KeyAtPlayheadCommand}"
+                  ToolTip="Add a key holding the current pose on the selected bones (K); the motion does not change"
+                  AutomationProperties.Name="Key at playhead" />
+          <Button Style="{StaticResource DialogSmallButton}" Margin="0,0,6,4" Content="Select all keys" Command="{Binding SelectAllKeysCommand}"
+                  ToolTip="Select every key of the selected bones in the timeline" AutomationProperties.Name="Select all keys of the bones" />
+          <Button Style="{StaticResource DialogSmallButton}" Margin="0,0,6,4" Content="Delete all keys" Command="{Binding DeleteAllKeysCommand}"
+                  ToolTip="Delete every key of the selected bones (one undo step). A bone without position keys collapses onto its parent."
+                  AutomationProperties.Name="Delete all keys of the bones" />
+        </WrapPanel>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

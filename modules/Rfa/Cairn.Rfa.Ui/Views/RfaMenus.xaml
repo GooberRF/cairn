@@ -1,0 +1,151 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:Class="Cairn.Rfa.Ui.Views.RfaMenus">
+  <!-- The Clip and Mesh top-level menus (DataContext = RfaWorkspace, set by RfaModule). -->
+      <MenuItem x:Key="ClipMenu" x:Shared="False" Header="_Clip">
+        <MenuItem Header="Choose Preview _Mesh…" Click="OnChoosePreviewMesh" IsEnabled="{Binding IsClipDocument}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Pick the mesh the active clip plays on" />
+        <Separator />
+        <!-- Clip tools (phase 5): each opens a dialog with a live preview; OK is one undo step. -->
+        <MenuItem Header="_Trim / Crop to Range…" InputGestureText="Ctrl+Alt+T" Command="{Binding ClipTools.TrimCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Keep only the motion between two times" />
+        <MenuItem Header="S_hift in Time…" InputGestureText="Ctrl+Alt+H" Command="{Binding ClipTools.ShiftCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Move every key, start and end by the same amount" />
+        <MenuItem Header="_Retime…" InputGestureText="Ctrl+Alt+R" Command="{Binding ClipTools.RetimeCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Speed the clip up or slow it down (scale its duration)" />
+        <MenuItem Header="Re_verse…" InputGestureText="Ctrl+Alt+V" Command="{Binding ClipTools.ReverseCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Play the clip backwards" />
+        <MenuItem Header="Recompute Start/_End…" Command="{Binding ClipTools.RecomputeRangeCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Fit start and end to the first and last keys" />
+        <Separator />
+        <MenuItem Header="Make _Loopable…" Command="{Binding ClipTools.LoopCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Blend one end into the other so the clip loops seamlessly" />
+        <MenuItem Header="Resample (_Bake)…" InputGestureText="Ctrl+Alt+B" Command="{Binding ClipTools.ResampleCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Replace the keys with evenly spaced samples of the motion" />
+        <MenuItem Header="Reduce _Keys…" InputGestureText="Ctrl+Alt+D" Command="{Binding ClipTools.ReduceCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Remove keys the motion does not need, within a tolerance" />
+        <MenuItem Header="M_irror Left/Right…" Command="{Binding ClipTools.MirrorCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Swap the animation of left and right bones, reflected" />
+        <Separator />
+        <MenuItem Header="_Offset Bone…" InputGestureText="Ctrl+Alt+F" Command="{Binding ClipTools.OffsetCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Add a rotation or translation to the selected bones, over the clip or a range" />
+        <MenuItem Header="Remove / Scale Root Motio_n…" Command="{Binding ClipTools.RootMotionCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Make the clip play in place, or change how far it travels" />
+        <MenuItem Header="Set Bone Lengths…" Command="{Binding ClipTools.BoneLengthsCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Make bone lengths match a reference clip or the bind pose" />
+        <MenuItem Header="_Conform to Skeleton…" Command="{Binding ClipTools.ConformCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Re-lay the clip out for another mesh's bone list, by bone name" />
+        <MenuItem Header="Set _Weights…" Command="{Binding ClipTools.WeightsCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Set how strongly the clip drives bones when it plays as an action" />
+        <MenuItem Header="Norm_alise…" Command="{Binding ClipTools.NormalizeCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Repair structural problems (key order, range, unit rotations, signs…)" />
+        <Separator />
+        <MenuItem Header="Retar_get…" InputGestureText="Ctrl+R" Command="{Binding Retarget.RetargetCommand}"
+                  ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Transfer the clip's motion onto another skeleton (a different rig), with a live preview; the result opens as a new tab" />
+        <MenuItem Header="Com_pare With…" InputGestureText="Ctrl+Alt+G" Command="{Binding ClipTools.CompareCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Play another clip as a ghost skeleton beside this one" />
+        <MenuItem Header="Clear Comparison" Command="{Binding ClipTools.ClearCompareCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Remove the compared clip's ghost" />
+        <Separator />
+        <MenuItem Header="Convert to Version _7" Click="OnConvertVersion" Tag="7" IsEnabled="{Binding IsClipDocument}"
+                  ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Store the clip as version 7 (morph keyframes without times, spread over the clip)" />
+        <MenuItem Header="Convert to Version _8" Click="OnConvertVersion" Tag="8" IsEnabled="{Binding IsClipDocument}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Store the clip as version 8 (timed, quantised morph keyframes)" />
+        <MenuItem Header="_Strip Morph Data" Click="OnStripMorph" IsEnabled="{Binding IsClipDocument}"
+                  ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Remove the clip's vertex (morph) animation, which only fits the one mesh it was made for" />
+      </MenuItem>
+
+      <MenuItem x:Key="MeshMenu" x:Shared="False" Header="_Mesh">
+        <MenuItem Header="Choose Preview _Clip…" Click="OnChoosePreviewClip" ToolTipService.ShowOnDisabled="True"
+                  IsEnabled="{Binding IsSkeletalMeshDocument}"
+                  ToolTip="Pick the clip the active mesh plays (needs a mesh tab with bones in front)" />
+        <MenuItem Header="New Clip for _This Mesh…" Command="{Binding NewClips.ForActiveMeshCommand}" ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Start a new clip for the mesh in front, holding its stand clip's pose or its bind pose (needs a mesh tab with bones in front)" />
+        <MenuItem Header="Level of _Detail" ItemsSource="{Binding ActiveDocument.Scene.LodChoices}"
+                  IsEnabled="{Binding HasDocument}" ToolTip="Which LOD the viewport draws">
+          <MenuItem.ItemContainerStyle>
+            <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+              <Setter Property="Header" Value="{Binding}" />
+              <Setter Property="ToolTip" Value="Draw this level of detail" />
+              <EventSetter Event="Click" Handler="OnLodClick" />
+            </Style>
+          </MenuItem.ItemContainerStyle>
+        </MenuItem>
+        <Separator />
+        <!-- Mesh editing (phase 6): enabled for an editable .v3c document; each is one undo step. -->
+        <MenuItem Header="Add Collision _Sphere" Command="{Binding MeshTools.AddSphereCommand}" ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Add a collision sphere on the selected bone (or the selected sphere's bone), and select it to edit" />
+        <MenuItem Header="Duplicat_e Collision Sphere" Command="{Binding MeshTools.DuplicateSphereCommand}" ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Add a copy of the selected collision sphere" />
+        <MenuItem Header="Add _Prop Point" Command="{Binding MeshTools.AddPropPointCommand}" ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Add a prop point on the selected bone, in every level of detail, and select it to edit" />
+        <MenuItem Header="_Remove Selected" InputGestureText="Del (structure tree)" Command="{Binding MeshTools.RemoveSelectedCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Remove the collision sphere or prop point selected in the Structure tab" />
+        <MenuItem Header="Re_name Selected" InputGestureText="F2" Command="{Binding MeshTools.RenameSelectedCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Type a new name for the bone, collision sphere, prop point or submesh selected in the Structure tab, or a new texture name for the selected material (a LOD texture entry goes to its material). Other nodes have no name to change" />
+        <Separator />
+        <MenuItem Header="Reorder _Bones…" Command="{Binding MeshTools.ReorderBonesCommand}" ToolTipService.ShowOnDisabled="True"
+                  ToolTip="Change the bones' index order. Clips address bones by index: this warns and offers to conform the open clips previewing the mesh" />
+        <MenuItem Header="Move Bone _Up" InputGestureText="Alt+Up (structure tree)" Command="{Binding MeshTools.MoveBoneUpCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Give the selected bone the index before it (asks first)" />
+        <MenuItem Header="Move Bone Do_wn" InputGestureText="Alt+Down (structure tree)" Command="{Binding MeshTools.MoveBoneDownCommand}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="Give the selected bone the index after it (asks first)" />
+      </MenuItem>
+
+  <!-- Edit menu items 1.0.1 had after Undo/Redo (Undo/Redo are the shell's). -->
+  <MenuItem x:Key="SelectAllBonesItem" x:Shared="False" Header="Select All _Bones" Click="OnSelectAllBones" IsEnabled="{Binding HasDocument}"
+            ToolTip="Select every bone of the active document's skeleton" />
+  <MenuItem x:Key="ClearBonesItem" x:Shared="False" Header="C_lear Bone Selection" Click="OnClearBones" IsEnabled="{Binding HasDocument}" ToolTip="Deselect every bone" />
+  <MenuItem x:Key="CopyKeysItem" x:Shared="False" Header="_Copy Keys" InputGestureText="Ctrl+C (timeline)" Command="{Binding ActiveDocument.Timeline.CopyCommand}"
+            IsEnabled="{Binding IsClipDocument}" ToolTipService.ShowOnDisabled="True"
+            ToolTip="Copy the selected keys to the clipboard (they paste into any clip, matched by bone name)" />
+  <MenuItem x:Key="CutKeysItem" x:Shared="False" Header="Cu_t Keys" InputGestureText="Ctrl+X (timeline)" Command="{Binding ActiveDocument.Timeline.CutCommand}"
+            IsEnabled="{Binding IsClipDocument}" ToolTip="Copy the selected keys and delete them" />
+  <MenuItem x:Key="PasteKeysItem" x:Shared="False" Header="_Paste Keys at Playhead" InputGestureText="Ctrl+V (timeline)" Command="{Binding ActiveDocument.Timeline.PasteCommand}"
+            IsEnabled="{Binding IsClipDocument}" ToolTip="Paste copied keys with the earliest at the playhead" />
+  <MenuItem x:Key="PasteMirroredItem" x:Shared="False" Header="Paste Keys _Mirrored" InputGestureText="Ctrl+Shift+V (timeline)" Command="{Binding ActiveDocument.Timeline.PasteMirroredCommand}"
+            IsEnabled="{Binding IsClipDocument}" ToolTip="Paste copied keys onto each bone's left/right partner, mirrored" />
+  <MenuItem x:Key="DeleteKeysItem" x:Shared="False" Header="_Delete Keys" InputGestureText="Del (timeline)" Command="{Binding ActiveDocument.Timeline.DeleteCommand}"
+            IsEnabled="{Binding IsClipDocument}" ToolTip="Delete the selected keys" />
+  <MenuItem x:Key="SelectAllKeysItem" x:Shared="False" Header="Select All Ke_ys" InputGestureText="Ctrl+A (timeline)" Command="{Binding ActiveDocument.Timeline.SelectAllCommand}"
+            IsEnabled="{Binding IsClipDocument}" ToolTip="Select every key of the clip" />
+  <MenuItem x:Key="KeyBonesItem" x:Shared="False" Header="_Key Selected Bones at Playhead" InputGestureText="K (timeline)" Command="{Binding ActiveDocument.Timeline.KeyAtPlayheadCommand}"
+            IsEnabled="{Binding IsClipDocument}" ToolTip="Add keys holding the current pose on the selected bones (the motion does not change)" />
+
+  <!-- View menu items 1.0.1 had beyond the shell's own (library and bottom pane are the shell's pane toggles; theme is the shell's). -->
+  <MenuItem x:Key="InspectorItem" x:Shared="False" Header="_Inspector" InputGestureText="Ctrl+Shift+I" IsCheckable="True"
+            IsChecked="{Binding IsInspectorVisible, Mode=TwoWay}" ToolTip="Show or hide the inspector" />
+  <MenuItem x:Key="PlayPauseItem" x:Shared="False" Header="Pla_y / Pause" InputGestureText="Ctrl+Shift+P" Command="{Binding PlayPauseCommand}"
+            ToolTipService.ShowOnDisabled="True" ToolTip="Play or pause the active clip (Space when the viewport has focus)" />
+  <MenuItem x:Key="FrameItem" x:Shared="False" Header="_Frame Selection" InputGestureText="Ctrl+Shift+F" Command="{Binding FrameCommand}"
+            ToolTip="Frame the selected bones, or everything (F when the viewport has focus)" />
+  <MenuItem x:Key="TimeDisplayItem" x:Shared="False" Header="_Time Display" ToolTip="Show times as frames, seconds or ticks">
+    <MenuItem Header="_Frames" IsCheckable="True" IsChecked="{Binding IsUnitFrames, Mode=OneWay}"
+              Command="{Binding SetTimeUnitCommand}" CommandParameter="Frames" ToolTip="30 fps frames (160 ticks)" />
+    <MenuItem Header="_Seconds" IsCheckable="True" IsChecked="{Binding IsUnitSeconds, Mode=OneWay}"
+              Command="{Binding SetTimeUnitCommand}" CommandParameter="Seconds" ToolTip="Seconds (4800 ticks)" />
+    <MenuItem Header="_Ticks" IsCheckable="True" IsChecked="{Binding IsUnitTicks, Mode=OneWay}"
+              Command="{Binding SetTimeUnitCommand}" CommandParameter="Ticks" ToolTip="Ticks, as the file stores them" />
+  </MenuItem>
+
+  <!-- Toolbar: 1.0.1's play/pause and frame buttons and its Inspector toggle (Library / Panel are the shell's pane toggles). -->
+  <StackPanel x:Key="Toolbar" x:Shared="False" Orientation="Horizontal">
+    <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource App.Border}" />
+    <Button Style="{DynamicResource ToolButton}" Command="{Binding PlayPauseCommand}" ToolTip="Play or pause (Space in the viewport)"
+            AutomationProperties.Name="Play or pause">
+      <TextBlock Text="{Binding ActiveDocument.Playback.PlayGlyph, FallbackValue=&#xE768;}" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+    </Button>
+    <Button Style="{DynamicResource ToolButton}" Command="{Binding FrameCommand}" ToolTip="Frame the selection or everything (F in the viewport)"
+            AutomationProperties.Name="Frame">
+      <TextBlock Text="&#xE9A6;" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+    </Button>
+    <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource App.Border}" />
+    <ToggleButton Style="{DynamicResource ToolToggle}" Height="26" Padding="8,0" Margin="0,0,4,0" IsChecked="{Binding IsInspectorVisible, Mode=TwoWay}"
+                  ToolTip="Show or hide the inspector (Ctrl+Shift+I)" AutomationProperties.Name="Inspector panel">
+      <TextBlock Text="Inspector" FontSize="12" />
+    </ToggleButton>
+  </StackPanel>
+</ResourceDictionary>

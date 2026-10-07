@@ -1,0 +1,135 @@
+<UserControl x:Class="Cairn.Rfa.Ui.Views.TimelineView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls"
+             AutomationProperties.Name="Timeline">
+  <UserControl.Resources>
+    <!-- A slim horizontal bar matching PaneScrollBar (drawn whenever it exists). -->
+    <Style x:Key="TimeScrollBar" TargetType="ScrollBar">
+      <Setter Property="Height" Value="10" />
+      <Setter Property="MinHeight" Value="10" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Border Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+              <Track x:Name="PART_Track" IsDirectionReversed="False">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton Command="ScrollBar.PageLeftCommand" Focusable="False">
+                    <RepeatButton.Template>
+                      <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent" />
+                      </ControlTemplate>
+                    </RepeatButton.Template>
+                  </RepeatButton>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb MinWidth="24">
+                    <Thumb.Template>
+                      <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="Bar" Margin="0,2" CornerRadius="3" Opacity="0.5" Background="{DynamicResource App.SecondaryText}" />
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bar" Property="Opacity" Value="0.8" />
+                          </Trigger>
+                          <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Bar" Property="Opacity" Value="1" />
+                          </Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Thumb.Template>
+                  </Thumb>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton Command="ScrollBar.PageRightCommand" Focusable="False">
+                    <RepeatButton.Template>
+                      <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent" />
+                      </ControlTemplate>
+                    </RepeatButton.Template>
+                  </RepeatButton>
+                </Track.IncreaseRepeatButton>
+              </Track>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </UserControl.Resources>
+  <DockPanel>
+    <!-- Toolbar: filter, row filters, expand/collapse, key and fit. -->
+    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource App.Border}" BorderThickness="0,0,0,1" Padding="6,3">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding SummaryText}" Style="{StaticResource HintText}" VerticalAlignment="Center"
+                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="10,0,4,0" MaxWidth="460"
+                   AutomationProperties.Name="Timeline summary" />
+        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Border BorderBrush="{DynamicResource App.Border}" BorderThickness="1" CornerRadius="4" Height="24" Width="170" Margin="0,0,6,0"
+                  Background="{DynamicResource App.WindowBackground}">
+            <Grid>
+              <TextBlock Text="&#xE71C;" FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="7,0,0,0" VerticalAlignment="Center"
+                         Foreground="{DynamicResource App.SecondaryText}" IsHitTestVisible="False" />
+              <TextBox x:Name="FilterBox" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged, Delay=150}" BorderThickness="0"
+                       Background="Transparent" Foreground="{DynamicResource App.Text}" Padding="22,0,4,0" VerticalContentAlignment="Center"
+                       ToolTip="Show only bones whose name contains this text" AutomationProperties.Name="Filter bones" />
+              <TextBlock Text="Filter bones" Margin="25,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                         Foreground="{DynamicResource App.SecondaryText}" FontSize="12"
+                         Visibility="{Binding Text, ElementName=FilterBox, Converter={StaticResource Falsy}}" />
+            </Grid>
+          </Border>
+          <ToggleButton Style="{StaticResource ToolToggle}" Height="24" Padding="7,0" Margin="0,0,4,0" IsChecked="{Binding OnlyWithKeys, Mode=TwoWay}"
+                        ToolTip="Show only bones that have keys" AutomationProperties.Name="Only bones with keys">
+            <TextBlock Text="With keys" FontSize="12" />
+          </ToggleButton>
+          <ToggleButton Style="{StaticResource ToolToggle}" Height="24" Padding="7,0" Margin="0,0,8,0" IsChecked="{Binding OnlySelected, Mode=TwoWay}"
+                        ToolTip="Show only the selected bones (select bones here, in the viewport or in the Problems panel)"
+                        AutomationProperties.Name="Only selected bones">
+            <TextBlock Text="Selected" FontSize="12" />
+          </ToggleButton>
+          <Rectangle Width="1" Margin="0,3,8,3" Fill="{DynamicResource App.Border}" />
+          <Button Style="{StaticResource ToolButton}" Height="24" Command="{Binding ExpandAllCommand}" ToolTip="Expand every bone"
+                  AutomationProperties.Name="Expand all bones">
+            <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+          </Button>
+          <Button Style="{StaticResource ToolButton}" Height="24" Margin="0,0,8,0" Command="{Binding CollapseAllCommand}" ToolTip="Collapse to the top of the hierarchy"
+                  AutomationProperties.Name="Collapse all bones">
+            <TextBlock Text="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+          </Button>
+          <Button Style="{StaticResource ToolButton}" Height="24" Padding="7,0" Command="{Binding KeyAtPlayheadCommand}"
+                  ToolTip="Key the selected bones at the playhead (K): adds keys holding the current pose, so the motion does not change"
+                  AutomationProperties.Name="Key selected bones at the playhead">
+            <StackPanel Orientation="Horizontal">
+              <Path Width="10" Height="10" Data="M5,0 L10,5 L5,10 L0,5 Z" Fill="{DynamicResource Timeline.RotationKey}" VerticalAlignment="Center" />
+              <TextBlock Text="Key" FontSize="12" Margin="5,0,0,0" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource ToolButton}" Height="24" Padding="7,0" Margin="4,0,0,0" Command="{Binding DeleteCommand}"
+                  ToolTip="Delete the selected keys (Del)" AutomationProperties.Name="Delete selected keys">
+            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+          </Button>
+          <Button Style="{StaticResource ToolButton}" Height="24" Padding="7,0" Margin="4,0,0,0" Command="{Binding FitCommand}"
+                  ToolTip="Fit the clip into view (Home). Ctrl+wheel zooms about the cursor, Shift+wheel or middle-drag pans."
+                  AutomationProperties.Name="Fit the clip">
+            <TextBlock Text="Fit" FontSize="12" />
+          </Button>
+        </WrapPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <controls:TimelineSurface x:Name="Surface" Grid.Row="0" Grid.Column="0" />
+      <ScrollBar x:Name="VerticalBar" Grid.Row="0" Grid.Column="1" Orientation="Vertical" Style="{StaticResource PaneScrollBar}"
+                 AutomationProperties.Name="Scroll the bones" />
+      <ScrollBar x:Name="HorizontalBar" Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Style="{StaticResource TimeScrollBar}"
+                 AutomationProperties.Name="Scroll in time" ToolTip="Scroll in time (Shift+wheel)" />
+    </Grid>
+  </DockPanel>
+</UserControl>

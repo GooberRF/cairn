@@ -1,0 +1,120 @@
+<UserControl x:Class="Cairn.Atx.Ui.Views.ProblemsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Style="{StaticResource PaneHeaderBorder}">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Left" Text="{Binding HeaderText}"
+                   Style="{StaticResource PaneHeaderText}" />
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+          <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowErrors, Mode=TwoWay}"
+                        ToolTip="Show errors — the game will refuse to load the file"
+                        AutomationProperties.Name="Show errors">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE783;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                         Foreground="{DynamicResource Severity.Error}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding ErrorCount}" Margin="5,0,0,0" FontSize="11"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowWarnings, Mode=TwoWay}"
+                        ToolTip="Show warnings — the file loads, but not as written"
+                        AutomationProperties.Name="Show warnings">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                         Foreground="{DynamicResource Severity.Warning}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding WarningCount}" Margin="5,0,0,0" FontSize="11"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Style="{StaticResource FilterToggle}" IsChecked="{Binding ShowInfo, Mode=TwoWay}"
+                        Margin="0" ToolTip="Show suggestions — harmless tidy-ups"
+                        AutomationProperties.Name="Show suggestions">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                         Foreground="{DynamicResource Severity.Info}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding InfoCount}" Margin="5,0,0,0" FontSize="11"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Row="1">
+      <ListBox x:Name="List" ItemsSource="{Binding Items}" BorderThickness="0"
+               Background="Transparent" HorizontalContentAlignment="Stretch"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+               VirtualizingStackPanel.IsVirtualizing="True"
+               VirtualizingStackPanel.VirtualizationMode="Recycling"
+               AutomationProperties.Name="Problems">
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+          </Style>
+        </ListBox.ItemContainerStyle>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="8,6,8,7" Background="Transparent">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="22" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+
+              <TextBlock Grid.Column="0" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                         VerticalAlignment="Top" Margin="0,1,0,0"
+                         Text="{Binding Severity, Converter={StaticResource SeverityGlyph}}"
+                         Foreground="{Binding Severity, Converter={StaticResource SeverityBrush}}" />
+
+              <StackPanel Grid.Column="1">
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource App.Text}" />
+                <TextBlock Text="{Binding Help}" TextWrapping="Wrap" Margin="0,3,0,0"
+                           FontSize="12" Foreground="{DynamicResource App.SecondaryText}" />
+                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                  <TextBlock Text="{Binding LocationText}" FontSize="11" VerticalAlignment="Center"
+                             Foreground="{DynamicResource App.SecondaryText}" />
+                  <TextBlock Text="{Binding Code}" FontSize="11" Margin="10,0,0,0"
+                             VerticalAlignment="Center"
+                             Foreground="{DynamicResource App.SecondaryText}" />
+                  <ItemsControl ItemsSource="{Binding QuickFixes}" Margin="10,0,0,0"
+                                VerticalAlignment="Center"
+                                Visibility="{Binding HasQuickFixes,
+                                             Converter={StaticResource Truthy}}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Button Content="{Binding Title}" Command="{Binding ApplyCommand}"
+                                Margin="0,0,6,0" Padding="8,2" FontSize="11"
+                                AutomationProperties.Name="{Binding Title}"
+                                ToolTip="Apply this fix to the file" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16"
+                  IsHitTestVisible="False"
+                  Visibility="{Binding IsEmpty, Converter={StaticResource Truthy}}">
+        <TextBlock Style="{StaticResource HintText}" TextAlignment="Center"
+                   Text="{Binding EmptyText}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>

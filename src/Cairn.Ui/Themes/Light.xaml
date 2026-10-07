@@ -1,0 +1,223 @@
+<!--
+  Light colour set. Light.xaml and Dark.xaml must define exactly the same keys (the theme service
+  swaps one for the other at runtime and every reference is a DynamicResource); only values differ.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ── Surfaces ──────────────────────────────────────────────────────────── -->
+  <Color x:Key="App.WindowBackgroundColor">#FFF3F3F3</Color>
+  <Color x:Key="App.PaneBackgroundColor">#FFFAFAFA</Color>
+  <Color x:Key="App.ChromeBackgroundColor">#FFEDEDED</Color>
+  <Color x:Key="App.BorderColor">#FFD4D4D4</Color>
+  <Color x:Key="App.SubtleBorderColor">#FFE6E6E6</Color>
+  <Color x:Key="App.TextColor">#FF1B1B1B</Color>
+  <Color x:Key="App.SecondaryTextColor">#FF62636B</Color>
+  <Color x:Key="App.AccentColor">#FF0F62CE</Color>
+  <!-- Text drawn on top of App.Accent. White on the light theme's blue accent. -->
+  <Color x:Key="App.AccentForegroundColor">#FFFFFFFF</Color>
+  <Color x:Key="App.AccentSoftColor">#FFDCE8FA</Color>
+  <Color x:Key="App.HoverColor">#FFE8EEF8</Color>
+  <Color x:Key="App.SelectionColor">#FFCFE1FA</Color>
+  <Color x:Key="App.SelectionInactiveColor">#FFE4E4E6</Color>
+
+  <SolidColorBrush x:Key="App.WindowBackground" Color="{StaticResource App.WindowBackgroundColor}" />
+  <SolidColorBrush x:Key="App.PaneBackground" Color="{StaticResource App.PaneBackgroundColor}" />
+  <SolidColorBrush x:Key="App.ChromeBackground" Color="{StaticResource App.ChromeBackgroundColor}" />
+  <SolidColorBrush x:Key="App.Border" Color="{StaticResource App.BorderColor}" />
+  <SolidColorBrush x:Key="App.SubtleBorder" Color="{StaticResource App.SubtleBorderColor}" />
+  <SolidColorBrush x:Key="App.Text" Color="{StaticResource App.TextColor}" />
+  <SolidColorBrush x:Key="App.SecondaryText" Color="{StaticResource App.SecondaryTextColor}" />
+  <SolidColorBrush x:Key="App.Accent" Color="{StaticResource App.AccentColor}" />
+  <SolidColorBrush x:Key="App.AccentForeground" Color="{StaticResource App.AccentForegroundColor}" />
+  <SolidColorBrush x:Key="App.AccentSoft" Color="{StaticResource App.AccentSoftColor}" />
+  <SolidColorBrush x:Key="App.Hover" Color="{StaticResource App.HoverColor}" />
+  <SolidColorBrush x:Key="App.Selection" Color="{StaticResource App.SelectionColor}" />
+  <SolidColorBrush x:Key="App.SelectionInactive" Color="{StaticResource App.SelectionInactiveColor}" />
+
+  <!-- ── Severity ──────────────────────────────────────────────────────────── -->
+  <Color x:Key="Severity.ErrorColor">#FFC42B1C</Color>
+  <Color x:Key="Severity.WarningColor">#FF9D5D00</Color>
+  <Color x:Key="Severity.InfoColor">#FF0F62CE</Color>
+  <SolidColorBrush x:Key="Severity.Error" Color="{StaticResource Severity.ErrorColor}" />
+  <SolidColorBrush x:Key="Severity.Warning" Color="{StaticResource Severity.WarningColor}" />
+  <SolidColorBrush x:Key="Severity.Info" Color="{StaticResource Severity.InfoColor}" />
+  <SolidColorBrush x:Key="Severity.ErrorSoft" Color="#FFFDE7E4" />
+  <SolidColorBrush x:Key="Severity.WarningSoft" Color="#FFFCF1DC" />
+  <SolidColorBrush x:Key="Severity.InfoSoft" Color="#FFE6EFFC" />
+
+  <!-- ── Banners ───────────────────────────────────────────────────────────── -->
+  <SolidColorBrush x:Key="Banner.ErrorBackground" Color="#FFFDE7E4" />
+  <SolidColorBrush x:Key="Banner.ErrorBorder" Color="#FFE9A69C" />
+  <SolidColorBrush x:Key="Banner.NoticeBackground" Color="#FFFCF1DC" />
+  <SolidColorBrush x:Key="Banner.NoticeBorder" Color="#FFE3C489" />
+  <SolidColorBrush x:Key="Banner.InfoBackground" Color="#FFE6EFFC" />
+  <SolidColorBrush x:Key="Banner.InfoBorder" Color="#FFA9C4EC" />
+  <SolidColorBrush x:Key="Banner.Foreground" Color="#FF1B1B1B" />
+
+  <!-- ── Editor ────────────────────────────────────────────────────────────── -->
+  <Color x:Key="Editor.BackgroundColor">#FFFFFFFF</Color>
+  <Color x:Key="Editor.ForegroundColor">#FF1B1B1B</Color>
+  <SolidColorBrush x:Key="Editor.Background" Color="{StaticResource Editor.BackgroundColor}" />
+  <SolidColorBrush x:Key="Editor.Foreground" Color="{StaticResource Editor.ForegroundColor}" />
+  <SolidColorBrush x:Key="Editor.LineNumber" Color="#FF9B9B9B" />
+  <SolidColorBrush x:Key="Editor.CurrentLine" Color="#FFF3F6FB" />
+  <SolidColorBrush x:Key="Editor.CurrentLineBorder" Color="#FFE1E8F3" />
+  <SolidColorBrush x:Key="Editor.FrameHighlight" Color="#FFEFF4FC" />
+  <SolidColorBrush x:Key="Editor.FrameHighlightBorder" Color="#FFC9DAF3" />
+
+  <!-- Syntax colours (also read as Color by the highlighting builder). -->
+  <Color x:Key="Syntax.CommentColor">#FF3F8A3F</Color>
+  <Color x:Key="Syntax.TableColor">#FF7A3E9D</Color>
+  <Color x:Key="Syntax.KeyColor">#FF0F3FA8</Color>
+  <Color x:Key="Syntax.StringColor">#FFA31515</Color>
+  <Color x:Key="Syntax.NumberColor">#FF0E7A6B</Color>
+  <Color x:Key="Syntax.BooleanColor">#FF0F62CE</Color>
+  <Color x:Key="Syntax.PunctuationColor">#FF6B6B6B</Color>
+
+  <!-- ── Frames list ───────────────────────────────────────────────────────── -->
+  <SolidColorBrush x:Key="Frames.RowAlternate" Color="#FFF6F6F7" />
+  <SolidColorBrush x:Key="Frames.Grip" Color="#FFB4B4B8" />
+  <SolidColorBrush x:Key="Frames.ThumbnailBackground" Color="#FFECECEE" />
+  <SolidColorBrush x:Key="Frames.InsertionIndicator" Color="{StaticResource App.AccentColor}" />
+  <SolidColorBrush x:Key="Badge.Background" Color="#FFE3E3E7" />
+  <SolidColorBrush x:Key="Badge.Foreground" Color="#FF3C3C43" />
+
+  <!-- ── Preview ───────────────────────────────────────────────────────────── -->
+  <Color x:Key="Preview.CheckerLightColor">#FFFFFFFF</Color>
+  <Color x:Key="Preview.CheckerDarkColor">#FFDEDEE2</Color>
+  <SolidColorBrush x:Key="Preview.CheckerLightColorBrush" Color="{StaticResource Preview.CheckerLightColor}" />
+  <SolidColorBrush x:Key="Preview.CheckerDarkColorBrush" Color="{StaticResource Preview.CheckerDarkColor}" />
+  <SolidColorBrush x:Key="Preview.Background" Color="#FFF0F0F2" />
+
+  <SolidColorBrush x:Key="Preview.Black" Color="#FF000000" />
+  <SolidColorBrush x:Key="Preview.White" Color="#FFFFFFFF" />
+
+  <!-- ── Transport and scrubber ────────────────────────────────────────────── -->
+  <Color x:Key="Scrubber.TrackColor">#FFE7E7EB</Color>
+  <Color x:Key="Scrubber.SegmentColor">#FFD3DEEE</Color>
+  <Color x:Key="Scrubber.SegmentAlternateColor">#FFE2EAF6</Color>
+  <Color x:Key="Scrubber.SegmentBorderColor">#FFBCC8DA</Color>
+  <Color x:Key="Scrubber.HoverColor">#FFBFD2EE</Color>
+  <SolidColorBrush x:Key="Scrubber.Track" Color="{StaticResource Scrubber.TrackColor}" />
+  <SolidColorBrush x:Key="Scrubber.Segment" Color="{StaticResource Scrubber.SegmentColor}" />
+  <SolidColorBrush x:Key="Scrubber.SegmentAlternate" Color="{StaticResource Scrubber.SegmentAlternateColor}" />
+  <SolidColorBrush x:Key="Scrubber.SegmentBorder" Color="{StaticResource Scrubber.SegmentBorderColor}" />
+  <SolidColorBrush x:Key="Scrubber.Hover" Color="{StaticResource Scrubber.HoverColor}" />
+  <SolidColorBrush x:Key="Scrubber.Current" Color="{StaticResource App.AccentColor}" />
+  <SolidColorBrush x:Key="Frames.PlayingMarker" Color="{StaticResource App.AccentColor}" />
+
+  <!-- ── Tables (bulk timing preview, shortcut list) ───────────────────────── -->
+  <SolidColorBrush x:Key="Table.HeaderBackground" Color="#FFEDEDF0" />
+  <SolidColorBrush x:Key="Table.ChangedBackground" Color="#FFFBF2DA" />
+
+  <!-- ── Help documents ────────────────────────────────────────────────────── -->
+  <SolidColorBrush x:Key="Help.CodeBackground" Color="#FFEFEFF3" />
+  <SolidColorBrush x:Key="Help.RuleBrush" Color="#FFD9D9DE" />
+
+  <DrawingBrush x:Key="Preview.CheckerBrush" TileMode="Tile" Stretch="None"
+                Viewport="0,0,16,16" ViewportUnits="Absolute">
+    <DrawingBrush.Drawing>
+      <DrawingGroup>
+        <GeometryDrawing Brush="{StaticResource Preview.CheckerLightColorBrush}">
+          <GeometryDrawing.Geometry>
+            <RectangleGeometry Rect="0,0,16,16" />
+          </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+        <GeometryDrawing Brush="{StaticResource Preview.CheckerDarkColorBrush}">
+          <GeometryDrawing.Geometry>
+            <GeometryGroup>
+              <RectangleGeometry Rect="0,0,8,8" />
+              <RectangleGeometry Rect="8,8,8,8" />
+            </GeometryGroup>
+          </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+      </DrawingGroup>
+    </DrawingBrush.Drawing>
+  </DrawingBrush>
+
+  <!-- ── Viewport ─────────────────────────────────────────────────────────── -->
+  <Color x:Key="Viewport.BackgroundColor">#FFE4E6EA</Color>
+  <SolidColorBrush x:Key="Viewport.Background" Color="{StaticResource Viewport.BackgroundColor}" />
+  <SolidColorBrush x:Key="Viewport.Grid" Color="#33000000" />
+  <SolidColorBrush x:Key="Viewport.GridMajor" Color="#55000000" />
+  <SolidColorBrush x:Key="Viewport.AxisX" Color="#FFD0383A" />
+  <SolidColorBrush x:Key="Viewport.AxisY" Color="#FF2E9A3E" />
+  <SolidColorBrush x:Key="Viewport.AxisZ" Color="#FF2F6FDB" />
+  <SolidColorBrush x:Key="Viewport.Bone" Color="#E6F2F4F8" />
+  <SolidColorBrush x:Key="Viewport.BoneOutline" Color="#CC1B1F2A" />
+  <SolidColorBrush x:Key="Viewport.Joint" Color="#FFFFC34D" />
+  <SolidColorBrush x:Key="Viewport.BoneSelected" Color="#FFFF8A1F" />
+  <SolidColorBrush x:Key="Viewport.BoneHover" Color="#FF41C4FF" />
+  <SolidColorBrush x:Key="Viewport.Sphere" Color="#CC1FB5A0" />
+  <SolidColorBrush x:Key="Viewport.Prop" Color="#FFD045D8" />
+  <SolidColorBrush x:Key="Viewport.RootPath" Color="#FF2F6FDB" />
+  <SolidColorBrush x:Key="Viewport.Label" Color="#FFFFFFFF" />
+  <SolidColorBrush x:Key="Viewport.LabelBackground" Color="#B3222631" />
+  <SolidColorBrush x:Key="Viewport.Highlight" Color="#FFFF8A1F" />
+  <SolidColorBrush x:Key="Viewport.Notice" Color="#E6FFFFFF" />
+  <SolidColorBrush x:Key="Viewport.NoticeText" Color="#FF1B1B1B" />
+  <Color x:Key="Viewport.FlatMeshColor">#FFB9BEC8</Color>
+  <Color x:Key="Viewport.MissingTextureColor">#FFC9A7B8</Color>
+  <Color x:Key="Viewport.HighlightTintColor">#66FF8A1F</Color>
+  <SolidColorBrush x:Key="Viewport.ToolbarBackground" Color="#E6FAFAFA" />
+
+  <!-- ── Timeline scrubber ────────────────────────────────────────────────── -->
+  <SolidColorBrush x:Key="Scrubber.Ramp" Color="#4DFF8A1F" />
+  <SolidColorBrush x:Key="Scrubber.Tick" Color="#FFB4B4BC" />
+  <SolidColorBrush x:Key="Scrubber.KeyMark" Color="#FF62636B" />
+
+  <!-- ── Ghost skeletons (phase 5) ─────────────────────────────────────────── -->
+  <SolidColorBrush x:Key="Viewport.Ghost" Color="#994A5DD6" />
+  <SolidColorBrush x:Key="Viewport.GhostCompare" Color="#B3C2410C" />
+
+  <!-- ── Timeline / dope sheet (phase 5) ───────────────────────────────────── -->
+  <SolidColorBrush x:Key="Timeline.Background" Color="#FFFCFCFD" />
+  <SolidColorBrush x:Key="Timeline.HeaderBackground" Color="#FFF1F1F3" />
+  <SolidColorBrush x:Key="Timeline.RowAlternate" Color="#FFF4F5F7" />
+  <SolidColorBrush x:Key="Timeline.RowSelected" Color="#FFDCE8FA" />
+  <SolidColorBrush x:Key="Timeline.Grid" Color="#FFEBEBEF" />
+  <SolidColorBrush x:Key="Timeline.GridMajor" Color="#FFD6D6DD" />
+  <SolidColorBrush x:Key="Timeline.OutOfRange" Color="#14000000" />
+  <SolidColorBrush x:Key="Timeline.RotationKey" Color="#FFD08E10" />
+  <SolidColorBrush x:Key="Timeline.PositionKey" Color="#FF2A7CC9" />
+  <SolidColorBrush x:Key="Timeline.SummaryKey" Color="#FF7A7A84" />
+  <SolidColorBrush x:Key="Timeline.KeySelected" Color="#FFF05A00" />
+  <SolidColorBrush x:Key="Timeline.KeyHover" Color="#FF1B1B1B" />
+  <SolidColorBrush x:Key="Timeline.KeyOutline" Color="#99FFFFFF" />
+  <SolidColorBrush x:Key="Timeline.SelectionBox" Color="#260F62CE" />
+  <SolidColorBrush x:Key="Timeline.SelectionBoxBorder" Color="#FF0F62CE" />
+  <SolidColorBrush x:Key="Timeline.Handle" Color="#FFF05A00" />
+
+  <!-- ── Gizmos (phase 5) ──────────────────────────────────────────────────── -->
+  <SolidColorBrush x:Key="Gizmo.AxisX" Color="#FFD62E2E" />
+  <SolidColorBrush x:Key="Gizmo.AxisY" Color="#FF239A38" />
+  <SolidColorBrush x:Key="Gizmo.AxisZ" Color="#FF2A66D9" />
+  <SolidColorBrush x:Key="Gizmo.Screen" Color="#FF2B2F3A" />
+  <SolidColorBrush x:Key="Gizmo.Hover" Color="#FFF0A000" />
+  <SolidColorBrush x:Key="Gizmo.Outline" Color="#D9FFFFFF" />
+  <SolidColorBrush x:Key="Gizmo.Trackball" Color="#12000000" />
+  <SolidColorBrush x:Key="Gizmo.TrackballHover" Color="#2A000000" />
+  <SolidColorBrush x:Key="Gizmo.ReadoutBackground" Color="#E6222631" />
+  <SolidColorBrush x:Key="Gizmo.ReadoutText" Color="#FFFFFFFF" />
+  <SolidColorBrush x:Key="PoseBadge.Background" Color="#F2FFFFFF" />
+  <SolidColorBrush x:Key="PoseBadge.Text" Color="#FF1B1B1B" />
+  <SolidColorBrush x:Key="PoseBadge.HintText" Color="#FF4E4E56" />
+  <SolidColorBrush x:Key="PoseBadge.AutoKey" Color="#FFD62E2E" />
+  <SolidColorBrush x:Key="PoseBadge.Layer" Color="#FF7B4FD6" />
+  <SolidColorBrush x:Key="PoseBadge.Ik" Color="#FF14907E" />
+  <SolidColorBrush x:Key="PoseBadge.Mesh" Color="#FFB87400" />
+
+  <!-- ── System colour keys (phase 5, table usage / theme audit) ───────────── -->
+  <!-- A control that ends up on a classic (Aero2) template — an item container style without BasedOn,
+       a stock popup — reads its text and selection colours from these SystemColors keys through
+       DynamicResource. Mapping them to the theme keeps such text readable in both themes. -->
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="{StaticResource App.TextColor}" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="{StaticResource App.TextColor}" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="{StaticResource App.TextColor}" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="{StaticResource App.SelectionColor}" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="{StaticResource App.TextColor}" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="{StaticResource App.SelectionInactiveColor}" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="{StaticResource App.TextColor}" />
+
+</ResourceDictionary>

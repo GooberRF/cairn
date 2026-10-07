@@ -1,0 +1,231 @@
+<Window x:Class="Cairn.Rfa.Ui.Views.Dialogs.Gltf.GltfMeshImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+        xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls"
+        xmlns:viewport="clr-namespace:Cairn.Rfa.Ui.Viewport"
+        Title="{Binding Title}" Width="1180" Height="840" MinWidth="940" MinHeight="600"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <!-- File › Import Mesh from glTF… (GltfMeshImportViewModel). Theme brushes only. -->
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="GltfDialogResources.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid Margin="20,16,20,14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+      <TextBlock Style="{StaticResource DialogHeading}" Text="{Binding Heading}" />
+      <TextBlock Style="{StaticResource HintText}" Text="{Binding Description}" />
+      <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource App.Text}" Text="{Binding SourceSummary}"
+                 TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}" AutomationProperties.Name="What the file holds" />
+    </StackPanel>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="380" MinWidth="320" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" MinWidth="480" />
+      </Grid.ColumnDefinitions>
+
+      <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="0,0,8,0">
+        <StackPanel>
+          <StackPanel Style="{StaticResource DialogGroup}">
+            <TextBlock Style="{StaticResource DialogSubheading}" Text="BUILD" />
+            <RadioButton x:Name="CharacterRadio" GroupName="Kind" Margin="0,0,0,2" IsChecked="{Binding IsCharacter, Mode=TwoWay}"
+                         ToolTip="A skinned character mesh with bones, collision spheres and prop points" AutomationProperties.Name="Character mesh">
+              <AccessText Text="_Character (.v3c)" />
+            </RadioButton>
+            <TextBlock Style="{StaticResource OptionHint}" Margin="22,0,0,6" Text="Skinned to the glTF's skeleton; clips play on it. Spheres and prop points come from rf_csphere:: / rf_prop:: nodes." />
+            <RadioButton GroupName="Kind" Margin="0,0,0,2" IsChecked="{Binding IsStatic, Mode=TwoWay}"
+                         ToolTip="A static mesh (items, props, level decoration); saves as .v3m" AutomationProperties.Name="Static mesh">
+              <AccessText Text="_Static mesh (.v3m)" />
+            </RadioButton>
+            <TextBlock Style="{StaticResource OptionHint}" Margin="22,0,0,0" Text="No bones: any skin is ignored and the vertices keep their bind pose. Saves as .v3m." />
+          </StackPanel>
+
+          <StackPanel Style="{StaticResource DialogGroup}">
+            <TextBlock Style="{StaticResource DialogSubheading}" Text="KEEP AN EXISTING SKELETON" />
+            <CheckBox Margin="0,0,0,6" IsChecked="{Binding KeepSkeleton, Mode=TwoWay}" IsEnabled="{Binding HasKeepSources}"
+                      ToolTipService.ShowOnDisabled="True" ToolTip="{Binding KeepToolTip}" AutomationProperties.Name="Keep the skeleton of an open mesh">
+              <AccessText Text="Replace the geometry but _keep the skeleton, spheres and prop points of" TextWrapping="Wrap" />
+            </CheckBox>
+            <ComboBox Margin="22,0,0,4" MinHeight="26" ItemsSource="{Binding KeepSources}" SelectedItem="{Binding KeepSource, Mode=TwoWay}"
+                      IsEnabled="{Binding KeepSkeleton}" ToolTip="The open character mesh whose skeleton is kept" AutomationProperties.Name="Mesh whose skeleton is kept" />
+            <TextBlock Style="{StaticResource OptionHint}" Margin="22,0,0,0" Text="{Binding KeepToolTip}" />
+          </StackPanel>
+
+          <StackPanel Style="{StaticResource DialogGroup}">
+            <TextBlock Style="{StaticResource DialogSubheading}" Text="OPTIONS" />
+            <StackPanel Style="{StaticResource OptionRow}">
+              <TextBlock Style="{StaticResource OptionLabel}" Text="Scale" />
+              <cui:NumericBox Width="110" Value="{Binding Scale, Mode=TwoWay}" Decimals="3" Step="0.1" Minimum="0.001"
+                                   ToolTip="Uniform scale for positions, bones, spheres and prop points" AutomationProperties.Name="Scale" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource OptionHint}" Text="glTF and RF both use metres, so 1 keeps the size. Use 0.01 for a file authored in centimetres." />
+
+            <TextBlock Style="{StaticResource DialogLabel}" Text="Texture names" Margin="0,0,0,4" />
+            <RadioButton GroupName="Textures" Margin="0,0,0,4" IsChecked="{Binding IsForceTga, Mode=TwoWay}"
+                         ToolTip="foo.png becomes foo.tga in the mesh" AutomationProperties.Name="Name textures .tga">
+              <AccessText Text="Name them ._tga (recommended)" />
+            </RadioButton>
+            <RadioButton GroupName="Textures" Margin="0,0,0,2" IsChecked="{Binding IsKeepNames, Mode=TwoWay}"
+                         ToolTip="Keep the names as the glTF has them" AutomationProperties.Name="Keep texture names">
+              <AccessText Text="Keep the glTF's _names" />
+            </RadioButton>
+            <TextBlock Style="{StaticResource OptionHint}" Text="RF meshes name .tga textures; the game still finds a .png or .dds of the same name first, so .tga names work with your PNGs." />
+
+            <TextBlock Style="{StaticResource DialogLabel}" Text="LOD distances (where a node has no rf_lod_distance)" Margin="0,0,0,4" TextWrapping="Wrap" />
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0">
+                <TextBlock Style="{StaticResource DialogLabel}" Text="LOD 0" Margin="0,0,0,2" />
+                <cui:NumericBox Value="{Binding Lod0Distance, Mode=TwoWay}" Decimals="1" Step="1" Minimum="0" Suffix="m"
+                                     ToolTip="LOD 0 is drawn from this distance (normally 0)" AutomationProperties.Name="LOD 0 distance" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Style="{StaticResource DialogLabel}" Text="LOD 1" Margin="0,0,0,2" />
+                <cui:NumericBox Value="{Binding Lod1Distance, Mode=TwoWay}" Decimals="1" Step="1" Minimum="0" Suffix="m"
+                                     ToolTip="LOD 1 replaces LOD 0 beyond this distance" AutomationProperties.Name="LOD 1 distance" />
+              </StackPanel>
+              <StackPanel Grid.Column="4">
+                <TextBlock Style="{StaticResource DialogLabel}" Text="LOD 2" Margin="0,0,0,2" />
+                <cui:NumericBox Value="{Binding Lod2Distance, Mode=TwoWay}" Decimals="1" Step="1" Minimum="0" Suffix="m"
+                                     ToolTip="LOD 2 replaces LOD 1 beyond this distance" AutomationProperties.Name="LOD 2 distance" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Style="{StaticResource OptionHint}" Text="How far from the camera each level of detail takes over. A REDUX or RFA Workbench export carries its own distances." />
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <GridSplitter Grid.Column="1" Style="{StaticResource VerticalSplitter}" Margin="4,0" AutomationProperties.Name="Resize the options" />
+
+      <Grid Grid.Column="2">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" MinHeight="200" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="0.7*" MinHeight="150" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" BorderThickness="1" BorderBrush="{DynamicResource App.Border}" CornerRadius="3" ClipToBounds="True">
+          <Grid>
+            <viewport:ViewportControl DataContext="{Binding Preview}" AutomationProperties.Name="Preview of the built mesh (bind pose)" />
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Padding="12,8" CornerRadius="4" MaxWidth="420"
+                    Background="{DynamicResource Viewport.Notice}" BorderBrush="{DynamicResource App.Border}" BorderThickness="1"
+                    Visibility="{Binding HasPreviewMessage, Converter={StaticResource Truthy}}" IsHitTestVisible="False">
+              <TextBlock Text="{Binding PreviewMessage}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource Viewport.NoticeText}"
+                         AutomationProperties.Name="Preview message" />
+            </Border>
+            <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8" Padding="7,2" CornerRadius="3"
+                    Background="{DynamicResource Viewport.LabelBackground}" IsHitTestVisible="False"
+                    Visibility="{Binding IsBusy, Converter={StaticResource Truthy}}">
+              <TextBlock Text="Building…" FontSize="11" Foreground="{DynamicResource Viewport.Label}" />
+            </Border>
+          </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource DialogCard}" Padding="10,6" Margin="0,8,0,0" AutomationProperties.Name="What will be built">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding SummaryLines}" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel Margin="0,1">
+                    <TextBlock DockPanel.Dock="Left" Text="•" Margin="0,0,7,0" Foreground="{DynamicResource App.SecondaryText}" />
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource App.Text}" AutomationProperties.Name="{Binding}" />
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock FontSize="12" Margin="0,2,0,0" Foreground="{DynamicResource App.SecondaryText}" Text="{Binding OutputName, StringFormat='Opens as {0} (unsaved).'}"
+                       AutomationProperties.Name="New document name" />
+          </StackPanel>
+        </Border>
+
+        <DockPanel Grid.Row="2" Margin="0,10,0,4">
+          <TextBlock DockPanel.Dock="Left" Style="{StaticResource DialogSubheading}" Text="PRE-FLIGHT" Margin="0,0,10,0" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding IssuesSummary}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" AutomationProperties.Name="Pre-flight summary">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource App.SecondaryText}" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasErrors}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource Severity.Error}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </DockPanel>
+
+        <Border Grid.Row="3" BorderThickness="1" BorderBrush="{DynamicResource App.Border}" Background="{DynamicResource App.PaneBackground}" CornerRadius="3">
+          <Grid>
+            <ListBox ItemsSource="{Binding Issues}" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.ScrollUnit="Pixel" AutomationProperties.Name="Pre-flight issues">
+              <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource PaneListBoxItem}">
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  <Setter Property="Padding" Value="8,4" />
+                  <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                </Style>
+              </ListBox.ItemContainerStyle>
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,2,8,0" VerticalAlignment="Top"
+                               Foreground="{Binding BrushKey, Converter={StaticResource BrushKey}}" ToolTip="{Binding SeverityText}" />
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Code}" FontFamily="{StaticResource MonoFont}" FontSize="11" Margin="0,2,10,0" VerticalAlignment="Top"
+                               Foreground="{DynamicResource App.SecondaryText}" ToolTip="The code of this finding (it does not change between versions; the usage guide lists every code)" />
+                    <StackPanel>
+                      <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource App.Text}" />
+                      <TextBlock Text="{Binding Fix}" TextWrapping="Wrap" FontSize="11.5" Margin="0,2,0,0" Foreground="{DynamicResource App.SecondaryText}"
+                                 Visibility="{Binding HasFix, Converter={StaticResource Truthy}}" />
+                    </StackPanel>
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Margin="12" Style="{StaticResource HintText}" Text="No findings: nothing was converted, assumed or out of limits." VerticalAlignment="Top"
+                       Visibility="{Binding ShowNoFindings, Converter={StaticResource Truthy}}" IsHitTestVisible="False" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <StackPanel Grid.Row="2" Margin="0,10,0,0">
+      <DockPanel Visibility="{Binding HasBuildError, Converter={StaticResource Truthy}}">
+        <TextBlock DockPanel.Dock="Left" Text="&#xE783;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,2,7,0" Foreground="{DynamicResource Severity.Error}" />
+        <TextBlock Text="{Binding BuildError}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource Severity.Error}" AutomationProperties.Name="Build error" />
+      </DockPanel>
+      <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource App.SecondaryText}" Text="{Binding Problem}"
+                 Visibility="{Binding Problem, Converter={StaticResource Truthy}}" AutomationProperties.Name="Why Import is disabled" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Style="{StaticResource DialogButton}" Content="_Import" IsDefault="True" Command="{Binding ImportCommand}" ToolTipService.ShowOnDisabled="True"
+              ToolTip="Open the built mesh as a new, unsaved document (nothing is written until you save; a static mesh saves as .v3m)"
+              AutomationProperties.Name="Import" />
+      <Button Style="{StaticResource DialogButton}" Content="Cancel" IsCancel="True"
+              ToolTip="Close without importing (Esc)" AutomationProperties.Name="Cancel" />
+    </StackPanel>
+  </Grid>
+</Window>

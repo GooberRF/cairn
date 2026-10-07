@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Vfx.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Collections.Immutable" />
+    <Using Include="System.Numerics" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Vfx.Core\Cairn.Vfx.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Workspace\Cairn.Workspace.csproj" />
+    <!-- Vertex editing (VfxVertexEdits) lives in the UI assembly; aliased because SampleGen compiles some of the same sources. -->
+    <ProjectReference Include="..\Cairn.Vfx.Ui\Cairn.Vfx.Ui.csproj" Aliases="vfxui" />
+    <!-- The sample generator (and through it the editor's templates and primitive requests). -->
+    <ProjectReference Include="..\..\..\tools\Cairn.Vfx.SampleGen\Cairn.Vfx.SampleGen.csproj" />
+  </ItemGroup>
+
+</Project>

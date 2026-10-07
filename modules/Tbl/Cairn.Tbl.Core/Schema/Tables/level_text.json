@@ -1,0 +1,34 @@
+{
+  "pattern": "*_text.tbl",
+  "title": "Level text",
+  "doc": "Per-level voice lines and subtitles (<level>_text.tbl), numbered 0 to 63; there are no section headers.",
+  "sections": [
+    {
+      "name": "",
+      "required": false,
+      "repeat": false,
+      "doc": "Rows of a number, a quoted sound file, then either En:, Gr: and Fr: texts or one quoted text, read until the end of the file.",
+      "layout": "rows",
+      "defines": "leveltext",
+      "key": "index",
+      "maxEntries": 64,
+      "columns": [
+        {
+          "type": "int",
+          "min": 0,
+          "max": 63,
+          "doc": "message number"
+        },
+        {
+          "type": "file",
+          "file": "sound",
+          "doc": "voice sound file; \"\" for none"
+        },
+        {
+          "type": "text",
+          "doc": "En: \"...\" Gr: \"...\" Fr: \"...\" (each up to 1023 characters), or a single quoted text"
+        }
+      ]
+    }
+  ]
+}

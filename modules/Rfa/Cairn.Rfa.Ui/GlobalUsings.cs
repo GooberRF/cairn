@@ -1,0 +1,21 @@
+﻿global using Cairn.Ui;
+global using Cairn.Ui.Mvvm;
+global using Cairn.Ui.Controls;
+global using Cairn.Ui.Services;
+global using Cairn.Ui.Modules;
+global using Cairn.Ui.Documents;
+global using Cairn.Viewport;
+global using Cairn.Workspace;
+global using Cairn.Assets;
+global using Cairn.Formats;
+global using Cairn.Formats.Gltf;
+global using Cairn.Formats.Imaging;
+global using Cairn.Formats.Maths;
+global using Cairn.Formats.Tbl;
+global using Cairn.Formats.Vpp;
+global using Cairn.Rfa.Assets;
+global using Cairn.Rfa.Formats.Tbl;
+global using Cairn.Ui.Diagnostics;
+// The ported RFA tests keep their old context type names; these wrap the shell's contexts.
+global using SelfTestContext = Cairn.Rfa.Ui.Diagnostics.RfaSelfTestContext;
+global using ScreenshotContext = Cairn.Rfa.Ui.Diagnostics.RfaScreenshotContext;

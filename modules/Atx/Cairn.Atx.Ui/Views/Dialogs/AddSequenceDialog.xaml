@@ -1,0 +1,261 @@
+<Window x:Class="Cairn.Atx.Ui.Views.Dialogs.AddSequenceDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+        xmlns:controls="clr-namespace:Cairn.Atx.Ui.Controls"
+        Title="Add Sequence" Width="740" Height="620" MinWidth="620" MinHeight="520"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Window.Resources>
+    <DataTemplate x:Key="SequenceRow">
+      <Grid Height="30" Background="Transparent">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="4,0,8,0"
+                  IsChecked="{Binding IsIncluded, Mode=TwoWay}"
+                  AutomationProperties.Name="{Binding Name}" />
+        <Border Grid.Column="1" Width="24" Height="24" CornerRadius="2" Margin="0,0,8,0"
+                Background="{DynamicResource Frames.ThumbnailBackground}"
+                BorderBrush="{DynamicResource App.SubtleBorder}" BorderThickness="1">
+          <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="1"
+                 RenderOptions.BitmapScalingMode="HighQuality" />
+        </Border>
+        <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource App.Text}" />
+        <TextBlock Grid.Column="3" Text="{Binding ExistsText}" VerticalAlignment="Center"
+                   Margin="8,0,6,0" FontSize="11"
+                   Foreground="{DynamicResource App.SecondaryText}" />
+      </Grid>
+    </DataTemplate>
+  </Window.Resources>
+
+  <Grid Margin="20,18,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+      <TextBlock Style="{StaticResource DialogHeading}" Text="Add a sequence of frames" />
+      <TextBlock Style="{StaticResource HintText}"
+                 Text="Frames always store just the file name, so every image has to live somewhere the game will look." />
+    </StackPanel>
+
+    <TabControl Grid.Row="1" x:Name="Tabs" SelectedIndex="{Binding TabIndex, Mode=TwoWay}"
+                Background="Transparent" BorderBrush="{DynamicResource App.Border}"
+                AutomationProperties.Name="Sequence source">
+
+      <!-- ── From files ────────────────────────────────────────────────────── -->
+      <TabItem Header="From _files">
+        <Grid Margin="12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <DockPanel Grid.Row="0" Margin="0,0,0,10">
+            <Button x:Name="BrowseButton" DockPanel.Dock="Right" Style="{StaticResource DialogButton}"
+                    Content="_Choose file…" Click="OnBrowse"
+                    ToolTip="Pick any one file of the numbered run; the rest are found automatically"
+                    AutomationProperties.Name="Choose a file from the sequence" />
+            <TextBlock Text="{Binding SourceSummary}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" Margin="0,0,8,0"
+                       Foreground="{DynamicResource App.Text}"
+                       AutomationProperties.Name="Detected sequence" />
+          </DockPanel>
+
+          <Border Grid.Row="1" Style="{StaticResource DialogCard}" Padding="0">
+            <Grid>
+              <ListBox x:Name="FileList" ItemsSource="{Binding Items}" BorderThickness="0"
+                       Background="Transparent" HorizontalContentAlignment="Stretch"
+                       ItemTemplate="{StaticResource SequenceRow}"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       AutomationProperties.Name="Detected files" />
+              <TextBlock Style="{StaticResource HintText}" TextAlignment="Center" Margin="24"
+                         VerticalAlignment="Center" IsHitTestVisible="False"
+                         Visibility="{Binding HasItems, Converter={StaticResource Falsy}}"
+                         Text="Choose a file such as hazard_strip_00.tga and every numbered sibling appears here." />
+            </Grid>
+          </Border>
+
+          <WrapPanel Grid.Row="2" Margin="0,10,0,0" Orientation="Horizontal">
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="First" />
+              <cui:NumericBox Decimals="0" Width="86" Value="{Binding RangeStart, Mode=TwoWay}"
+                                   Minimum="0" Maximum="{Binding MaxIndex}"
+                                   ToolTip="First file of the run to use, counting from 0"
+                                   AutomationProperties.Name="Range start" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="Last" />
+              <cui:NumericBox Decimals="0" Width="86" Value="{Binding RangeEnd, Mode=TwoWay}"
+                                   Minimum="0" Maximum="{Binding MaxIndex}"
+                                   ToolTip="Last file of the run to use, counting from 0"
+                                   AutomationProperties.Name="Range end" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="Step" />
+              <cui:NumericBox Decimals="0" Width="72" Value="{Binding Step, Mode=TwoWay}"
+                                   Minimum="1" Maximum="99"
+                                   ToolTip="Take every Nth file — 2 halves the frame count"
+                                   AutomationProperties.Name="Step" />
+            </StackPanel>
+            <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,2">
+              <CheckBox Content="_Reverse order" IsChecked="{Binding Reverse, Mode=TwoWay}"
+                        Margin="0,0,0,6"
+                        ToolTip="Add the frames back to front"
+                        AutomationProperties.Name="Reverse order" />
+              <CheckBox Content="Append re_versed copy (manual ping-pong)"
+                        IsChecked="{Binding AppendReversed, Mode=TwoWay}"
+                        ToolTip="Adds the run again backwards, without the end frames, so a Loop texture bounces"
+                        AutomationProperties.Name="Append reversed copy" />
+            </StackPanel>
+          </WrapPanel>
+        </Grid>
+      </TabItem>
+
+      <!-- ── From pattern ──────────────────────────────────────────────────── -->
+      <TabItem Header="From _pattern">
+        <Grid Margin="12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="Prefix" />
+              <TextBox Width="190" MinHeight="30"
+                       Text="{Binding Prefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="Everything before the number, e.g. hazard_strip_"
+                       AutomationProperties.Name="Prefix" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="From" />
+              <cui:NumericBox Decimals="0" Width="86" Value="{Binding PatternStart, Mode=TwoWay}"
+                                   Minimum="0" Maximum="99999"
+                                   ToolTip="First number, inclusive"
+                                   AutomationProperties.Name="First number" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="To" />
+              <cui:NumericBox Decimals="0" Width="86" Value="{Binding PatternEnd, Mode=TwoWay}"
+                                   Minimum="0" Maximum="99999"
+                                   ToolTip="Last number, inclusive"
+                                   AutomationProperties.Name="Last number" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="Digits" />
+              <cui:NumericBox Decimals="0" Width="72" Value="{Binding Padding, Mode=TwoWay}"
+                                   Minimum="0" Maximum="8"
+                                   ToolTip="Zero padding: 2 writes 00, 01, 02. 0 writes 0, 1, 2."
+                                   AutomationProperties.Name="Zero padding" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="Extension" />
+              <TextBox Width="86" MinHeight="30"
+                       Text="{Binding Extension, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="File extension, e.g. .tga"
+                       AutomationProperties.Name="Extension" />
+            </StackPanel>
+            <StackPanel Margin="0,0,0,8">
+              <TextBlock Style="{StaticResource DialogLabel}" Text="Step" />
+              <cui:NumericBox Decimals="0" Width="72" Value="{Binding PatternStep, Mode=TwoWay}"
+                                   Minimum="1" Maximum="99"
+                                   ToolTip="Increment between numbers"
+                                   AutomationProperties.Name="Number step" />
+            </StackPanel>
+          </WrapPanel>
+
+          <TextBlock Grid.Row="1" Style="{StaticResource HintText}" Margin="0,0,0,8"
+                     Text="{Binding PatternFolderText}"
+                     AutomationProperties.Name="Pattern folder" />
+
+          <Border Grid.Row="2" Style="{StaticResource DialogCard}" Padding="0">
+            <ListBox ItemsSource="{Binding PatternItems}" BorderThickness="0"
+                     Background="Transparent" HorizontalContentAlignment="Stretch"
+                     ItemTemplate="{StaticResource SequenceRow}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     AutomationProperties.Name="Generated names" />
+          </Border>
+
+          <!-- Says so when the range covers more names than the list shows, or than are added. -->
+          <TextBlock Grid.Row="3" Style="{StaticResource HintText}" Margin="0,6,0,0"
+                     TextWrapping="Wrap" Text="{Binding PatternOverflowText}"
+                     Visibility="{Binding HasPatternOverflow, Converter={StaticResource Truthy}}"
+                     AutomationProperties.Name="Generated name count" />
+        </Grid>
+      </TabItem>
+    </TabControl>
+
+    <!-- Insert position + live result -->
+    <Grid Grid.Row="2" Margin="0,12,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <StackPanel Grid.Column="0">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="INSERT" />
+        <StackPanel Orientation="Horizontal">
+          <RadioButton GroupName="Insert" Margin="0,0,14,0"
+                       IsChecked="{Binding IsAfterSelection, Mode=TwoWay}"
+                       ToolTip="Insert straight after the frames selected in the list"
+                       AutomationProperties.Name="Insert after selection">
+            <AccessText Text="After _selection" />
+          </RadioButton>
+          <RadioButton GroupName="Insert" Margin="0,0,14,0"
+                       IsChecked="{Binding IsAtEnd, Mode=TwoWay}"
+                       ToolTip="Append to the end of the frame list"
+                       AutomationProperties.Name="Insert at end">
+            <AccessText Text="At _end" />
+          </RadioButton>
+          <RadioButton GroupName="Insert"
+                       IsChecked="{Binding IsReplaceAll, Mode=TwoWay}"
+                       ToolTip="Throw away the current frames and use these instead — still one Ctrl+Z"
+                       AutomationProperties.Name="Replace all frames">
+            <AccessText Text="Replace _all frames" />
+          </RadioButton>
+        </StackPanel>
+        <TextBlock Margin="0,8,0,0" Text="{Binding ResultCountText}"
+                   Foreground="{DynamicResource App.Text}"
+                   AutomationProperties.Name="Result summary" />
+      </StackPanel>
+
+      <Border Grid.Column="1" Style="{StaticResource DialogCard}" Width="250" Height="98"
+              Margin="16,0,0,0">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+          <TextBlock Style="{StaticResource MonoText}" Text="{Binding ResultPreview}"
+                     ToolTip="The frames that will be written, in order"
+                     AutomationProperties.Name="Resulting frame names" />
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- Buttons -->
+    <DockPanel Grid.Row="3" Margin="0,16,0,0" LastChildFill="False">
+      <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" TextWrapping="Wrap"
+                 MaxWidth="420" Style="{StaticResource HintText}"
+                 Text="{Binding Blocker}"
+                 Visibility="{Binding Blocker, Converter={StaticResource Truthy}}"
+                 AutomationProperties.Name="Why this is disabled" />
+      <Button DockPanel.Dock="Right" Style="{StaticResource DialogButton}" Content="Cancel"
+              IsCancel="True" AutomationProperties.Name="Cancel" />
+      <Button DockPanel.Dock="Right" x:Name="OkButton" Style="{StaticResource DialogButton}"
+              Content="_Add frames" IsDefault="True" Click="OnOk"
+              IsEnabled="{Binding CanApply}"
+              AutomationProperties.Name="Add frames" />
+    </DockPanel>
+  </Grid>
+</Window>

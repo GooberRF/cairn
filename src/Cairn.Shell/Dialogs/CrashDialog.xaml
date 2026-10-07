@@ -1,0 +1,71 @@
+<Window x:Class="Cairn.Shell.Dialogs.CrashDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cairn" Width="620" SizeToContent="Height" ResizeMode="NoResize"
+        Icon="/app.ico" ShowInTaskbar="True" Topmost="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Grid Margin="20,18,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" Style="{StaticResource DialogHeading}" Text="Something went wrong." />
+
+    <TextBlock Grid.Row="1" x:Name="BodyText" Margin="0,8,0,0" TextWrapping="Wrap"
+               Foreground="{DynamicResource App.Text}"
+               AutomationProperties.Name="What happened" />
+
+    <StackPanel Grid.Row="2" x:Name="RescuedPanel" Margin="0,12,0,0">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="COPIED TO THE RECOVERY FOLDER" />
+      <ItemsControl x:Name="RescuedList" Margin="0,6,0,0" AutomationProperties.Name="Rescued documents">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" Margin="8,1,0,1" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource App.Text}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <StackPanel Grid.Row="3" Margin="0,14,0,0">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="DETAILS" Margin="0,0,0,6" />
+      <Border Style="{StaticResource DialogCard}" Padding="2">
+        <TextBox x:Name="DetailsText" Height="180"
+                 IsReadOnly="True" IsUndoEnabled="False"
+                 TextWrapping="Wrap" TextAlignment="Left"
+                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                 BorderThickness="0" Background="Transparent" Padding="8,6"
+                 Foreground="{DynamicResource App.Text}"
+                 FontFamily="{DynamicResource MonoFont}" FontSize="11.5"
+                 ToolTip="The error and where it happened; include this when you report the problem"
+                 AutomationProperties.Name="Error details">
+          <TextBox.Resources>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+          </TextBox.Resources>
+        </TextBox>
+      </Border>
+    </StackPanel>
+
+    <DockPanel Grid.Row="4" Margin="0,16,0,0" LastChildFill="False">
+      <Button DockPanel.Dock="Left" Style="{StaticResource DialogButton}" Margin="0,0,8,0"
+              Content="_Copy details" Click="OnCopy"
+              ToolTip="Copy the error details to the clipboard"
+              AutomationProperties.Name="Copy the error details" />
+      <Button DockPanel.Dock="Left" x:Name="OpenLogButton" Style="{StaticResource DialogButton}" Margin="0"
+              Content="_Open log" Click="OnOpenLog"
+              ToolTip="Open the crash log in your text editor"
+              AutomationProperties.Name="Open the crash log" />
+      <Button DockPanel.Dock="Right" x:Name="CloseButton" Style="{StaticResource DialogButton}"
+              Content="Close" IsDefault="True" IsCancel="True" Click="OnClose"
+              ToolTip="Close this message"
+              AutomationProperties.Name="Close" />
+    </DockPanel>
+  </Grid>
+</Window>

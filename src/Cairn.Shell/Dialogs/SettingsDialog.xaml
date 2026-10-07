@@ -1,0 +1,133 @@
+<Window x:Class="Cairn.Shell.Dialogs.SettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings" Width="780" Height="620" MinWidth="560" MinHeight="480"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="Truthy" />
+  </Window.Resources>
+  <Grid Margin="20,18,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" Style="{StaticResource DialogHeading}" Text="Settings" Margin="0,0,0,12" />
+
+    <!-- The flat panel tab style: one row of headers (the default style wrapped them onto two rows). -->
+    <TabControl x:Name="Tabs" Grid.Row="1" Style="{StaticResource PanelTabControl}" AutomationProperties.Name="Settings pages">
+      <TabItem Header="General" ToolTip="Theme, game folder and search folders" AutomationProperties.Name="General settings">
+        <!-- Page text must not inherit the tab header's small semibold font. -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="12,12,12,0"
+                      FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Window}}" FontWeight="Normal"
+                      Foreground="{DynamicResource App.Text}">
+          <StackPanel>
+            <!-- Theme -->
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="APPEARANCE" />
+              <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="ThemeSystem" GroupName="Theme" MinWidth="0" Margin="0,0,16,0" IsChecked="{Binding IsThemeSystem, Mode=TwoWay}"
+                             ToolTip="Use whichever theme Windows is set to" AutomationProperties.Name="Follow Windows theme">
+                  <AccessText Text="Follow _Windows" />
+                </RadioButton>
+                <RadioButton GroupName="Theme" MinWidth="0" Margin="0,0,16,0" IsChecked="{Binding IsThemeLight, Mode=TwoWay}"
+                             ToolTip="Always use the light colour set" AutomationProperties.Name="Light theme">
+                  <AccessText Text="_Light" />
+                </RadioButton>
+                <RadioButton GroupName="Theme" MinWidth="0" IsChecked="{Binding IsThemeDark, Mode=TwoWay}"
+                             ToolTip="Always use the dark colour set" AutomationProperties.Name="Dark theme">
+                  <AccessText Text="_Dark" />
+                </RadioButton>
+              </StackPanel>
+              <TextBlock Style="{StaticResource HintText}" Margin="0,6,0,0" Text="The theme changes as you pick it. Cancel puts the old one back." />
+            </StackPanel>
+
+            <!-- Game directory -->
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="RED FACTION FOLDER" />
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource DialogSmallButton}" Margin="8,0,0,0" Content="A_uto-detect"
+                        Command="{Binding AutoDetectCommand}"
+                        ToolTip="Look at Alpine Faction's setting, the registry and the usual Steam, GOG and retail install paths"
+                        AutomationProperties.Name="Auto-detect the game folder" />
+                <Button DockPanel.Dock="Right" Style="{StaticResource DialogSmallButton}" Margin="8,0,0,0" Content="_Browse…"
+                        Command="{Binding BrowseGameDirectoryCommand}" ToolTip="Choose the folder that holds RF.exe"
+                        AutomationProperties.Name="Browse for the game folder" />
+                <TextBox MinHeight="30" VerticalContentAlignment="Center"
+                         Text="{Binding GameDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="The game's .vpp archives and user_maps folders are searched last"
+                         AutomationProperties.Name="Red Faction folder" />
+              </DockPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Top" Margin="0,1,6,0">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Text" Value="&#xE7BA;" />
+                      <Setter Property="Foreground" Value="{DynamicResource Severity.Warning}" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsGameDirectoryValid}" Value="True">
+                          <Setter Property="Text" Value="&#xE73E;" />
+                          <Setter Property="Foreground" Value="{DynamicResource Severity.Info}" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Style="{StaticResource HintText}" MaxWidth="540" Text="{Binding GameDirectoryStatus}"
+                           AutomationProperties.Name="Game folder status" />
+              </StackPanel>
+              <TextBlock Style="{StaticResource HintText}" Margin="18,4,0,0" MaxWidth="540" Text="{Binding DetectionHint}"
+                         Visibility="{Binding HasDetectionHint, Converter={StaticResource Truthy}}"
+                         AutomationProperties.Name="Where the game folder was found" />
+            </StackPanel>
+
+            <!-- Search folders -->
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="SEARCH FOLDERS" />
+              <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,6"
+                         Text="Extra folders searched for referenced assets (textures, meshes, clips, tables), in this order, after the open file's own folder and before the game. Loose files come before any .vpp in the same folder." />
+              <Grid Height="124">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource DialogCard}" Padding="0">
+                  <ListBox ItemsSource="{Binding SearchFolders}" BorderThickness="0" Background="Transparent"
+                           SelectedItem="{Binding SelectedFolder, Mode=TwoWay}"
+                           ToolTip="Searched top to bottom" AutomationProperties.Name="Search folders">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding}" ToolTip="{Binding}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource App.Text}" />
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                  <Button Style="{StaticResource DialogSmallButton}" Margin="0,0,0,6" Content="_Add…" Command="{Binding AddFolderCommand}"
+                          ToolTip="Choose another folder to search" AutomationProperties.Name="Add a search folder" />
+                  <Button Style="{StaticResource DialogSmallButton}" Margin="0,0,0,6" Content="_Remove" Command="{Binding RemoveFolderCommand}"
+                          ToolTip="Stop searching the selected folder" AutomationProperties.Name="Remove the selected folder" />
+                  <Button Style="{StaticResource DialogSmallButton}" Margin="0,0,0,6" Content="Move u_p" Command="{Binding MoveUpCommand}"
+                          ToolTip="Search this folder earlier" AutomationProperties.Name="Move the folder up" />
+                  <Button Style="{StaticResource DialogSmallButton}" Margin="0" Content="Move dow_n" Command="{Binding MoveDownCommand}"
+                          ToolTip="Search this folder later" AutomationProperties.Name="Move the folder down" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+      <Button Style="{StaticResource DialogButton}" Content="OK" IsDefault="True" Click="OnOk"
+              ToolTip="Apply the settings and close" AutomationProperties.Name="OK" />
+      <Button Style="{StaticResource DialogButton}" Content="Cancel" IsCancel="True"
+              ToolTip="Close without changing anything" AutomationProperties.Name="Cancel" />
+    </StackPanel>
+  </Grid>
+</Window>

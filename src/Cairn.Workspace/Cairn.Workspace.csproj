@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <RootNamespace>Cairn.Workspace</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The module test projects drive a few internal seams directly (for example the injected
+         registry reader behind GameDirectoryLocator). Nothing else is opened up. -->
+    <InternalsVisibleTo Include="Cairn.Rfa.Tests" />
+    <InternalsVisibleTo Include="Cairn.Atx.Tests" />
+    <InternalsVisibleTo Include="Cairn.Vfx.Tests" />
+  </ItemGroup>
+
+</Project>

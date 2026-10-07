@@ -1,0 +1,856 @@
+{
+  "file": "entity.tbl",
+  "title": "Entities",
+  "doc": "Every character, creature, vehicle and turret class: mesh, physics, weapons, AI, sounds and animations.",
+  "notes": "The loader looks for the next $Name: (case-sensitive raw text search) before each entry, so text between entries is skipped; at most 75 classes in the stock game.",
+  "sections": [
+    {
+      "name": "#Entity Classes",
+      "required": true,
+      "repeat": false,
+      "between": "skip",
+      "maxEntries": 75,
+      "doc": "All entity classes; each entry starts at $Name:, and #End (optional) ends the list.",
+      "entry": "$Name:",
+      "defines": "entity",
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Unique entity class name used by levels and other tables."
+        },
+        {
+          "name": "$V3D Filename:",
+          "type": "file",
+          "required": true,
+          "file": "mesh",
+          "doc": "Character or vehicle mesh (.v3d becomes .v3c/.v3m)."
+        },
+        {
+          "name": "$Debris Filename:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "doc": "Mesh broken into debris when the entity explodes."
+        },
+        {
+          "name": "$LOD Distances:",
+          "type": "list",
+          "required": false,
+          "of": "float",
+          "maxCount": 4,
+          "syntax": "braces",
+          "unit": "metres",
+          "doc": "Level of detail switch distances in braces separated by white space, e.g. { 6 9 }; at most 4 values."
+        },
+        {
+          "name": "$Corpse V3D Filename:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "doc": "Mesh used for the corpse."
+        },
+        {
+          "name": "$Corpse Emitter:",
+          "type": "ref",
+          "required": false,
+          "ref": "emitter",
+          "children": [
+            {
+              "name": "$Corpse Emitter Lifetime:",
+              "type": "float",
+              "required": false,
+              "unit": "seconds",
+              "doc": "Seconds the corpse emitter runs."
+            }
+          ],
+          "doc": "Particle emitter attached to the corpse."
+        },
+        {
+          "name": "$Movemode:",
+          "type": "ref",
+          "required": true,
+          "ref": "movemode",
+          "doc": "Movement mode name from movemodes.tbl."
+        },
+        {
+          "name": "$Mass:",
+          "type": "float",
+          "required": true,
+          "unit": "kg",
+          "doc": "Mass."
+        },
+        {
+          "name": "$Material:",
+          "type": "ref",
+          "required": true,
+          "ref": "material",
+          "doc": "Material name (materials.tbl) used for impacts and footsteps."
+        },
+        {
+          "name": "$Flags:",
+          "type": "flags",
+          "required": true,
+          "values": [
+            "walk",
+            "fly",
+            "climb",
+            "holds_weapons",
+            "sentient",
+            "alt_fire",
+            "water_only",
+            "linked_primaries",
+            "swim",
+            "apc",
+            "sub",
+            "fighter",
+            "driller",
+            "turret",
+            "mouselook",
+            "crusher",
+            "medic",
+            "humanoid",
+            "no_collide",
+            "collide_corpse",
+            "is_camera",
+            "custom_corpse",
+            "jeep",
+            "ambient",
+            "envirosuit",
+            "nano_shield",
+            "slippery",
+            "fire_outside_range"
+          ],
+          "doc": "Entity behaviour flags; an unknown flag name stops the game."
+        },
+        {
+          "name": "$Flags2:",
+          "type": "flags",
+          "required": false,
+          "values": [
+            "collide_player",
+            "collide_entity",
+            "merc",
+            "mutant",
+            "ignore_fire",
+            "drools slime",
+            "linked_eye",
+            "tankbot"
+          ],
+          "doc": "More entity flags."
+        },
+        {
+          "name": "$Collision Radius:",
+          "type": "float",
+          "required": true,
+          "unit": "metres",
+          "doc": "Collision radius."
+        },
+        {
+          "name": "$Collision Damage Given:",
+          "type": "float",
+          "required": true,
+          "doc": "Damage dealt when colliding with something."
+        },
+        {
+          "name": "$Movement Radius:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Radius used for movement collision."
+        },
+        {
+          "name": "$FOV:",
+          "type": "float",
+          "required": true,
+          "unit": "degrees",
+          "doc": "Field of view of the entity's eyes."
+        },
+        {
+          "name": "$Envirosuit:",
+          "type": "float",
+          "required": true,
+          "doc": "Armour (envirosuit) points."
+        },
+        {
+          "name": "$Life:",
+          "type": "float",
+          "required": true,
+          "doc": "Hit points."
+        },
+        {
+          "name": "$Damage Type Factor:",
+          "type": "enum",
+          "required": false,
+          "repeat": true,
+          "values": [
+            "bash",
+            "bullet",
+            "armor piercing bullet",
+            "explosive",
+            "fire",
+            "energy",
+            "electrical",
+            "acid",
+            "scalding"
+          ],
+          "strict": false,
+          "parts": [
+            {
+              "type": "enum",
+              "values": [
+                "bash",
+                "bullet",
+                "armor piercing bullet",
+                "explosive",
+                "fire",
+                "energy",
+                "electrical",
+                "acid",
+                "scalding"
+              ],
+              "strict": false,
+              "doc": "damage type"
+            },
+            {
+              "type": "float",
+              "doc": "factor"
+            }
+          ],
+          "doc": "Damage multiplier for one damage type: type name, then factor."
+        },
+        {
+          "name": "$Min Relative Eye PHB:",
+          "type": "vec3",
+          "required": false,
+          "children": [
+            {
+              "name": "$Max Relative Eye PHB:",
+              "type": "vec3",
+              "required": true,
+              "doc": "Upper limit of eye pitch, heading, bank; required after the minimum."
+            }
+          ],
+          "doc": "Lower limit of eye pitch, heading, bank relative to the body."
+        },
+        {
+          "name": "$Max Vel:",
+          "type": "float",
+          "required": true,
+          "unit": "metres/second",
+          "doc": "Top speed."
+        },
+        {
+          "name": "+slow factor:",
+          "type": "float",
+          "required": false,
+          "doc": "Speed factor when moving slowly."
+        },
+        {
+          "name": "+fast factor:",
+          "type": "float",
+          "required": false,
+          "doc": "Speed factor when moving fast."
+        },
+        {
+          "name": "$Acceleration:",
+          "type": "float",
+          "required": true,
+          "unit": "metres/second^2",
+          "doc": "Acceleration."
+        },
+        {
+          "name": "$Max Rot Vel:",
+          "type": "float",
+          "required": true,
+          "doc": "Top turning speed."
+        },
+        {
+          "name": "$Rot Acceleration:",
+          "type": "float",
+          "required": true,
+          "doc": "Turning acceleration."
+        },
+        {
+          "name": "$Allowed Weapons:",
+          "type": "list",
+          "required": true,
+          "of": "ref",
+          "ref": "weapon",
+          "maxCount": 64,
+          "doc": "Weapons this entity may use; (\"\") or () for none; at most 64."
+        },
+        {
+          "name": "$Default Primary:",
+          "type": "ref",
+          "required": true,
+          "ref": "weapon",
+          "doc": "Weapon the entity starts with; may be \"\"."
+        },
+        {
+          "name": "$Default Secondary:",
+          "type": "ref",
+          "required": true,
+          "ref": "weapon",
+          "doc": "Secondary weapon the entity starts with; may be \"\"."
+        },
+        {
+          "name": "$Force Launch Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played instead of the weapon's own launch sound."
+        },
+        {
+          "name": "$Default Melee:",
+          "type": "ref",
+          "required": false,
+          "ref": "weapon",
+          "doc": "Melee weapon."
+        },
+        {
+          "name": "$Primary Muzzle Glare Name:",
+          "type": "ref",
+          "required": false,
+          "ref": "glare",
+          "doc": "Glare shown at the primary muzzle."
+        },
+        {
+          "name": "$Primary Warmup FX:",
+          "type": "file",
+          "required": false,
+          "file": "vfx",
+          "doc": "Effect played while the primary weapon warms up."
+        },
+        {
+          "name": "$Thruster VFX #:",
+          "type": "file",
+          "required": false,
+          "repeat": true,
+          "file": "vfx",
+          "numbered": true,
+          "doc": "Thruster effect for prop point number #, numbered from 1 without gaps (\"$Thruster VFX 1:\", \"$Thruster VFX 2:\", ...)."
+        },
+        {
+          "name": "$Corona (Glare) #:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "glare",
+          "numbered": true,
+          "parts": [
+            {
+              "type": "ref",
+              "ref": "glare",
+              "doc": "glare name"
+            },
+            {
+              "type": "string",
+              "doc": "tag; \"headlamp\" makes it the head lamp"
+            }
+          ],
+          "doc": "Glare for corona prop point number #, numbered from 1 without gaps: glare name, then \"headlamp\" or another tag."
+        },
+        {
+          "name": "$Helmet V3D Filename:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "doc": "Helmet mesh."
+        },
+        {
+          "name": "$Unholster Delay:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds before a drawn weapon can fire."
+        },
+        {
+          "name": "$Attack Style:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "none",
+            "evasive",
+            "stand_ground",
+            "direct"
+          ],
+          "strict": false,
+          "doc": "AI attack behaviour."
+        },
+        {
+          "name": "$Blind Pursuit Time:",
+          "type": "float",
+          "required": true,
+          "unit": "seconds",
+          "doc": "Seconds the AI keeps chasing a target it cannot see."
+        },
+        {
+          "name": "$Persona:",
+          "type": "ref",
+          "required": false,
+          "ref": "persona",
+          "doc": "Voice persona (personas.tbl)."
+        },
+        {
+          "name": "$FlySnd:",
+          "type": "file",
+          "required": true,
+          "file": "sound",
+          "parts": [
+            {
+              "type": "file",
+              "file": "sound",
+              "doc": "sound file name; \"\" means none (then nothing else follows)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "minimum distance in metres (only when a file is given)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "volume scale (only when a file is given)"
+            }
+          ],
+          "doc": "Looping flight sound: file, minimum distance, volume; \"\" for none."
+        },
+        {
+          "name": "$Min FlySnd Volume:",
+          "type": "float",
+          "required": true,
+          "doc": "Lowest volume of the flight sound."
+        },
+        {
+          "name": "$Move Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley while moving."
+        },
+        {
+          "name": "$Engine Rev Fwd Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when the engine revs forward."
+        },
+        {
+          "name": "$Engine Rev Back Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when the engine revs backward."
+        },
+        {
+          "name": "$StartleSnd:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when startled."
+        },
+        {
+          "name": "$AttachSnd:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when attaching."
+        },
+        {
+          "name": "$DetachSnd:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when detaching."
+        },
+        {
+          "name": "$RotateSnd:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley while rotating."
+        },
+        {
+          "name": "$Footstep Sound:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "foley",
+          "doc": "Footstep foley; one line per material set."
+        },
+        {
+          "name": "$Climb Footstep Sounds:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "foley",
+          "doc": "Climbing footstep foley; one line per material set."
+        },
+        {
+          "name": "$Crawl Footstep Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Crawling footstep foley."
+        },
+        {
+          "name": "$LandSnd:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "foley",
+          "doc": "Landing foley; one line per material set."
+        },
+        {
+          "name": "$Impact Death Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley for a death by impact."
+        },
+        {
+          "name": "$JumpSnd:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when jumping."
+        },
+        {
+          "name": "$HeadLamp On Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when the head lamp turns on."
+        },
+        {
+          "name": "$HeadLamp Off Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when the head lamp turns off."
+        },
+        {
+          "name": "$Low_Pain Sounds:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley for light pain."
+        },
+        {
+          "name": "$Med_Pain Sounds:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley for medium pain."
+        },
+        {
+          "name": "$Squash Sounds:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley when squashed."
+        },
+        {
+          "name": "$DeathSnd:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley on death."
+        },
+        {
+          "name": "$Explode Anim:",
+          "type": "ref",
+          "required": false,
+          "ref": "vclip",
+          "children": [
+            {
+              "name": "$Explode Anim Radius:",
+              "type": "float",
+              "required": false,
+              "unit": "metres",
+              "doc": "Radius of the explosion vclip."
+            },
+            {
+              "name": "$Explode Offset:",
+              "type": "vec3",
+              "required": false,
+              "unit": "metres",
+              "doc": "Offset of the explosion from the entity."
+            }
+          ],
+          "doc": "Vclip played when the entity explodes."
+        },
+        {
+          "name": "$emitter:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "emitter",
+          "doc": "Particle emitter attached to the entity."
+        },
+        {
+          "name": "+State:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "string",
+              "doc": "state name"
+            },
+            {
+              "type": "file",
+              "file": "anim",
+              "doc": "animation file (.mvf)"
+            }
+          ],
+          "children": [
+            {
+              "name": "+Footstep Trigger:",
+              "type": "float",
+              "required": false,
+              "repeat": true,
+              "parts": [
+                {
+                  "type": "float",
+                  "doc": "first value"
+                },
+                {
+                  "type": "float",
+                  "doc": "second value"
+                }
+              ],
+              "doc": "Animation frame range that plays footsteps: two numbers."
+            }
+          ],
+          "doc": "Looping animation: state name, then animation file; footstep triggers may follow."
+        },
+        {
+          "name": "+Action:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "string",
+              "doc": "action name"
+            },
+            {
+              "type": "file",
+              "file": "anim",
+              "doc": "animation file (.mvf)"
+            },
+            {
+              "type": "ref",
+              "ref": "foley",
+              "doc": "foley name; \"\" for none"
+            }
+          ],
+          "doc": "One-shot animation: action name, animation file, foley played with it."
+        },
+        {
+          "name": "+Weapon Specific:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "weapon",
+          "children": [
+            {
+              "name": "+Spine Adjustment:",
+              "type": "float",
+              "required": false,
+              "unit": "degrees",
+              "doc": "Spine bend while holding this weapon."
+            },
+            {
+              "name": "+State:",
+              "type": "string",
+              "required": false,
+              "repeat": true,
+              "parts": [
+                {
+                  "type": "string",
+                  "doc": "state name"
+                },
+                {
+                  "type": "file",
+                  "file": "anim",
+                  "doc": "animation file (.mvf)"
+                }
+              ],
+              "children": [
+                {
+                  "name": "+Footstep Trigger:",
+                  "type": "float",
+                  "required": false,
+                  "repeat": true,
+                  "parts": [
+                    {
+                      "type": "float",
+                      "doc": "first value"
+                    },
+                    {
+                      "type": "float",
+                      "doc": "second value"
+                    }
+                  ],
+                  "doc": "Animation frame range that plays footsteps: two numbers."
+                }
+              ],
+              "doc": "Looping animation: state name, then animation file; footstep triggers may follow."
+            },
+            {
+              "name": "+Action:",
+              "type": "string",
+              "required": false,
+              "repeat": true,
+              "parts": [
+                {
+                  "type": "string",
+                  "doc": "action name"
+                },
+                {
+                  "type": "file",
+                  "file": "anim",
+                  "doc": "animation file (.mvf)"
+                },
+                {
+                  "type": "ref",
+                  "ref": "foley",
+                  "doc": "foley name; \"\" for none"
+                }
+              ],
+              "doc": "One-shot animation: action name, animation file, foley played with it."
+            }
+          ],
+          "doc": "Animations used while holding one weapon: weapon name, then its +State and +Action lines."
+        },
+        {
+          "name": "$Use:",
+          "type": "enum",
+          "required": false,
+          "values": [
+            "none",
+            "vehicle",
+            "switch",
+            "command",
+            "turret",
+            "monitor",
+            "medic",
+            "ai response",
+            "play_sound"
+          ],
+          "strict": false,
+          "childrenWhen": "known",
+          "childrenUnless": [
+            "none"
+          ],
+          "children": [
+            {
+              "name": "+radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Distance from which the entity can be used; required after a known $Use value."
+            }
+          ],
+          "doc": "What happens when the player uses this entity; \"none\" or other text means not usable and then +radius is left out."
+        },
+        {
+          "name": "$Collision Sphere:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "string",
+              "doc": "prop point name"
+            },
+            {
+              "type": "float",
+              "doc": "value"
+            },
+            {
+              "type": "float",
+              "doc": "value"
+            }
+          ],
+          "children": [
+            {
+              "name": "+radius:",
+              "type": "float",
+              "required": false,
+              "unit": "metres",
+              "doc": "Sphere radius."
+            },
+            {
+              "name": "+spring constant:",
+              "type": "float",
+              "required": false,
+              "children": [
+                {
+                  "name": "+spring length:",
+                  "type": "float",
+                  "required": true,
+                  "unit": "metres",
+                  "doc": "Spring rest length; required after +spring constant."
+                }
+              ],
+              "doc": "Spring stiffness of the sphere."
+            }
+          ],
+          "doc": "Extra collision sphere: prop point name, then two numbers."
+        },
+        {
+          "name": "$Num Skins:",
+          "type": "int",
+          "required": true,
+          "min": 0,
+          "children": [
+            {
+              "name": "$Skin:",
+              "type": "string",
+              "required": false,
+              "repeat": true,
+              "countFrom": "$Num Skins:",
+              "parts": [
+                {
+                  "type": "string",
+                  "doc": "skin name"
+                },
+                {
+                  "type": "list",
+                  "of": "file",
+                  "file": "texture",
+                  "maxCount": 12,
+                  "doc": "replacement textures"
+                }
+              ],
+              "doc": "Alternate skin: skin name, then the replacement textures in order (at most 12); exactly $Num Skins lines."
+            }
+          ],
+          "doc": "Number of $Skin: lines that follow."
+        },
+        {
+          "name": "$Cockpit VFX:",
+          "type": "file",
+          "required": false,
+          "file": "vfx",
+          "doc": "Cockpit effect seen from inside the vehicle."
+        },
+        {
+          "name": "$Body Temperature(F):",
+          "type": "float",
+          "required": false,
+          "unit": "degrees F",
+          "doc": "Body temperature for the rail driver heat scanner."
+        }
+      ]
+    }
+  ]
+}

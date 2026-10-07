@@ -1,0 +1,107 @@
+﻿<!-- The module's shared resources: the AvalonEdit search panel and completion popup styles. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:search="clr-namespace:ICSharpCode.AvalonEdit.Search;assembly=ICSharpCode.AvalonEdit"
+                    xmlns:atx="clr-namespace:Cairn.Atx.Ui">
+
+  <atx:OverrideWeightConverter x:Key="BoldWhenTrue" />
+  <atx:OverrideBrushConverter x:Key="TimeBrush" />
+
+  <!--
+    AvalonEdit's own find bar is find-only and light-only, so the app supplies its own bar (see
+    Views/SourceEditorView) and reduces the stock panel to nothing. The panel stays installed and
+    open because it is what highlights every match and what FindNext / FindPrevious drive; it just
+    has no chrome of its own any more.
+  -->
+  <Style TargetType="search:SearchPanel">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="search:SearchPanel">
+          <Border Width="0" Height="0" Background="Transparent" IsHitTestVisible="False"
+                  Visibility="Collapsed" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    The completion popup's window. AvalonEdit's CompletionWindow is an ordinary WPF Window with no
+    chrome of its own, so the Fluent theme dresses it as one — and the top of that chrome showed as
+    a 1px light line across a dark popup. Replacing the whole window template with a single border
+    is the only way to be sure none of it survives. (The AdornerDecorator is what keeps tooltips and
+    focus visuals working inside a templated window.)
+  -->
+  <Style x:Key="CompletionWindow" TargetType="Window">
+    <Setter Property="Background" Value="{DynamicResource App.PaneBackground}" />
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Window">
+          <Border Background="{DynamicResource App.PaneBackground}"
+                  BorderBrush="{DynamicResource App.Border}" BorderThickness="1"
+                  SnapsToDevicePixels="True">
+            <AdornerDecorator>
+              <ContentPresenter />
+            </AdornerDecorator>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    The completion popup's list. AvalonEdit gives its list box no style of its own, so under the
+    Fluent theme it arrived with a light chrome edge.
+  -->
+  <Style x:Key="CompletionListBox" TargetType="ListBox">
+    <Setter Property="Background" Value="{DynamicResource App.PaneBackground}" />
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="SnapsToDevicePixels" Value="True" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBox">
+          <Border Background="{TemplateBinding Background}" BorderThickness="0" Padding="0">
+            <ScrollViewer Focusable="False" Padding="0" Margin="0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+              <ItemsPresenter />
+            </ScrollViewer>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Setter Property="ItemContainerStyle">
+      <Setter.Value>
+        <Style TargetType="ListBoxItem">
+          <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+          <Setter Property="Padding" Value="6,3" />
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ListBoxItem">
+                <Border x:Name="Chrome" Background="Transparent" BorderThickness="0"
+                        Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                  <ContentPresenter />
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Chrome" Property="Background"
+                            Value="{DynamicResource App.Hover}" />
+                  </Trigger>
+                  <Trigger Property="IsSelected" Value="True">
+                    <Setter TargetName="Chrome" Property="Background"
+                            Value="{DynamicResource App.Selection}" />
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>

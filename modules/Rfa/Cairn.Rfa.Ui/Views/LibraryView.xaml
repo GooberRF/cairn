@@ -1,0 +1,249 @@
+<UserControl x:Class="Cairn.Rfa.Ui.Views.LibraryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Cairn.Rfa.Ui.ViewModels">
+  <UserControl.Resources>
+    <ContextMenu x:Key="ItemMenu" x:Shared="False">
+      <MenuItem Header="_Open in new tab" InputGestureText="Ctrl+Double-click"
+                Command="{Binding PlacementTarget.Tag.OpenCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                CommandParameter="{Binding Item}" ToolTip="Open in a tab of its own (also Ctrl+double-click, Ctrl+Enter or middle-click)" />
+      <MenuItem Header="{Binding PreviewHeader}"
+                Command="{Binding PlacementTarget.Tag.PreviewCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                CommandParameter="{Binding Item}" ToolTipService.ShowOnDisabled="True"
+                ToolTip="Use this as the preview partner of the document in front: a mesh for a clip document, a clip for a mesh document with bones" />
+      <Separator />
+      <MenuItem Header="Open containing _folder"
+                Command="{Binding PlacementTarget.Tag.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                CommandParameter="{Binding Item}" ToolTip="Show the file (or the .vpp holding it) in Explorer" />
+      <MenuItem Header="_Extract to…"
+                Command="{Binding PlacementTarget.Tag.ExtractCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                CommandParameter="{Binding Item}" ToolTip="Copy the file out to a folder you choose" />
+      <MenuItem Header="_Copy name"
+                Command="{Binding PlacementTarget.Tag.CopyNameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                CommandParameter="{Binding Item}" ToolTip="Copy the file name to the clipboard" />
+      <MenuItem Header="_Retarget…"
+                Command="{Binding PlacementTarget.Tag.RetargetCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                CommandParameter="{Binding Item}" ToolTipService.ShowOnDisabled="True"
+                ToolTip="Transfer this clip onto another skeleton (opens the retarget dialog)" />
+      <MenuItem Header="_New Clip for This Mesh…"
+                Command="{Binding PlacementTarget.Tag.NewClipCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                CommandParameter="{Binding Item}" Visibility="{Binding IsCharacterMesh, Converter={StaticResource Truthy}}"
+                ToolTip="Start a clip from nothing for this character, holding its stand clip's pose (or its bind pose)" />
+    </ContextMenu>
+  </UserControl.Resources>
+
+  <Border Style="{StaticResource PaneBorder}">
+    <DockPanel>
+      <!-- Header with the filter -->
+      <Border DockPanel.Dock="Top" Style="{StaticResource PaneHeaderBorder}" Padding="8,4">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Left" Text="LIBRARY" Style="{StaticResource PaneHeaderText}" Margin="0,0,10,0" />
+          <Button DockPanel.Dock="Right" Style="{StaticResource ToolButton}" Height="22" MinWidth="22" Padding="3,0"
+                  Command="{Binding RefreshCommand}" Margin="4,0,0,0"
+                  ToolTip="Look through the folders and archives again" AutomationProperties.Name="Refresh the library">
+            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="11" />
+          </Button>
+          <Grid>
+            <TextBox x:Name="FilterBox" Height="24" Padding="22,0,22,0" VerticalContentAlignment="Center" FontSize="12"
+                     Text="{Binding Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Filter by name: a substring, or a wildcard such as ult2_*.rfa"
+                     AutomationProperties.Name="Filter the library" />
+            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="7,0,0,0" VerticalAlignment="Center"
+                       HorizontalAlignment="Left" IsHitTestVisible="False" Foreground="{DynamicResource App.SecondaryText}" />
+            <TextBlock Text="Filter" FontSize="12" Margin="24,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                       Foreground="{DynamicResource App.SecondaryText}"
+                       Visibility="{Binding Filter, Converter={StaticResource Falsy}}" />
+            <Button Style="{StaticResource ToolButton}" HorizontalAlignment="Right" Width="20" MinWidth="20" Height="20" Padding="0"
+                    Margin="0,0,2,0" Command="{Binding ClearFilterCommand}"
+                    Visibility="{Binding Filter, Converter={StaticResource Truthy}}"
+                    ToolTip="Clear the filter (Esc)" AutomationProperties.Name="Clear the filter">
+              <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="9" />
+            </Button>
+          </Grid>
+        </DockPanel>
+      </Border>
+
+      <!-- Progress line -->
+      <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource App.Border}" BorderThickness="0,1,0,0" Padding="8,4">
+        <StackPanel>
+          <TextBlock Text="{Binding DoubleClickHint}" FontSize="11" Margin="0,0,0,4" TextWrapping="Wrap"
+                     Foreground="{DynamicResource App.SecondaryText}" Visibility="{Binding HasContent, Converter={StaticResource Truthy}}"
+                     AutomationProperties.Name="What double-click does" />
+          <ProgressBar Height="3" Margin="0,0,0,4" Minimum="0" Maximum="1" Value="{Binding ProgressFraction, Mode=OneWay}"
+                       IsIndeterminate="{Binding HasProgressFraction, Converter={StaticResource Not}}"
+                       Visibility="{Binding IsLoading, Converter={StaticResource Truthy}}"
+                       AutomationProperties.Name="Library progress" />
+          <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="{DynamicResource App.SecondaryText}"
+                     TextTrimming="CharacterEllipsis" ToolTip="{Binding ProgressText}" AutomationProperties.Name="Library status" />
+        </StackPanel>
+      </Border>
+
+      <Grid>
+        <TabControl x:Name="Tabs" Style="{StaticResource PanelTabControl}" SelectedIndex="{Binding SelectedTab, Mode=TwoWay}"
+                    Visibility="{Binding HasContent, Converter={StaticResource Truthy}}" AutomationProperties.Name="Library views">
+          <TabItem Header="Meshes" ToolTip="Characters by skeleton family (with the clips the tables give them), and static meshes">
+            <TreeView x:Name="MeshTree" ItemsSource="{Binding MeshRoots}" BorderThickness="0" Background="Transparent"
+                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled" Padding="0,4"
+                      SelectedItemChanged="OnTreeSelectionChanged" MouseDoubleClick="OnTreeDoubleClick" PreviewMouseUp="OnMiddleClick"
+                      PreviewMouseLeftButtonDown="OnPreviewMouseDown" PreviewMouseMove="OnPreviewMouseMove"
+                      KeyDown="OnTreeKeyDown" Tag="{Binding}"
+                      AutomationProperties.Name="Meshes">
+              <TreeView.Resources>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+              </TreeView.Resources>
+              <TreeView.ItemContainerStyle>
+                <Style TargetType="TreeViewItem" BasedOn="{StaticResource PaneTreeViewItem}">
+                  <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                  <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                  <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+                  <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                  <Setter Property="Padding" Value="1,1" />
+                </Style>
+              </TreeView.ItemContainerStyle>
+              <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate DataType="{x:Type vm:LibraryNode}" ItemsSource="{Binding Children}">
+                  <DockPanel Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TreeView}}" ContextMenu="{StaticResource ItemMenu}" Background="Transparent">
+                    <DockPanel.Style>
+                      <Style TargetType="DockPanel">
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding Item}" Value="{x:Null}">
+                            <Setter Property="ContextMenu" Value="{x:Null}" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </DockPanel.Style>
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" FontSize="11" Width="18"
+                               VerticalAlignment="Center" Foreground="{DynamicResource App.SecondaryText}" />
+                    <Border DockPanel.Dock="Right" Style="{StaticResource BadgeBorder}" Margin="8,0,2,0"
+                            Visibility="{Binding Detail, Converter={StaticResource Truthy}}">
+                      <TextBlock Text="{Binding Detail}" Style="{StaticResource BadgeText}" />
+                    </Border>
+                    <TextBlock Text="{Binding Header}" VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                              <Setter Property="Foreground" Value="{DynamicResource App.SecondaryText}" />
+                              <Setter Property="FontStyle" Value="Italic" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                  </DockPanel>
+                </HierarchicalDataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
+          </TabItem>
+
+          <TabItem Header="Clips" ToolTip="Every clip the game can see, with its duration, bone count, version and morph data">
+            <DockPanel>
+              <Border DockPanel.Dock="Top" Padding="8,5" BorderBrush="{DynamicResource App.SubtleBorder}" BorderThickness="0,0,0,1">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding ClipCountText}" FontSize="11" VerticalAlignment="Center"
+                             Foreground="{DynamicResource App.SecondaryText}" AutomationProperties.Name="Clip count" />
+                  <CheckBox IsChecked="{Binding CompatibleOnly, Mode=TwoWay}" FontSize="12" VerticalAlignment="Center"
+                            ToolTip="{Binding CompatibleToolTip}" AutomationProperties.Name="Only clips compatible with the active mesh">
+                    <AccessText Text="Compatible with the active _mesh" />
+                  </CheckBox>
+                </DockPanel>
+              </Border>
+              <ListBox x:Name="ClipList" ItemsSource="{Binding ClipRows}" SelectedItem="{Binding SelectedClipRow, Mode=TwoWay}"
+                       BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                       VirtualizingPanel.ScrollUnit="Pixel"
+                       MouseDoubleClick="OnClipDoubleClick" KeyDown="OnClipKeyDown" PreviewMouseUp="OnMiddleClick"
+                       PreviewMouseLeftButtonDown="OnPreviewMouseDown" PreviewMouseMove="OnPreviewMouseMove"
+                       AutomationProperties.Name="Clips">
+                <ListBox.Resources>
+                  <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+                </ListBox.Resources>
+                <ListBox.ItemContainerStyle>
+                  <Style TargetType="ListBoxItem" BasedOn="{StaticResource PaneListBoxItem}">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="6,2" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                    <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+                  </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                  <DataTemplate DataType="{x:Type vm:LibraryClipRow}">
+                    <Grid Background="Transparent" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                      <Grid.ContextMenu>
+                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                          <MenuItem Header="_Open in new tab" InputGestureText="Ctrl+Double-click"
+                                    Command="{Binding PlacementTarget.Tag.OpenCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                    CommandParameter="{Binding Clip}" ToolTip="Open in a tab of its own (also Ctrl+double-click, Ctrl+Enter or middle-click)" />
+                          <MenuItem Header="_Preview this clip"
+                                    Command="{Binding PlacementTarget.Tag.PreviewCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                    CommandParameter="{Binding Clip}" ToolTipService.ShowOnDisabled="True"
+                                    ToolTip="Play this clip on the mesh document in front (needs a mesh with bones open and in front)" />
+                          <Separator />
+                          <MenuItem Header="Open containing _folder"
+                                    Command="{Binding PlacementTarget.Tag.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                    CommandParameter="{Binding Clip}" ToolTip="Show the file (or the .vpp holding it) in Explorer" />
+                          <MenuItem Header="_Extract to…"
+                                    Command="{Binding PlacementTarget.Tag.ExtractCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                    CommandParameter="{Binding Clip}" ToolTip="Copy the file out to a folder you choose" />
+                          <MenuItem Header="_Copy name"
+                                    Command="{Binding PlacementTarget.Tag.CopyNameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                    CommandParameter="{Binding Clip}" ToolTip="Copy the file name to the clipboard" />
+                          <MenuItem Header="_Retarget…"
+                                    Command="{Binding PlacementTarget.Tag.RetargetCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                    CommandParameter="{Binding Clip}" ToolTip="Transfer this clip onto another skeleton (opens the retarget dialog)" />
+                        </ContextMenu>
+                      </Grid.ContextMenu>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="46" />
+                        <ColumnDefinition Width="26" />
+                        <ColumnDefinition Width="26" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <Border Grid.Column="1" Style="{StaticResource BadgeBorder}" Margin="6,0,0,0" Padding="4,0"
+                              Visibility="{Binding HasMorph, Converter={StaticResource Truthy}}" ToolTip="Has morph (vertex) animation">
+                        <TextBlock Text="morph" Style="{StaticResource BadgeText}" FontSize="10" />
+                      </Border>
+                      <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="11" TextAlignment="Right" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource App.SecondaryText}" ToolTip="Duration in frames" />
+                      <TextBlock Grid.Column="3" Text="{Binding BonesText}" FontSize="11" TextAlignment="Right" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource App.SecondaryText}" ToolTip="Bone count" />
+                      <TextBlock Grid.Column="4" Text="{Binding VersionText}" FontSize="11" TextAlignment="Right" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource App.SecondaryText}" ToolTip="Format version" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </TabItem>
+        </TabControl>
+
+        <!-- Empty states -->
+        <StackPanel VerticalAlignment="Center" Margin="16" Visibility="{Binding IsEmptyNoSources, Converter={StaticResource Truthy}}">
+          <TextBlock Style="{StaticResource HintText}" TextAlignment="Center"
+                     Text="The library lists every clip and mesh the game can see. Tell it where to look:" />
+          <Button Margin="0,12,0,0" Padding="12,5" HorizontalAlignment="Center" Command="{Binding SetGameDirectoryCommand}"
+                  ToolTip="Choose the Red Faction folder (the one holding RF.exe)" AutomationProperties.Name="Set game directory">
+            <AccessText Text="Set _game directory…" />
+          </Button>
+          <Button Margin="0,8,0,0" Padding="12,5" HorizontalAlignment="Center" Command="{Binding AddSearchFolderCommand}"
+                  ToolTip="Add a folder of loose clips and meshes (or .vpp archives)" AutomationProperties.Name="Add search folder">
+            <AccessText Text="Add _search folder…" />
+          </Button>
+        </StackPanel>
+        <StackPanel VerticalAlignment="Center" Margin="16" Visibility="{Binding IsEmptyNothingFound, Converter={StaticResource Truthy}}">
+          <TextBlock Style="{StaticResource HintText}" TextAlignment="Center"
+                     Text="No clips or meshes were found in the game directory or the search folders." />
+          <Button Margin="0,12,0,0" Padding="12,5" HorizontalAlignment="Center" Command="{Binding AddSearchFolderCommand}"
+                  ToolTip="Add a folder of loose clips and meshes (or .vpp archives)" AutomationProperties.Name="Add search folder">
+            <AccessText Text="Add _search folder…" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </DockPanel>
+  </Border>
+</UserControl>

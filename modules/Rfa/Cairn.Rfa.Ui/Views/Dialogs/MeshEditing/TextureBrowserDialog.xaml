@@ -1,0 +1,75 @@
+<Window x:Class="Cairn.Rfa.Ui.Views.Dialogs.MeshEditing.TextureBrowserDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Title}" Width="520" Height="600" MinWidth="400" MinHeight="380"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Grid Margin="20,18,20,14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+      <TextBlock Style="{StaticResource DialogHeading}" Text="Choose a texture" />
+      <TextBlock Style="{StaticResource HintText}"
+                 Text="Every texture the mesh's folder, the search folders and the game provide. The material stores the name only; the game finds the file the same way." />
+    </StackPanel>
+
+    <DockPanel Grid.Row="1" Margin="0,0,0,8">
+      <TextBlock DockPanel.Dock="Left" Text="Filter" Style="{StaticResource FormLabel}" />
+      <TextBox x:Name="FilterBox" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" PreviewKeyDown="OnFilterKeyDown"
+               ToolTip="Type part of a texture name; Down moves into the list" AutomationProperties.Name="Filter textures" />
+    </DockPanel>
+
+    <Border Grid.Row="2" Style="{StaticResource DialogCard}" Padding="2">
+      <Grid>
+        <ListBox x:Name="List" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}"
+                 BorderThickness="0" Background="Transparent" MouseDoubleClick="OnDoubleClick"
+                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Textures">
+          <ListBox.Resources>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+          </ListBox.Resources>
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem" BasedOn="{StaticResource PaneListBoxItem}">
+              <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+              <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+            </Style>
+          </ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Location}" FontSize="11" Margin="12,0,2,0" MaxWidth="180"
+                           TextTrimming="CharacterEllipsis" Foreground="{DynamicResource App.SecondaryText}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Text="Looking through the game's folders and archives…" Style="{StaticResource HintText}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Visibility="{Binding IsLoading, Converter={StaticResource Truthy}}" />
+      </Grid>
+    </Border>
+
+    <StackPanel Grid.Row="3" Margin="0,8,0,0">
+      <TextBlock Text="{Binding Status}" Style="{StaticResource HintText}" AutomationProperties.Name="How many textures" />
+      <TextBlock Text="{Binding SelectedNote}" Style="{StaticResource HintText}" TextTrimming="CharacterEllipsis"
+                 AutomationProperties.Name="Selected texture" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+      <Button Style="{StaticResource DialogButton}" IsDefault="True" Click="OnOk" IsEnabled="{Binding CanPick}" Content="Use texture"
+              ToolTip="Set the material's texture to the selected file (Enter)" ToolTipService.ShowOnDisabled="True"
+              AutomationProperties.Name="Use texture" />
+      <Button Style="{StaticResource DialogButton}" Content="Cancel" IsCancel="True"
+              ToolTip="Close without changing anything (Esc)" AutomationProperties.Name="Cancel" />
+    </StackPanel>
+  </Grid>
+</Window>

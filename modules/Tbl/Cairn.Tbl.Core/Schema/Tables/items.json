@@ -1,0 +1,147 @@
+{
+  "file": "items.tbl",
+  "title": "Items",
+  "doc": "Pickups placed in levels: ammunition, weapons, health, armour and power-ups.",
+  "sections": [
+    {
+      "name": "#Items",
+      "required": true,
+      "repeat": false,
+      "entry": "$Class Name:",
+      "defines": "item",
+      "doc": "Each entry starts at $Class Name:; the list ends at #End.",
+      "fields": [
+        {
+          "name": "$Class Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Unique item class name used by levels."
+        },
+        {
+          "name": "$HUD Msg Name:",
+          "type": "text",
+          "required": true,
+          "syntax": "xstr",
+          "doc": "Localised name shown on pickup, written as XSTR(id, \"text\")."
+        },
+        {
+          "name": "$Pickup Msg Single:",
+          "type": "text",
+          "required": false,
+          "syntax": "xstr",
+          "doc": "Localised single player pickup message, XSTR(id, \"text\")."
+        },
+        {
+          "name": "$Pickup Msg Multi:",
+          "type": "text",
+          "required": false,
+          "syntax": "xstr",
+          "doc": "Localised multiplayer pickup message, XSTR(id, \"text\")."
+        },
+        {
+          "name": "$Pickup Msg W&A Single:",
+          "type": "text",
+          "required": false,
+          "syntax": "xstr",
+          "doc": "Localised single player message when the item gives a weapon and ammunition."
+        },
+        {
+          "name": "$Pickup Msg W&A Multi:",
+          "type": "text",
+          "required": false,
+          "syntax": "xstr",
+          "doc": "Localised multiplayer message when the item gives a weapon and ammunition."
+        },
+        {
+          "name": "$V3D Filename:",
+          "type": "file",
+          "required": true,
+          "file": "mesh",
+          "doc": "Item mesh."
+        },
+        {
+          "name": "$V3D Type:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "character",
+            "static",
+            "anim"
+          ],
+          "strict": false,
+          "doc": "Kind of mesh named above."
+        },
+        {
+          "name": "$Count:",
+          "type": "int",
+          "required": true,
+          "doc": "Amount given in single player (rounds, health points and so on)."
+        },
+        {
+          "name": "$Count Multi:",
+          "type": "int",
+          "required": false,
+          "doc": "Amount given in multiplayer; defaults to $Count."
+        },
+        {
+          "name": "$Respawn Time:",
+          "type": "int",
+          "required": true,
+          "unit": "seconds",
+          "doc": "Respawn delay in seconds; -1 never respawns."
+        },
+        {
+          "name": "$Pickup Sound:",
+          "type": "file",
+          "required": false,
+          "file": "sound",
+          "parts": [
+            {
+              "type": "file",
+              "file": "sound",
+              "doc": "sound file name; \"\" means none (then nothing else follows)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "minimum distance in metres (only when a file is given)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "volume scale (only when a file is given)"
+            }
+          ],
+          "doc": "Sound on pickup: file, minimum distance, volume."
+        },
+        {
+          "name": "$Ammo For:",
+          "type": "ref",
+          "required": false,
+          "ref": "weapon",
+          "doc": "Weapon whose ammunition this item gives."
+        },
+        {
+          "name": "$Gives Weapon:",
+          "type": "ref",
+          "required": false,
+          "ref": "weapon",
+          "doc": "Weapon this item gives."
+        },
+        {
+          "name": "$Flags:",
+          "type": "flags",
+          "required": true,
+          "values": [
+            "no_pickup",
+            "spins_in_multi"
+          ],
+          "doc": "Item flags; an unknown flag name stops the game."
+        }
+      ]
+    }
+  ]
+}

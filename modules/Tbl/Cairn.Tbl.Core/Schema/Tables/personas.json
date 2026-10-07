@@ -1,0 +1,109 @@
+{
+  "file": "personas.tbl",
+  "title": "Voice personas",
+  "doc": "Voice sets that give AI characters their spoken lines; entity.tbl refers to them by name.",
+  "sections": [
+    {
+      "name": "#Personas",
+      "required": true,
+      "repeat": false,
+      "doc": "List of up to 16 personas; each starts at $Name: and the list ends at #End.",
+      "entry": "$Name:",
+      "defines": "persona",
+      "end": "#End",
+      "maxEntries": 16,
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "doc": "Persona name."
+        },
+        {
+          "name": "$Alert:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken when becoming alert."
+        },
+        {
+          "name": "$Under Alert:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken while alert."
+        },
+        {
+          "name": "$Cower:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken while cowering."
+        },
+        {
+          "name": "$Flee:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken while fleeing."
+        },
+        {
+          "name": "$Use Key:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken when the player uses the character."
+        },
+        {
+          "name": "$Healing Gone:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Line spoken when healing runs out."
+        },
+        {
+          "name": "$Heal Ignore:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Line spoken when ignoring a request to heal."
+        },
+        {
+          "name": "$Timeout:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken when the player waits too long."
+        },
+        {
+          "name": "$Humming:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Idle humming."
+        },
+        {
+          "name": "$Fight Single:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken when fighting one enemy."
+        },
+        {
+          "name": "$Fight Mult:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken when fighting several enemies."
+        },
+        {
+          "name": "$Panic:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Line spoken when panicking."
+        }
+      ]
+    }
+  ]
+}

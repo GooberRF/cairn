@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Cairn</AssemblyName>
+    <RootNamespace>Cairn.Shell</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- English only: the framework's satellite assemblies are dead weight in the published app. -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Single-file publishes are compressed: a little first-run startup time for half the download. -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- No IL trimming: WPF resolves types by name from XAML, which a trimmer cannot see. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <!-- .NET 9 Fluent theming is still marked experimental. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    The modules compiled into Cairn.exe. Build with -p:CairnModules=Vfx (or an empty value) to run the
+    shell with only some modules; ModuleCatalog.cs registers whatever the CAIRN_MODULE_* defines say.
+  -->
+  <PropertyGroup>
+    <CairnModules Condition="'$(CairnModules)' == ''">Atx;Rfa;Vfx;Vpp;Tbl</CairnModules>
+    <_CairnModules>;$(CairnModules);</_CairnModules>
+    <DefineConstants Condition="$(_CairnModules.Contains(';Atx;'))">$(DefineConstants);CAIRN_MODULE_ATX</DefineConstants>
+    <DefineConstants Condition="$(_CairnModules.Contains(';Rfa;'))">$(DefineConstants);CAIRN_MODULE_RFA</DefineConstants>
+    <DefineConstants Condition="$(_CairnModules.Contains(';Vfx;'))">$(DefineConstants);CAIRN_MODULE_VFX</DefineConstants>
+    <DefineConstants Condition="$(_CairnModules.Contains(';Vpp;'))">$(DefineConstants);CAIRN_MODULE_VPP</DefineConstants>
+    <DefineConstants Condition="$(_CairnModules.Contains(';Tbl;'))">$(DefineConstants);CAIRN_MODULE_TBL</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- UseWPF drops System.IO from the implicit usings (Path would clash with Shapes.Path). -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Ui\Cairn.Ui.csproj" />
+    <ProjectReference Include="..\..\modules\Atx\Cairn.Atx.Ui\Cairn.Atx.Ui.csproj" Condition="$(_CairnModules.Contains(';Atx;'))" />
+    <ProjectReference Include="..\..\modules\Rfa\Cairn.Rfa.Ui\Cairn.Rfa.Ui.csproj" Condition="$(_CairnModules.Contains(';Rfa;'))" />
+    <ProjectReference Include="..\..\modules\Vfx\Cairn.Vfx.Ui\Cairn.Vfx.Ui.csproj" Condition="$(_CairnModules.Contains(';Vfx;'))" />
+    <ProjectReference Include="..\..\modules\Vpp\Cairn.Vpp.Ui\Cairn.Vpp.Ui.csproj" Condition="$(_CairnModules.Contains(';Vpp;'))" />
+    <ProjectReference Include="..\..\modules\Tbl\Cairn.Tbl.Ui\Cairn.Tbl.Ui.csproj" Condition="$(_CairnModules.Contains(';Tbl;'))" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="app.manifest" />
+    <!-- Also a resource, so windows can set Icon="app.ico" rather than relying on the exe's. -->
+    <Resource Include="app.ico" />
+  </ItemGroup>
+
+  <!--
+    The licence and the third-party notices are embedded so Help > About shows the very files the
+    repository ships. Embedded rather than copied: a single-file publish has no file next to the exe.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="Cairn.LICENSE" Visible="false" />
+    <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.md" LogicalName="Cairn.THIRD-PARTY-NOTICES.md" Visible="false" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <!-- WPF is referenced for System.Windows.Media.Imaging (PNG/JPEG pixel decode) only.
+         No UI types live in this assembly. -->
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Assets</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Formats\Cairn.Formats.csproj" />
+    <ProjectReference Include="..\Cairn.Workspace\Cairn.Workspace.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The module test projects drive a few internal seams directly (for example the injected
+         registry reader behind GameDirectoryLocator). Nothing else is opened up. -->
+    <InternalsVisibleTo Include="Cairn.Rfa.Tests" />
+    <!-- Seams Cairn.Rfa.Core used while it was one assembly with these libraries. -->
+    <InternalsVisibleTo Include="Cairn.Rfa.Core" />
+    <InternalsVisibleTo Include="Cairn.Atx.Tests" />
+    <InternalsVisibleTo Include="Cairn.Vfx.Tests" />
+  </ItemGroup>
+
+</Project>

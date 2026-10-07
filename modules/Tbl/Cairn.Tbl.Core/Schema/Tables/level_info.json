@@ -1,0 +1,206 @@
+{
+  "pattern": "*_info.tbl",
+  "title": "Level Info (Alpine)",
+  "doc": "Per-level options read by Alpine Faction from <levelname>_info.tbl when that level loads (packfile or loose file).",
+  "syntax": "alpine-lines",
+  "alpine": {
+    "since": "1.0",
+    "notes": "Alpine reads this file line by line, not with the game's table parser: lines are trimmed, everything before a line that is exactly #Start is ignored, reading stops at a line that is exactly #End, blank lines and lines starting with // are skipped, and every other line is 'name: value' split at the first colon. Field order does not matter, a later line overrides an earlier one, and unknown names are only logged. Comments after a value become part of the value. The file is looked up by the level file name with .rfl replaced by _info.tbl."
+  },
+  "sections": [
+    {
+      "name": "#Start",
+      "end": "#End",
+      "required": true,
+      "repeat": false,
+      "order": "free",
+      "entry": null,
+      "doc": "Options between #Start and #End, in any order.",
+      "fields": [
+        {
+          "name": "$Lightmap Clamp Floor:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "alpineSince": "1.0",
+          "doc": "Lowest lightmap colour allowed on this level. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Lightmap Clamp Ceiling:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "alpineSince": "1.0",
+          "doc": "Highest lightmap colour allowed on this level. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Ideal Player Count:",
+          "type": "int",
+          "required": false,
+          "alpineSince": "1.0",
+          "doc": "Player count the level is designed for, shown to server browsers."
+        },
+        {
+          "name": "$Author Contact:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.0",
+          "quotes": "optional",
+          "doc": "How to reach the level author."
+        },
+        {
+          "name": "$Author Website:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.0",
+          "quotes": "optional",
+          "doc": "Level author's website."
+        },
+        {
+          "name": "$Description:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.0",
+          "quotes": "optional",
+          "doc": "Short description of the level."
+        },
+        {
+          "name": "$Player Headlamp Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "alpineSince": "1.0",
+          "doc": "Head lamp colour on this level. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Player Headlamp Intensity:",
+          "type": "float",
+          "required": false,
+          "alpineSince": "1.0",
+          "doc": "Head lamp intensity on this level."
+        },
+        {
+          "name": "$Player Headlamp Range:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "alpineSince": "1.0",
+          "doc": "Head lamp range on this level."
+        },
+        {
+          "name": "$Player Headlamp Radius:",
+          "type": "float",
+          "required": false,
+          "alpineSince": "1.0",
+          "doc": "Head lamp cone radius on this level."
+        },
+        {
+          "name": "$Chat Menu 1:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 1 of the level's chat menu."
+        },
+        {
+          "name": "$Chat Menu 2:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 2 of the level's chat menu."
+        },
+        {
+          "name": "$Chat Menu 3:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 3 of the level's chat menu."
+        },
+        {
+          "name": "$Chat Menu 4:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 4 of the level's chat menu."
+        },
+        {
+          "name": "$Chat Menu 5:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 5 of the level's chat menu."
+        },
+        {
+          "name": "$Chat Menu 6:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 6 of the level's chat menu."
+        },
+        {
+          "name": "$Chat Menu 7:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 7 of the level's chat menu."
+        },
+        {
+          "name": "$Chat Menu 8:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 8 of the level's chat menu."
+        },
+        {
+          "name": "$Chat Menu 9:",
+          "type": "string",
+          "required": false,
+          "alpineSince": "1.1",
+          "quotes": "optional",
+          "doc": "Text of entry 9 of the level's chat menu."
+        },
+        {
+          "name": "$Crater Texture PPM:",
+          "type": "float",
+          "required": false,
+          "alpineSince": "1.1",
+          "doc": "Pixels per metre of geomod crater textures on this level."
+        },
+        {
+          "name": "$Use Vertex Lighting:",
+          "type": "bool",
+          "required": false,
+          "syntax": "alpine-bool",
+          "alpineSince": "1.3",
+          "doc": "Use the legacy vertex lighting for meshes on this level. 1, true or True mean yes; anything else means no."
+        },
+        {
+          "name": "$Pixel Lighting Overbright:",
+          "type": "float",
+          "required": false,
+          "alpineSince": "1.3",
+          "doc": "Allowed overbright range of pixel lighting on this level."
+        },
+        {
+          "name": "$Mesh Replacement:",
+          "type": "list",
+          "required": false,
+          "repeat": true,
+          "syntax": "alpine-pair",
+          "of": "file",
+          "file": "mesh",
+          "maxCount": 2,
+          "alpineSince": "1.0",
+          "doc": "Swap a mesh on this level: { \"original\", \"replacement\" } with both names quoted and a comma between; the replacement name is at most 31 characters."
+        }
+      ]
+    }
+  ]
+}

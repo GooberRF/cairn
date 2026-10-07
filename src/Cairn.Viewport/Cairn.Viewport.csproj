@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Viewport</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Ui\Cairn.Ui.csproj" />
+    <ProjectReference Include="..\Cairn.Formats\Cairn.Formats.csproj" />
+    <ProjectReference Include="..\Cairn.Assets\Cairn.Assets.csproj" />
+  </ItemGroup>
+
+</Project>

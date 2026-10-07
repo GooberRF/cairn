@@ -1,0 +1,170 @@
+{
+  "file": "hud.tbl",
+  "title": "HUD layout",
+  "doc": "HUD colours and the screen positions of HUD elements for each base resolution.",
+  "fields": [
+    {
+      "name": "$HUD default color:",
+      "type": "color",
+      "required": true,
+      "doc": "Default HUD colour."
+    },
+    {
+      "name": "$HUD msg color:",
+      "type": "color",
+      "required": true,
+      "doc": "Colour of HUD message text."
+    },
+    {
+      "name": "$HUD msg bg color:",
+      "type": "color",
+      "required": true,
+      "doc": "Background colour behind HUD messages."
+    },
+    {
+      "name": "$HUD full color:",
+      "type": "color",
+      "required": true,
+      "doc": "Colour of a full bar."
+    },
+    {
+      "name": "$HUD mid color:",
+      "type": "color",
+      "required": true,
+      "doc": "Colour of a half-full bar."
+    },
+    {
+      "name": "$HUD low color:",
+      "type": "color",
+      "required": true,
+      "doc": "Colour of a nearly empty bar."
+    },
+    {
+      "name": "$HUD countdown color:",
+      "type": "color",
+      "required": true,
+      "doc": "Colour of the countdown timer."
+    },
+    {
+      "name": "$HUD body msg color:",
+      "type": "color",
+      "required": true,
+      "doc": "Colour of body text in messages."
+    }
+  ],
+  "notes": "Other sections (the console layouts #PS2 NTSC and #PS2 PAL) are skipped by the game.",
+  "sections": [
+    {
+      "name": "#640x480",
+      "required": true,
+      "repeat": false,
+      "doc": "HUD element positions for 640x480: rows of element number, x and y, ended by #End; the game searches for this header.",
+      "locate": "search",
+      "layout": "rows",
+      "end": "#End",
+      "maxEntries": 48,
+      "columns": [
+        {
+          "type": "int",
+          "min": 0,
+          "max": 47,
+          "doc": "element number"
+        },
+        {
+          "type": "int",
+          "unit": "pixels",
+          "doc": "x (or width)"
+        },
+        {
+          "type": "int",
+          "unit": "pixels",
+          "doc": "y (or height)"
+        }
+      ]
+    },
+    {
+      "name": "#800x600",
+      "required": true,
+      "repeat": false,
+      "doc": "HUD element positions for 800x600: rows of element number, x and y, ended by #End; the game searches for this header.",
+      "locate": "search",
+      "layout": "rows",
+      "end": "#End",
+      "maxEntries": 48,
+      "columns": [
+        {
+          "type": "int",
+          "min": 0,
+          "max": 47,
+          "doc": "element number"
+        },
+        {
+          "type": "int",
+          "unit": "pixels",
+          "doc": "x (or width)"
+        },
+        {
+          "type": "int",
+          "unit": "pixels",
+          "doc": "y (or height)"
+        }
+      ]
+    },
+    {
+      "name": "#1024x768",
+      "required": true,
+      "repeat": false,
+      "doc": "HUD element positions for 1024x768: rows of element number, x and y, ended by #End; the game searches for this header.",
+      "locate": "search",
+      "layout": "rows",
+      "end": "#End",
+      "maxEntries": 48,
+      "columns": [
+        {
+          "type": "int",
+          "min": 0,
+          "max": 47,
+          "doc": "element number"
+        },
+        {
+          "type": "int",
+          "unit": "pixels",
+          "doc": "x (or width)"
+        },
+        {
+          "type": "int",
+          "unit": "pixels",
+          "doc": "y (or height)"
+        }
+      ]
+    },
+    {
+      "name": "#1280x1024",
+      "required": true,
+      "repeat": false,
+      "doc": "HUD element positions for 1280x1024: rows of element number, x and y, ended by #End; the game searches for this header.",
+      "locate": "search",
+      "layout": "rows",
+      "end": "#End",
+      "maxEntries": 48,
+      "columns": [
+        {
+          "type": "int",
+          "min": 0,
+          "max": 47,
+          "doc": "element number"
+        },
+        {
+          "type": "int",
+          "unit": "pixels",
+          "doc": "x (or width)"
+        },
+        {
+          "type": "int",
+          "unit": "pixels",
+          "doc": "y (or height)"
+        }
+      ]
+    }
+  ]
+}

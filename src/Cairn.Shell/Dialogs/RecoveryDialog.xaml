@@ -1,0 +1,77 @@
+<Window x:Class="Cairn.Shell.Dialogs.RecoveryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Recover unsaved work" Width="560" Height="440" MinWidth="460" MinHeight="360"
+        Icon="/app.ico"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="True"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Grid Margin="20,18,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+      <TextBlock Style="{StaticResource DialogHeading}"
+                 Text="Cairn closed with unsaved changes" />
+      <TextBlock Style="{StaticResource HintText}"
+                 Text="These files were copied to the recovery folder. Tick the ones you want back; they open with their changes and are still unsaved, so nothing is written until you save them. Unticked copies are deleted." />
+    </StackPanel>
+
+    <Border Grid.Row="1" Style="{StaticResource DialogCard}" Padding="0">
+      <ListBox x:Name="List" BorderThickness="0" Background="Transparent"
+               HorizontalContentAlignment="Stretch"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+               ToolTip="Files with unsaved changes copied before Cairn closed"
+               AutomationProperties.Name="Recovered files">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="4,5" Background="Transparent">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0"
+                        IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                        ToolTip="Ticked: restore this file. Unticked: delete its recovery copy"
+                        AutomationProperties.Name="{Binding DisplayName}" />
+              <StackPanel Grid.Column="1">
+                <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource App.Text}"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding PathText}" FontSize="11"
+                           Foreground="{DynamicResource App.SecondaryText}"
+                           TextTrimming="CharacterEllipsis" ToolTip="{Binding PathText}" />
+                <TextBlock Text="{Binding DiskNote}" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{DynamicResource Severity.Warning}"
+                           Visibility="{Binding DiskNoteVisibility}"
+                           AutomationProperties.Name="The file on disk is newer" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="{Binding SavedText}" VerticalAlignment="Center"
+                         Margin="10,0,6,0" FontSize="11"
+                         Foreground="{DynamicResource App.SecondaryText}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+
+    <DockPanel Grid.Row="2" Margin="0,16,0,0" LastChildFill="False">
+      <Button DockPanel.Dock="Left" Style="{StaticResource DialogButton}" Margin="0"
+              Content="_Discard all" Click="OnDiscardAll"
+              ToolTip="Delete every recovery copy and start with no tabs open"
+              AutomationProperties.Name="Discard all recovered files" />
+      <Button DockPanel.Dock="Right" Style="{StaticResource DialogButton}" Content="Not now"
+              IsCancel="True" Click="OnLater"
+              ToolTip="Leave the copies alone; they will be offered again next time"
+              AutomationProperties.Name="Decide later" />
+      <Button DockPanel.Dock="Right" x:Name="RestoreButton" Style="{StaticResource DialogButton}"
+              Content="_Restore selected" IsDefault="True" Click="OnRestore"
+              ToolTip="Open the ticked files as unsaved tabs and delete the unticked copies"
+              AutomationProperties.Name="Restore the selected files" />
+    </DockPanel>
+  </Grid>
+</Window>

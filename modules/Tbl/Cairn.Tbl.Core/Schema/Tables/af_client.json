@@ -1,0 +1,90 @@
+{
+  "pattern": "af_client*.tbl",
+  "title": "Alpine Client Options",
+  "doc": "Client look options; Alpine loads every af_client_*.tbl it finds, and af_client.tbl when a mod is loaded.",
+  "syntax": "alpine-lines",
+  "alpine": {
+    "since": "1.0",
+    "notes": "Alpine reads this file line by line, not with the game's table parser: lines are trimmed, everything before a line that is exactly #Start is ignored, reading stops at a line that is exactly #End, blank lines and lines starting with // are skipped, and every other line is 'name: value' split at the first colon. Field order does not matter, a later line overrides an earlier one, and unknown names are only logged. Comments after a value become part of the value."
+  },
+  "sections": [
+    {
+      "name": "#Start",
+      "end": "#End",
+      "required": true,
+      "repeat": false,
+      "order": "free",
+      "entry": null,
+      "doc": "Options between #Start and #End, in any order.",
+      "fields": [
+        {
+          "name": "$Assault Rifle Ammo Counter Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "doc": "Colour of the assault rifle ammunition digits. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Precision Rifle Scope Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "doc": "Precision rifle scope tint. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Sniper Rifle Scope Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "doc": "Sniper rifle scope tint. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Rail Driver Fire Glow Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "doc": "Rail driver fire glow colour. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Rail Driver Fire Flash Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "doc": "Rail driver muzzle flash colour (alpha ignored). Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Rail Driver Scanner Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "alpineSince": "1.1",
+          "doc": "Rail driver heat scanner colour. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Multi Timer X Offset:",
+          "type": "int",
+          "required": false,
+          "unit": "pixels",
+          "alpineSince": "1.1",
+          "doc": "Horizontal offset of the multiplayer timer."
+        },
+        {
+          "name": "$Multi Timer Y Offset:",
+          "type": "int",
+          "required": false,
+          "unit": "pixels",
+          "alpineSince": "1.1",
+          "doc": "Vertical offset of the multiplayer timer."
+        },
+        {
+          "name": "$Multi Timer Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "alpineSince": "1.1",
+          "doc": "Colour of the multiplayer timer. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        }
+      ]
+    }
+  ]
+}

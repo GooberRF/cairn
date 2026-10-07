@@ -1,0 +1,103 @@
+{
+  "file": "effects.tbl",
+  "title": "Glares",
+  "doc": "Light glares (coronas, volumetric beams and floor reflections) used by lights, clutter, entities and muzzle flashes.",
+  "sections": [
+    {
+      "name": "#Glares",
+      "required": true,
+      "repeat": false,
+      "doc": "List of glares; the game searches the file for this header, so text before it is ignored.",
+      "entry": "$Name:",
+      "defines": "glare",
+      "end": "#End",
+      "locate": "search",
+      "maxEntries": 64,
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Unique glare name."
+        },
+        {
+          "name": "$Light Color:",
+          "type": "color",
+          "required": true,
+          "doc": "Colour of the screen flash when the glare is looked at."
+        },
+        {
+          "name": "$Corona Bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "children": [
+            {
+              "name": "$Cone Angle:",
+              "type": "float",
+              "required": true,
+              "unit": "degrees",
+              "doc": "Angle of the cone in which the corona is visible (the game halves it)."
+            },
+            {
+              "name": "$Intensity:",
+              "type": "float",
+              "required": true,
+              "doc": "Strength of the screen flash."
+            },
+            {
+              "name": "$Radius Distance Factor:",
+              "type": "float",
+              "required": true,
+              "doc": "How the corona size changes with distance."
+            },
+            {
+              "name": "$Radius Scale Factor:",
+              "type": "float",
+              "required": true,
+              "doc": "Corona size multiplier (metres for muzzle flashes)."
+            },
+            {
+              "name": "$Diminish Distance:",
+              "type": "float",
+              "required": true,
+              "doc": "Distance at which the corona starts to fade; negative never fades."
+            }
+          ],
+          "doc": "Corona image; when present, the corona shape fields follow."
+        },
+        {
+          "name": "$Volumetric Bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "children": [
+            {
+              "name": "$Volumetric Height:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Beam width and height."
+            },
+            {
+              "name": "$Volumetric Length:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Beam length."
+            }
+          ],
+          "doc": "Light beam image; when present, its size fields follow."
+        },
+        {
+          "name": "$Reflection Bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Image drawn as the glare's reflection in mirrored floors."
+        }
+      ]
+    }
+  ]
+}

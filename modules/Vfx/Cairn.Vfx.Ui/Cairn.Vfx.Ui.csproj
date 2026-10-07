@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Vfx.Ui</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Cairn.Ui\Cairn.Ui.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Viewport\Cairn.Viewport.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Workspace\Cairn.Workspace.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Assets\Cairn.Assets.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Formats\Cairn.Formats.csproj" />
+    <ProjectReference Include="..\Cairn.Vfx.Core\Cairn.Vfx.Core.csproj" />
+  </ItemGroup>
+
+</Project>

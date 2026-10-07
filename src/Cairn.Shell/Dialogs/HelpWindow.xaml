@@ -1,0 +1,54 @@
+<Window x:Class="Cairn.Shell.Dialogs.HelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cairn Help" Width="900" Height="720" MinWidth="560" MinHeight="360" Icon="/app.ico"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="220" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource App.ChromeBackground}"
+            BorderBrush="{DynamicResource App.Border}" BorderThickness="0,0,1,0">
+      <ListBox x:Name="Topics" BorderThickness="0" Background="Transparent" Padding="0,6"
+               DisplayMemberPath="Title" SelectionChanged="OnTopicChanged"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+               ToolTip="Choose a help topic"
+               AutomationProperties.Name="Help topics">
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="ListBoxItem" BasedOn="{StaticResource PaneListBoxItem}">
+            <Setter Property="Padding" Value="14,6" />
+          </Style>
+        </ListBox.ItemContainerStyle>
+      </ListBox>
+    </Border>
+
+    <FlowDocumentScrollViewer x:Name="Viewer" Grid.Row="0" Grid.Column="1"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              IsToolBarVisible="False" Padding="0"
+                              Background="{DynamicResource App.WindowBackground}"
+                              Foreground="{DynamicResource App.Text}"
+                              AutomationProperties.Name="Help contents" />
+
+    <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource App.ChromeBackground}"
+            BorderBrush="{DynamicResource App.Border}" BorderThickness="0,1,0,0" Padding="16,10">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Style="{StaticResource DialogButton}" Content="Close"
+                IsCancel="True" Click="OnClose"
+                ToolTip="Close the help window"
+                AutomationProperties.Name="Close" />
+        <TextBlock x:Name="Footer" VerticalAlignment="Center" Style="{StaticResource HintText}"
+                   AutomationProperties.Name="Help footer" />
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

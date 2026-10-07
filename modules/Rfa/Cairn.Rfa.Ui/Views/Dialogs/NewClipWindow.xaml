@@ -1,0 +1,224 @@
+<Window x:Class="Cairn.Rfa.Ui.Views.Dialogs.NewClipWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+        xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls"
+        xmlns:viewport="clr-namespace:Cairn.Rfa.Ui.Viewport"
+        Title="{Binding Title}" Width="1120" Height="800" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.Text}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <!-- File › New Clip… (NewClipViewModel). Theme brushes only. -->
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Gltf/GltfDialogResources.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid Margin="20,16,20,14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+      <TextBlock Style="{StaticResource DialogHeading}" Text="{Binding Heading}" />
+      <TextBlock Style="{StaticResource HintText}" Text="{Binding Description}" />
+    </StackPanel>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="430" MinWidth="360" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" MinWidth="380" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Left: mesh, kind and length, starting pose, name, advanced -->
+      <ScrollViewer x:Name="OptionsScroller" Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="0,0,8,0">
+        <StackPanel>
+          <StackPanel Style="{StaticResource DialogGroup}">
+            <TextBlock Style="{StaticResource DialogSubheading}" Text="CHARACTER MESH" />
+            <TextBlock FontSize="12" Margin="0,0,0,6" Foreground="{DynamicResource App.Text}" Text="{Binding TargetText}" TextWrapping="Wrap"
+                       AutomationProperties.Name="Character mesh" />
+            <DockPanel Margin="0,0,0,4">
+              <Button DockPanel.Dock="Right" Style="{StaticResource DialogSmallButton}" Margin="6,0,0,0" Content="_Browse…" Command="{Binding BrowseTargetCommand}"
+                      ToolTip="Use a .v3c file that is not open or in the library" AutomationProperties.Name="Browse for a character mesh" />
+              <TextBox x:Name="TargetFilter" MinHeight="26" VerticalContentAlignment="Center" Text="{Binding Targets.Filter, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="Filter the meshes by name (substring, or * and ? wildcards)" AutomationProperties.Name="Filter character meshes" />
+            </DockPanel>
+            <ListBox x:Name="TargetList" Style="{StaticResource PickList}" Height="128" ItemsSource="{Binding Targets.Items}" SelectedItem="{Binding Targets.Selected, Mode=TwoWay}"
+                     ItemTemplate="{StaticResource PickEntryTemplate}" AutomationProperties.Name="Character meshes" SelectionChanged="OnPickSelectionChanged"
+                     ToolTip="The mesh the clip is made for (its bones, in its order): open tabs first (a clip tab offers its preview mesh), then the library's characters" />
+          </StackPanel>
+
+          <StackPanel Style="{StaticResource DialogGroup}">
+            <TextBlock Style="{StaticResource DialogSubheading}" Text="KIND AND LENGTH" />
+            <StackPanel Style="{StaticResource OptionRow}" Margin="0,0,0,2">
+              <TextBlock Style="{StaticResource OptionLabel}" Text="Kind" />
+              <RadioButton GroupName="Kind" Margin="0,0,16,0" VerticalAlignment="Center" IsChecked="{Binding IsState, Mode=TwoWay}"
+                           ToolTip="A state loops under everything else (stand, walk, crouch): no ramps" AutomationProperties.Name="State">
+                <AccessText Text="_State (loops)" />
+              </RadioButton>
+              <RadioButton GroupName="Kind" VerticalAlignment="Center" IsChecked="{Binding IsAction, Mode=TwoWay}"
+                           ToolTip="An action plays once over the state (fire, reload, a gesture), fading in and out over its ramps" AutomationProperties.Name="Action">
+                <AccessText Text="_Action (plays once)" />
+              </RadioButton>
+            </StackPanel>
+            <TextBlock Style="{StaticResource OptionHint}" Text="{Binding RampsText}" AutomationProperties.Name="Ramps" />
+
+            <StackPanel Style="{StaticResource OptionRow}">
+              <TextBlock Style="{StaticResource OptionLabel}" Text="Length" />
+              <cui:NumericBox Width="110" Value="{Binding Length, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                                   Step="{Binding UnitStep}" Minimum="{Binding MinimumLength}"
+                                   ToolTip="How long the clip runs; you can still change its end later (Clip inspector or the timeline's end handle)"
+                                   AutomationProperties.Name="Length" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource OptionHint}" Text="{Binding LengthText}" AutomationProperties.Name="Length in frames and seconds" />
+          </StackPanel>
+
+          <StackPanel Style="{StaticResource DialogGroup}">
+            <TextBlock Style="{StaticResource DialogSubheading}" Text="STARTING POSE" />
+            <RadioButton GroupName="Pose" Margin="0,0,0,4" IsChecked="{Binding UseReference, Mode=TwoWay}" IsEnabled="{Binding HasReferences}"
+                         ToolTipService.ShowOnDisabled="True"
+                         ToolTip="Every bone holds a clip's pose at the time below (needs a library clip with the mesh's bone count)"
+                         AutomationProperties.Name="Start from a reference clip">
+              <AccessText Text="A _reference clip's pose (usually the character's stand clip)" TextWrapping="Wrap" />
+            </RadioButton>
+            <TextBlock Style="{StaticResource OptionHint}" Margin="22,0,0,6"
+                       Text="Every clip of a character carries the bone lengths of its stand clip, so starting from it gives the new clip the same proportions as the rest." />
+            <StackPanel Margin="22,0,0,0" IsEnabled="{Binding HasReferences}">
+              <TextBox MinHeight="26" Margin="0,0,0,4" VerticalContentAlignment="Center" Text="{Binding References.Filter, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="Filter the clips by name (substring, or * and ? wildcards)" AutomationProperties.Name="Filter reference clips" />
+              <ListBox Style="{StaticResource PickList}" Height="112" ItemsSource="{Binding References.Items}" SelectedItem="{Binding References.Selected, Mode=TwoWay}"
+                       ItemTemplate="{StaticResource PickEntryTemplate}" AutomationProperties.Name="Reference clips" SelectionChanged="OnPickSelectionChanged"
+                       ToolTip="Clips with the mesh's bone count: the character's stand clip first, then the clips the tables give the mesh. Picking one starts from its pose" />
+              <TextBlock Style="{StaticResource OptionHint}" Margin="0,4,0,6" Text="{Binding SuggestionText}" AutomationProperties.Name="Suggested reference clip" />
+              <StackPanel Style="{StaticResource OptionRow}" IsEnabled="{Binding UseReference}">
+                <TextBlock Style="{StaticResource OptionLabel}" Text="Pose at" />
+                <cui:NumericBox Width="110" Value="{Binding PoseTime, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                                     Step="{Binding UnitStep}" Minimum="{Binding PoseTimeMinimum}" Maximum="{Binding PoseTimeMaximum}"
+                                     ToolTip="The moment of the reference clip whose pose every bone holds" AutomationProperties.Name="Pose at" />
+              </StackPanel>
+              <TextBlock Style="{StaticResource OptionHint}" Text="{Binding PoseTimeHint}" AutomationProperties.Name="Reference clip range" />
+            </StackPanel>
+
+            <RadioButton GroupName="Pose" Margin="0,4,0,4" IsChecked="{Binding UseBindPose, Mode=TwoWay}"
+                         ToolTip="Every bone holds the mesh's bind (rest) pose, with the bone lengths stored in the mesh"
+                         AutomationProperties.Name="Start from the bind pose">
+              <AccessText Text="The mesh's _bind pose" />
+            </RadioButton>
+            <TextBlock Style="{StaticResource OptionHint}" Margin="22,0,0,4"
+                       Text="Clips usually carry the character's own bone lengths, which can differ from the mesh's by a few centimetres, so a stand clip is the better start when there is one." />
+          </StackPanel>
+
+          <Expander Margin="0,0,0,8" IsExpanded="{Binding IsAdvancedExpanded, Mode=TwoWay}" Header="Advanced"
+                    ToolTip="Version, bone weight, ramps and start time" Foreground="{DynamicResource App.Text}"
+                    AutomationProperties.Name="Advanced options">
+            <StackPanel Margin="0,8,0,0">
+              <StackPanel Style="{StaticResource OptionRow}" Margin="0,0,0,2">
+                <TextBlock Style="{StaticResource OptionLabel}" Text="RFA version" />
+                <RadioButton GroupName="Version" Margin="0,0,16,0" VerticalAlignment="Center" IsChecked="{Binding IsVersion8, Mode=TwoWay}"
+                             ToolTip="Version 8 (the default)" AutomationProperties.Name="Version 8">
+                  <AccessText Text="_8" />
+                </RadioButton>
+                <RadioButton GroupName="Version" VerticalAlignment="Center" IsChecked="{Binding IsVersion7, Mode=TwoWay}"
+                             ToolTip="Version 7: the older layout" AutomationProperties.Name="Version 7">
+                  <AccessText Text="_7" />
+                </RadioButton>
+              </StackPanel>
+              <TextBlock Style="{StaticResource OptionHint}" Text="Both play the same bone animation; they differ only in how morph (face) data is stored, which a new clip has none of." />
+
+              <StackPanel Style="{StaticResource OptionRow}">
+                <TextBlock Style="{StaticResource OptionLabel}" Text="Bone weight" />
+                <cui:NumericBox Width="110" Value="{Binding Weight, Mode=TwoWay}" Decimals="2" Step="1" Minimum="0" Maximum="10"
+                                     ToolTip="Every bone's blend weight, 0 to 10" AutomationProperties.Name="Bone weight" />
+              </StackPanel>
+              <TextBlock Style="{StaticResource OptionHint}" Text="As an action, 10 replaces the state on a bone, 5 shares it, 0 leaves it to the state. Change single bones later in the Bone inspector or with Clip › Set Weights." />
+
+              <StackPanel Style="{StaticResource OptionRow}" Margin="0,0,0,4">
+                <TextBlock Style="{StaticResource OptionLabel}" Text="Ramp in" />
+                <cui:NumericBox Width="110" Value="{Binding RampIn, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                                     Step="{Binding UnitStep}" Minimum="0" ToolTip="How long an action takes to fade in" AutomationProperties.Name="Ramp in" />
+              </StackPanel>
+              <StackPanel Style="{StaticResource OptionRow}">
+                <TextBlock Style="{StaticResource OptionLabel}" Text="Ramp out" />
+                <cui:NumericBox Width="110" Value="{Binding RampOut, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                                     Step="{Binding UnitStep}" Minimum="0" ToolTip="How long an action takes to fade out before its end" AutomationProperties.Name="Ramp out" />
+              </StackPanel>
+              <TextBlock Style="{StaticResource OptionHint}" Text="The kind sets them: none for a state, 3 frames each for an action (the most common stock action ramps)." />
+
+              <StackPanel Style="{StaticResource OptionRow}">
+                <TextBlock Style="{StaticResource OptionLabel}" Text="Start at" />
+                <cui:NumericBox Width="110" Value="{Binding StartTime, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                                     Step="{Binding UnitStep}" Minimum="0" ToolTip="Where the clip starts on its own timeline" AutomationProperties.Name="Start time" />
+              </StackPanel>
+              <TextBlock Style="{StaticResource OptionHint}" Text="Stock clips start at frame 1." />
+            </StackPanel>
+          </Expander>
+        </StackPanel>
+      </ScrollViewer>
+
+      <GridSplitter Grid.Column="1" Style="{StaticResource VerticalSplitter}" Margin="4,0" AutomationProperties.Name="Resize the options" />
+
+      <!-- Right: the starting pose on the mesh -->
+      <Grid Grid.Column="2">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" MinHeight="240" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" BorderThickness="1" BorderBrush="{DynamicResource App.Border}" CornerRadius="3" ClipToBounds="True">
+          <Grid>
+            <viewport:ViewportControl DataContext="{Binding Preview}" AutomationProperties.Name="Preview of the starting pose" />
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Padding="12,8" CornerRadius="4" MaxWidth="420"
+                    Background="{DynamicResource Viewport.Notice}" BorderBrush="{DynamicResource App.Border}" BorderThickness="1"
+                    Visibility="{Binding Problem, Converter={StaticResource Truthy}}" IsHitTestVisible="False">
+              <TextBlock Text="{Binding Problem}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource Viewport.NoticeText}"
+                         AutomationProperties.Name="Preview message" />
+            </Border>
+            <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8" Padding="7,2" CornerRadius="3"
+                    Background="{DynamicResource Viewport.LabelBackground}" IsHitTestVisible="False"
+                    Visibility="{Binding IsBusy, Converter={StaticResource Truthy}}">
+              <TextBlock Text="Loading…" FontSize="11" Foreground="{DynamicResource Viewport.Label}" />
+            </Border>
+          </Grid>
+        </Border>
+        <StackPanel Grid.Row="1" Margin="0,8,0,0">
+          <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource App.Text}" Text="{Binding PoseSummary}" AutomationProperties.Name="Starting pose summary" />
+          <TextBlock Style="{StaticResource HintText}" Margin="0,2,0,0" Text="{Binding Summary}" TextWrapping="Wrap" AutomationProperties.Name="Clip summary" />
+
+          <TextBlock Style="{StaticResource DialogSubheading}" Margin="0,14,0,6" Text="NAME" />
+          <TextBox x:Name="NameBox" MinHeight="26" VerticalContentAlignment="Center" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                   ToolTip="The clip's file name. The game knows clips by name alone, so it must be new; Save asks where to write it"
+                   AutomationProperties.Name="Clip name" />
+          <DockPanel Margin="0,4,0,0" Visibility="{Binding HasNameProblem, Converter={StaticResource Truthy}}">
+            <TextBlock DockPanel.Dock="Left" Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,2,7,0" Foreground="{DynamicResource Severity.Warning}" />
+            <TextBlock Text="{Binding NameProblem}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource App.Text}" AutomationProperties.Name="Name problem" />
+          </DockPanel>
+          <TextBlock Style="{StaticResource HintText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                     Text="Opens as a new, unsaved tab; Save asks where to write it. Keep the name within 59 characters and different from every clip the game has." />
+        </StackPanel>
+      </Grid>
+    </Grid>
+
+    <StackPanel Grid.Row="2" Margin="0,10,0,0">
+      <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource App.SecondaryText}" Text="{Binding Problem}"
+                 Visibility="{Binding Problem, Converter={StaticResource Truthy}}" AutomationProperties.Name="Why Create is disabled" />
+      <DockPanel Visibility="{Binding HasError, Converter={StaticResource Truthy}}">
+        <TextBlock DockPanel.Dock="Left" Text="&#xE783;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,2,7,0" Foreground="{DynamicResource Severity.Error}" />
+        <TextBlock Text="{Binding Error}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource Severity.Error}" AutomationProperties.Name="Error" />
+      </DockPanel>
+    </StackPanel>
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Style="{StaticResource DialogButton}" Content="_Create" IsDefault="True" Command="{Binding CreateCommand}" ToolTipService.ShowOnDisabled="True"
+              ToolTip="Open the clip as a new, unsaved tab on the mesh, with the timeline in front (nothing is written until you save)"
+              AutomationProperties.Name="Create" />
+      <Button Style="{StaticResource DialogButton}" Content="Cancel" IsCancel="True"
+              ToolTip="Close without making a clip (Esc)" AutomationProperties.Name="Cancel" />
+    </StackPanel>
+  </Grid>
+</Window>

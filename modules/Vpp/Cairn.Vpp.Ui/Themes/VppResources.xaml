@@ -1,0 +1,171 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- File list: flat themed header, rows and cells. Only App.* / Severity.* brushes, always DynamicResource. -->
+  <Style x:Key="Vpp.ColumnHeader" TargetType="GridViewColumnHeader">
+    <Setter Property="Foreground" Value="{DynamicResource App.SecondaryText}" />
+    <Setter Property="Background" Value="{DynamicResource App.ChromeBackground}" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="GridViewColumnHeader">
+          <Grid>
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource App.SubtleBorder}" BorderThickness="0,0,1,1" Padding="8,5,8,5">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="False" />
+            </Border>
+            <Thumb x:Name="PART_HeaderGripper" HorizontalAlignment="Right" Width="6" Margin="0,0,-3,0" Cursor="SizeWE">
+              <Thumb.Template>
+                <ControlTemplate TargetType="Thumb"><Border Background="Transparent" /></ControlTemplate>
+              </Thumb.Template>
+            </Thumb>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource App.Hover}" />
+            </Trigger>
+            <Trigger Property="Role" Value="Padding">
+              <Setter TargetName="Bd" Property="BorderThickness" Value="0,0,0,1" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Vpp.ListViewItem" TargetType="ListViewItem">
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListViewItem">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" Padding="0,1,0,1" SnapsToDevicePixels="True">
+            <GridViewRowPresenter VerticalAlignment="Center" Columns="{TemplateBinding GridView.ColumnCollection}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource App.Hover}" />
+            </Trigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsSelected" Value="True" />
+                <Condition Property="Selector.IsSelectionActive" Value="False" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource App.SelectionInactive}" />
+            </MultiTrigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsSelected" Value="True" />
+                <Condition Property="Selector.IsSelectionActive" Value="True" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource App.Selection}" />
+            </MultiTrigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource App.Accent}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <DataTemplate x:Key="Vpp.NameCell">
+    <Grid>
+      <TextBlock x:Name="Text" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+      <TextBox x:Name="Editor" Text="{Binding EditText, UpdateSourceTrigger=PropertyChanged}" Visibility="Collapsed" Margin="-3,-2,0,-2" Padding="2,0,2,0" MaxLength="59"
+               AutomationProperties.Name="New entry name" ToolTip="Enter renames, Esc cancels" />
+    </Grid>
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding IsEditing}" Value="True">
+        <Setter TargetName="Text" Property="Visibility" Value="Collapsed" />
+        <Setter TargetName="Editor" Property="Visibility" Value="Visible" />
+      </DataTrigger>
+    </DataTemplate.Triggers>
+  </DataTemplate>
+
+  <DataTemplate x:Key="Vpp.TypeCell">
+    <TextBlock Text="{Binding TypeName}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource App.SecondaryText}" />
+  </DataTemplate>
+
+  <DataTemplate x:Key="Vpp.SizeCell">
+    <TextBlock Text="{Binding SizeText}" ToolTip="{Binding SizeToolTip}" TextAlignment="Right" HorizontalAlignment="Stretch" />
+  </DataTemplate>
+
+  <DataTemplate x:Key="Vpp.StateCell">
+    <Border x:Name="Badge" CornerRadius="3" Padding="6,0,6,1" HorizontalAlignment="Left" Background="Transparent" ToolTip="{Binding StateToolTip}">
+      <TextBlock x:Name="Text" Text="{Binding StateText}" FontSize="11" />
+    </Border>
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding StateText}" Value="added">
+        <Setter TargetName="Badge" Property="Background" Value="{DynamicResource Severity.InfoSoft}" />
+        <Setter TargetName="Text" Property="Foreground" Value="{DynamicResource Severity.Info}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding StateText}" Value="replaced">
+        <Setter TargetName="Badge" Property="Background" Value="{DynamicResource Severity.WarningSoft}" />
+        <Setter TargetName="Text" Property="Foreground" Value="{DynamicResource Severity.Warning}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding StateText}" Value="renamed">
+        <Setter TargetName="Badge" Property="Background" Value="{DynamicResource App.AccentSoft}" />
+        <Setter TargetName="Text" Property="Foreground" Value="{DynamicResource App.Text}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding StateText}" Value="name too long">
+        <Setter TargetName="Badge" Property="Background" Value="{DynamicResource Severity.WarningSoft}" />
+        <Setter TargetName="Text" Property="Foreground" Value="{DynamicResource Severity.Warning}" />
+      </DataTrigger>
+    </DataTemplate.Triggers>
+  </DataTemplate>
+
+  <!-- One-line summary filled in the background; "unreadable" dimmed (opacity only: no re-measure when rows recycle). -->
+  <DataTemplate x:Key="Vpp.InfoCell">
+    <TextBlock x:Name="Text" Text="{Binding InfoText}" ToolTip="{Binding InfoToolTip}" TextTrimming="CharacterEllipsis" />
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding InfoIsUnreadable}" Value="True">
+        <Setter TargetName="Text" Property="Opacity" Value="0.5" />
+      </DataTrigger>
+    </DataTemplate.Triggers>
+  </DataTemplate>
+
+  <DataTemplate x:Key="Vpp.ProblemCell">
+    <TextBlock x:Name="Mark" Text="{Binding ProblemGlyph}" ToolTip="{Binding ProblemToolTip}" FontFamily="Segoe MDL2 Assets" FontSize="12"
+               HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource Severity.Warning}"
+               AutomationProperties.Name="{Binding ProblemToolTip, TargetNullValue=''}" />
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding HasError}" Value="True">
+        <Setter TargetName="Mark" Property="Foreground" Value="{DynamicResource Severity.Error}" />
+      </DataTrigger>
+    </DataTemplate.Triggers>
+  </DataTemplate>
+
+  <DataTemplate x:Key="Vpp.TypeOptionTemplate">
+    <CheckBox x:Name="Box" IsChecked="{Binding IsChecked}" Content="{Binding Text}" Margin="0,1,0,1" Foreground="{DynamicResource App.Text}" />
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding IsCategory}" Value="True">
+        <Setter TargetName="Box" Property="FontWeight" Value="SemiBold" />
+        <Setter TargetName="Box" Property="Margin" Value="0,6,0,1" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding IsCategory}" Value="False">
+        <Setter TargetName="Box" Property="Margin" Value="16,1,0,1" />
+      </DataTrigger>
+    </DataTemplate.Triggers>
+  </DataTemplate>
+
+  <DataTemplate x:Key="Vpp.ProblemTemplate">
+    <DockPanel Margin="2,3,2,3">
+      <TextBlock x:Name="Sev" DockPanel.Dock="Left" Width="64" Text="{Binding Severity}" FontWeight="SemiBold" />
+      <TextBlock DockPanel.Dock="Left" Width="64" Text="{Binding Code}" Foreground="{DynamicResource App.SecondaryText}" />
+      <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource App.Text}" />
+    </DockPanel>
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding Severity}" Value="Error">
+        <Setter TargetName="Sev" Property="Foreground" Value="{DynamicResource Severity.Error}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Severity}" Value="Warning">
+        <Setter TargetName="Sev" Property="Foreground" Value="{DynamicResource Severity.Warning}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Severity}" Value="Info">
+        <Setter TargetName="Sev" Property="Foreground" Value="{DynamicResource Severity.Info}" />
+      </DataTrigger>
+    </DataTemplate.Triggers>
+  </DataTemplate>
+</ResourceDictionary>

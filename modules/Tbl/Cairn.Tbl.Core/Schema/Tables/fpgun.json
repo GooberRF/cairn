@@ -1,0 +1,54 @@
+{
+  "file": "fpgun.tbl",
+  "title": "First Person Arms",
+  "doc": "First person arm models and textures that multiplayer characters use per weapon.",
+  "notes": "There is no section header: entries start at the top and the list must end with #End (end of file without #End is an error).",
+  "sections": [
+    {
+      "name": "",
+      "header": false,
+      "required": true,
+      "repeat": false,
+      "entry": "$Name:",
+      "defines": "fpgun",
+      "doc": "Entries from the start of the file; the list ends at #End.",
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Entry name used by +Custom Fpgun: in pc_multi.tbl."
+        },
+        {
+          "name": "$Model:",
+          "type": "file",
+          "required": true,
+          "file": "mesh",
+          "doc": "First person mesh."
+        },
+        {
+          "name": "$Hand Texture:",
+          "type": "file",
+          "required": true,
+          "file": "texture",
+          "doc": "Hand texture."
+        },
+        {
+          "name": "$Forearm Texture:",
+          "type": "file",
+          "required": true,
+          "file": "texture",
+          "doc": "Forearm texture."
+        },
+        {
+          "name": "$Bicep Texture:",
+          "type": "file",
+          "required": true,
+          "file": "texture",
+          "doc": "Upper arm texture."
+        }
+      ]
+    }
+  ]
+}

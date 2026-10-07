@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <!-- The libraries under test reference WPF (imaging only); the tests must match. -->
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Rfa.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cairn.Rfa.Core\Cairn.Rfa.Core.csproj" />
+    <!-- Shared with the sample generator so the tests regenerate the samples exactly as it does. -->
+    <Compile Include="..\..\..\tools\Cairn.Rfa.SampleGen\TinyTgaWriter.cs" Link="SampleGen\TinyTgaWriter.cs" />
+    <Compile Include="..\..\..\tools\Cairn.Rfa.SampleGen\SampleFigure.cs" Link="SampleGen\SampleFigure.cs" />
+    <Compile Include="..\..\..\tools\Cairn.Rfa.SampleGen\SampleClips.cs" Link="SampleGen\SampleClips.cs" />
+    <Compile Include="..\..\..\tools\Cairn.Rfa.SampleGen\SampleSet.cs" Link="SampleGen\SampleSet.cs" />
+  </ItemGroup>
+
+</Project>

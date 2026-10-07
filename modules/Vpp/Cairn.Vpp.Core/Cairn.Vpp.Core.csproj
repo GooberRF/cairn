@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Vpp</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Collections.Immutable" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Cairn.Formats\Cairn.Formats.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Workspace\Cairn.Workspace.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Assets\Cairn.Assets.csproj" />
+    <!-- The other modules' cores are referenced for facts only (reading meshes, clips, effects, animated textures). -->
+    <ProjectReference Include="..\..\Rfa\Cairn.Rfa.Core\Cairn.Rfa.Core.csproj" />
+    <ProjectReference Include="..\..\Vfx\Cairn.Vfx.Core\Cairn.Vfx.Core.csproj" />
+    <ProjectReference Include="..\..\Atx\Cairn.Atx.Core\Cairn.Atx.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cairn.Vpp.Tests" />
+    <InternalsVisibleTo Include="Cairn.Vpp.Ui" />
+  </ItemGroup>
+
+</Project>

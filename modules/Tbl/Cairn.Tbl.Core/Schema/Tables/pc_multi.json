@@ -1,0 +1,103 @@
+{
+  "file": "pc_multi.tbl",
+  "title": "Multiplayer Characters",
+  "doc": "Characters offered in multiplayer: name, screen names per language, portrait, entity class, team skins and per-weapon first person arms.",
+  "sections": [
+    {
+      "name": "#Characters",
+      "required": true,
+      "repeat": false,
+      "entry": "$Name:",
+      "defines": "multicharacter",
+      "doc": "Each entry starts at $Name:; the list ends at #End.",
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 29,
+          "doc": "Internal character name (at most 29 characters)."
+        },
+        {
+          "name": "$ScreenName:",
+          "type": "none",
+          "required": true,
+          "children": [
+            {
+              "name": "En:",
+              "type": "string",
+              "required": true,
+              "seek": true,
+              "maxLength": 1023,
+              "doc": "English screen name; the game searches ahead for En: and skips anything before it."
+            },
+            {
+              "name": "Gr:",
+              "type": "string",
+              "required": true,
+              "seek": true,
+              "maxLength": 1023,
+              "doc": "German screen name (searched for like En:)."
+            },
+            {
+              "name": "Fr:",
+              "type": "string",
+              "required": true,
+              "seek": true,
+              "maxLength": 1023,
+              "doc": "French screen name (searched for like En:)."
+            }
+          ],
+          "doc": "Marker without a value; the three language lines follow."
+        },
+        {
+          "name": "$ImageName:",
+          "type": "file",
+          "required": true,
+          "file": "texture",
+          "doc": "Portrait bitmap shown in the character list."
+        },
+        {
+          "name": "$EntityType:",
+          "type": "ref",
+          "required": true,
+          "ref": "entity",
+          "doc": "Entity class (entity.tbl) the player spawns as."
+        },
+        {
+          "name": "$EntityAnimType:",
+          "type": "ref",
+          "required": true,
+          "ref": "entity",
+          "doc": "Entity class whose animations are used."
+        },
+        {
+          "name": "$SkinName:",
+          "type": "string",
+          "required": true,
+          "doc": "Skin base name; the game looks for <name>_red / <name>_blue textures for teams."
+        },
+        {
+          "name": "+Custom Fpgun:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "ref": "weapon",
+          "parts": [
+            {
+              "type": "ref",
+              "ref": "weapon",
+              "doc": "weapon name"
+            },
+            {
+              "type": "ref",
+              "ref": "fpgun",
+              "doc": "fpgun.tbl entry"
+            }
+          ],
+          "doc": "First person arms for one weapon: weapon name, then an fpgun.tbl entry name."
+        }
+      ]
+    }
+  ]
+}

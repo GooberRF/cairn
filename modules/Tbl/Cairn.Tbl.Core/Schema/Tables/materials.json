@@ -1,0 +1,87 @@
+{
+  "file": "materials.tbl",
+  "title": "Materials",
+  "doc": "Surface materials: the texture name prefixes that select each material, physical properties and impact sound counts.",
+  "sections": [
+    {
+      "name": "#Materials",
+      "required": true,
+      "repeat": false,
+      "doc": "List of materials; each starts at $name: and the list ends at #End.",
+      "entry": "$name:",
+      "defines": "material",
+      "end": "#End",
+      "fields": [
+        {
+          "name": "$name:",
+          "type": "string",
+          "required": true,
+          "doc": "Material name."
+        },
+        {
+          "name": "$bitmap prefix:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "doc": "Texture file name prefix that selects this material; repeat for several."
+        },
+        {
+          "name": "$elasticity:",
+          "type": "float",
+          "required": true,
+          "doc": "Bounce of objects hitting the material."
+        },
+        {
+          "name": "$friction:",
+          "type": "float",
+          "required": true,
+          "doc": "Surface friction."
+        },
+        {
+          "name": "$density:",
+          "type": "float",
+          "required": true,
+          "doc": "Material density."
+        },
+        {
+          "name": "$bouyancy:",
+          "type": "float",
+          "required": true,
+          "doc": "Buoyancy (the marker is spelled this way)."
+        },
+        {
+          "name": "$traction:",
+          "type": "float",
+          "required": true,
+          "doc": "Grip when walking or driving on it."
+        },
+        {
+          "name": "$debris bitmap:",
+          "type": "file",
+          "required": true,
+          "file": "texture",
+          "doc": "Texture for debris of this material; \"\" for none."
+        }
+      ]
+    },
+    {
+      "name": "#Material Hit Sounds",
+      "required": true,
+      "repeat": false,
+      "doc": "A 10 by 10 grid: a header row of 10 quoted material names, then 10 rows of a quoted material name and 10 counts of impact sounds; no #End is read.",
+      "layout": "matrix",
+      "size": 10,
+      "cell": {
+        "type": "int",
+        "min": 0,
+        "max": 4,
+        "doc": "number of impact sound variations for the pair"
+      },
+      "header": {
+        "type": "ref",
+        "ref": "material",
+        "doc": "material name"
+      }
+    }
+  ]
+}

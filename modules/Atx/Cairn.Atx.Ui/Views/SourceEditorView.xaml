@@ -1,0 +1,138 @@
+<UserControl x:Class="Cairn.Atx.Ui.Views.SourceEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:avalon="http://icsharpcode.net/sharpdevelop/avalonedit">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Style="{StaticResource PaneHeaderBorder}">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Left" Text="SOURCE (.ATX)" Style="{StaticResource PaneHeaderText}" />
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="FindButton" Style="{StaticResource ToolButton}"
+                  ToolTip="Find and replace (Ctrl+F, Ctrl+H)"
+                  AutomationProperties.Name="Find and replace">
+            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+          </Button>
+          <Button x:Name="QuickFixButton" Style="{StaticResource ToolButton}"
+                  ToolTip="Show quick fixes at the caret (Ctrl+.)"
+                  AutomationProperties.Name="Show quick fixes">
+            <TextBlock Text="&#xE945;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+          </Button>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!--
+      Find and replace. AvalonEdit's own panel is find-only, so this bar drives the search (which
+      still supplies the match highlighting) and does the replacing itself. It sits in its own row
+      rather than floating over the text, so it never hides the line you are looking for.
+    -->
+    <Border x:Name="FindBar" Grid.Row="1" Visibility="Collapsed" Padding="8,6"
+            Background="{DynamicResource App.ChromeBackground}"
+            BorderBrush="{DynamicResource App.Border}" BorderThickness="0,0,0,1"
+            AutomationProperties.Name="Find and replace">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Find row -->
+        <DockPanel Grid.Row="0" Grid.Column="0">
+          <TextBlock DockPanel.Dock="Left" Text="&#xE721;" FontFamily="Segoe MDL2 Assets"
+                     FontSize="12" VerticalAlignment="Center" Margin="2,0,8,0"
+                     Foreground="{DynamicResource App.SecondaryText}" />
+          <TextBlock x:Name="MatchStatus" DockPanel.Dock="Right" VerticalAlignment="Center"
+                     Margin="8,0,0,0" FontSize="11" MinWidth="88"
+                     Foreground="{DynamicResource App.SecondaryText}"
+                     AutomationProperties.Name="Match count" />
+          <TextBox x:Name="FindBox" Height="26" MinWidth="120" VerticalContentAlignment="Center"
+                   IsUndoEnabled="False"
+                   ToolTip="Text to find. Enter finds the next match, Shift+Enter the previous one."
+                   AutomationProperties.Name="Find what" />
+        </DockPanel>
+
+        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+          <Button x:Name="PreviousButton" Style="{StaticResource ToolButton}" Height="26"
+                  ToolTip="Previous match (Shift+F3)" AutomationProperties.Name="Previous match">
+            <TextBlock Text="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+          </Button>
+          <Button x:Name="NextButton" Style="{StaticResource ToolButton}" Height="26"
+                  ToolTip="Next match (F3)" AutomationProperties.Name="Next match">
+            <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+          </Button>
+          <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource App.Border}" />
+          <ToggleButton x:Name="MatchCaseToggle" Style="{StaticResource FilterToggle}" Height="26"
+                        MinWidth="28" ToolTip="Match case" AutomationProperties.Name="Match case">
+            <TextBlock Text="Aa" FontSize="11" />
+          </ToggleButton>
+          <ToggleButton x:Name="WholeWordToggle" Style="{StaticResource FilterToggle}" Height="26"
+                        MinWidth="28" ToolTip="Match whole words"
+                        AutomationProperties.Name="Match whole words">
+            <TextBlock Text="ab" FontSize="11" TextDecorations="Underline" />
+          </ToggleButton>
+          <ToggleButton x:Name="RegexToggle" Style="{StaticResource FilterToggle}" Height="26"
+                        MinWidth="28" ToolTip="Use a regular expression"
+                        AutomationProperties.Name="Use a regular expression">
+            <TextBlock Text=".*" FontSize="11" />
+          </ToggleButton>
+          <ToggleButton x:Name="ReplaceToggle" Style="{StaticResource FilterToggle}" Height="26"
+                        MinWidth="28" Margin="4,0,0,0" ToolTip="Show the replace row (Ctrl+H)"
+                        AutomationProperties.Name="Show replace">
+            <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="9" />
+          </ToggleButton>
+          <Button x:Name="CloseFindButton" Style="{StaticResource ToolButton}" Height="26"
+                  MinWidth="26" Margin="4,0,0,0"
+                  ToolTip="Close the find bar (Esc)" AutomationProperties.Name="Close the find bar">
+            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="9" />
+          </Button>
+        </StackPanel>
+
+        <!-- Replace row -->
+        <DockPanel x:Name="ReplaceRow" Grid.Row="1" Grid.Column="0" Margin="0,6,0,0"
+                   Visibility="Collapsed">
+          <TextBlock DockPanel.Dock="Left" Text="&#xE8AC;" FontFamily="Segoe MDL2 Assets"
+                     FontSize="12" VerticalAlignment="Center" Margin="2,0,8,0"
+                     Foreground="{DynamicResource App.SecondaryText}" />
+          <TextBox x:Name="ReplaceBox" Height="26" MinWidth="120" VerticalContentAlignment="Center"
+                   IsUndoEnabled="False"
+                   ToolTip="Text to put in place of each match"
+                   AutomationProperties.Name="Replace with" />
+        </DockPanel>
+
+        <StackPanel x:Name="ReplaceButtons" Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
+                    Margin="8,6,0,0" Visibility="Collapsed">
+          <Button x:Name="ReplaceButton" MinHeight="30" Padding="10,0" Margin="0,0,6,0"
+                  ToolTip="Replace this match and move to the next one"
+                  AutomationProperties.Name="Replace">
+            <AccessText Text="_Replace" />
+          </Button>
+          <Button x:Name="ReplaceAllButton" MinHeight="30" Padding="10,0"
+                  ToolTip="Replace every match in this file — one Ctrl+Z takes them all back"
+                  AutomationProperties.Name="Replace all">
+            <AccessText Text="Replace _all" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <avalon:TextEditor x:Name="Editor" Grid.Row="2"
+                       ShowLineNumbers="True" WordWrap="False"
+                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                       Background="{DynamicResource Editor.Background}"
+                       Foreground="{DynamicResource Editor.Foreground}"
+                       LineNumbersForeground="{DynamicResource Editor.LineNumber}"
+                       FontFamily="{DynamicResource MonoFont}" FontSize="13"
+                       Padding="4,4,0,4"
+                       AutomationProperties.Name="ATX source text" />
+  </Grid>
+</UserControl>

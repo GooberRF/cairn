@@ -1,0 +1,235 @@
+<UserControl x:Class="Cairn.Rfa.Ui.Views.DocumentView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cv="clr-namespace:Cairn.Viewport;assembly=Cairn.Viewport"
+             xmlns:views="clr-namespace:Cairn.Rfa.Ui.Views"
+             xmlns:vm="clr-namespace:Cairn.Rfa.Ui.ViewModels"
+             xmlns:vp="clr-namespace:Cairn.Rfa.Ui.Viewport"
+             xmlns:cliptools="clr-namespace:Cairn.Rfa.Ui.Views.ClipTools"
+             Background="{DynamicResource App.WindowBackground}">
+  <UserControl.Resources>
+    <Style x:Key="BannerText" TargetType="TextBlock">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource Banner.Foreground}" />
+    </Style>
+
+    <!-- Inspector tab contents, by view-model type. Phase 5 adds Bone and Key here. -->
+    <DataTemplate DataType="{x:Type vm:ClipInspectorViewModel}">
+      <views:ClipInspectorView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:MeshStructureViewModel}">
+      <views:MeshStructureView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:BoneInspectorViewModel}">
+      <views:BoneInspectorView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:KeyInspectorViewModel}">
+      <views:KeyInspectorView />
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Grid x:Name="LayoutRoot">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" MinWidth="280" />
+      <ColumnDefinition x:Name="InspectorSplitterColumn" Width="Auto" />
+      <ColumnDefinition x:Name="InspectorColumn" Width="330" MinWidth="0" />
+    </Grid.ColumnDefinitions>
+
+    <DockPanel Grid.Column="0" Margin="0,6,0,0">
+      <!-- Banners -->
+      <StackPanel DockPanel.Dock="Top">
+        <Border Padding="12,8" Margin="0,0,0,6" CornerRadius="4" BorderThickness="1"
+                Background="{DynamicResource Banner.InfoBackground}" BorderBrush="{DynamicResource Banner.InfoBorder}"
+                Visibility="{Binding HasExternalChange, Converter={StaticResource Truthy}}"
+                AutomationProperties.Name="File changed on disk">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Text="&#xE946;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"
+                       Margin="0,0,10,0" Foreground="{DynamicResource Severity.Info}" />
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+              <Button Content="Reload" Padding="10,3" Margin="0,0,6,0" Command="{Binding ReloadCommand}"
+                      ToolTip="Throw away your changes and read the file again from disk" AutomationProperties.Name="Reload from disk" />
+              <Button Content="Keep mine" Padding="10,3" Command="{Binding KeepMineCommand}"
+                      ToolTip="Keep the version in this tab; the file on disk is left alone" AutomationProperties.Name="Keep my version" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource BannerText}" Text="This file changed on disk while you were editing it." />
+          </DockPanel>
+        </Border>
+
+        <Border Padding="12,8" Margin="0,0,0,6" CornerRadius="4" BorderThickness="1"
+                Background="{DynamicResource Banner.NoticeBackground}" BorderBrush="{DynamicResource Banner.NoticeBorder}"
+                Visibility="{Binding IsMissingOnDisk, Converter={StaticResource Truthy}}"
+                AutomationProperties.Name="File deleted or renamed">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"
+                       Margin="0,0,10,0" Foreground="{DynamicResource Severity.Warning}" />
+            <Button DockPanel.Dock="Right" Content="Keep editing" Padding="10,3" Margin="12,0,0,0" Command="{Binding DismissMissingCommand}"
+                    ToolTip="Hide this notice; the tab keeps its contents (Save writes the file again)" AutomationProperties.Name="Keep editing" />
+            <TextBlock Style="{StaticResource BannerText}" Text="The file this tab came from was deleted or renamed on disk." />
+          </DockPanel>
+        </Border>
+
+        <Border Padding="12,6" Margin="0,0,0,6" CornerRadius="4" BorderThickness="1"
+                Background="{DynamicResource Banner.InfoBackground}" BorderBrush="{DynamicResource Banner.InfoBorder}"
+                Visibility="{Binding IsFromArchive, Converter={StaticResource Truthy}}"
+                AutomationProperties.Name="Opened from an archive">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"
+                       Margin="0,0,10,0" Foreground="{DynamicResource Severity.Info}" />
+            <TextBlock Style="{StaticResource BannerText}" Text="{Binding OriginText}" />
+          </DockPanel>
+        </Border>
+
+        <Border Padding="12,6" Margin="0,0,0,6" CornerRadius="4" BorderThickness="1"
+                Background="{DynamicResource Banner.InfoBackground}" BorderBrush="{DynamicResource Banner.InfoBorder}"
+                Visibility="{Binding IsReadOnly, Converter={StaticResource Truthy}}"
+                AutomationProperties.Name="Read-only document">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"
+                       Margin="0,0,10,0" Foreground="{DynamicResource Severity.Info}" />
+            <TextBlock Style="{StaticResource BannerText}" Text="Static meshes (.v3m) open read-only: view them, check their structure and problems, or Save As a copy." />
+          </DockPanel>
+        </Border>
+      </StackPanel>
+
+      <!-- Viewport pane: header with the preview partner picker, the viewport, the transport. -->
+      <Border Style="{StaticResource PaneBorder}">
+        <DockPanel>
+          <Border DockPanel.Dock="Top" Style="{StaticResource PaneHeaderBorder}" Padding="8,3">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Text="VIEWPORT" Style="{StaticResource PaneHeaderText}" Margin="0,0,14,0" />
+              <ContentControl Focusable="False" Content="{Binding}">
+                <ContentControl.Resources>
+                  <DataTemplate DataType="{x:Type vm:ClipDocumentViewModel}">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="Preview mesh" Style="{StaticResource PaneHeaderText}" FontWeight="Normal" Margin="0,0,8,0" />
+                      <ComboBox x:Name="PreviewMeshBox" MinWidth="150" MaxWidth="320" Height="24" Padding="6,2" FontSize="12"
+                                ItemsSource="{Binding PreviewMeshOptions}" SelectedItem="{Binding SelectedPreviewMesh, Mode=TwoWay}"
+                                VirtualizingPanel.IsVirtualizing="True" Loaded="OnPreviewBoxLoaded"
+                                ToolTip="The mesh the clip plays on. Chosen from the game's tables, then the last mesh used for this bone count, then any mesh with as many bones as the clip; remembered for this clip."
+                                AutomationProperties.Name="Preview mesh">
+                        <ComboBox.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                          </ItemsPanelTemplate>
+                        </ComboBox.ItemsPanel>
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate>
+                            <DockPanel ToolTip="{Binding ToolTip}">
+                              <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" Margin="12,0,0,0" FontSize="11"
+                                         Foreground="{DynamicResource App.SecondaryText}" VerticalAlignment="Center" />
+                              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            </DockPanel>
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <cliptools:ClipToolsHeader />
+                    </StackPanel>
+                  </DataTemplate>
+                  <DataTemplate DataType="{x:Type vm:MeshDocumentViewModel}">
+                    <StackPanel Orientation="Horizontal" Visibility="{Binding HasSkeleton, Converter={StaticResource Truthy}}">
+                      <TextBlock Text="Preview clip" Style="{StaticResource PaneHeaderText}" FontWeight="Normal" Margin="0,0,8,0" />
+                      <ComboBox MinWidth="150" MaxWidth="320" Height="24" Padding="6,2" FontSize="12"
+                                ItemsSource="{Binding PreviewClipOptions}" SelectedItem="{Binding SelectedPreviewClip, Mode=TwoWay}"
+                                VirtualizingPanel.IsVirtualizing="True"
+                                ToolTip="The clip played on this mesh: clips with the same bone count, the tables' clips for this mesh first"
+                                AutomationProperties.Name="Preview clip">
+                        <ComboBox.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                          </ItemsPanelTemplate>
+                        </ComboBox.ItemsPanel>
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate>
+                            <DockPanel ToolTip="{Binding ToolTip}">
+                              <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" Margin="12,0,0,0" FontSize="11"
+                                         Foreground="{DynamicResource App.SecondaryText}" VerticalAlignment="Center" />
+                              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            </DockPanel>
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </StackPanel>
+                  </DataTemplate>
+                </ContentControl.Resources>
+              </ContentControl>
+            </DockPanel>
+          </Border>
+
+          <cv:TransportBar DockPanel.Dock="Bottom" DataContext="{Binding Playback}"
+                             Visibility="{Binding DataContext.HasTransport, RelativeSource={RelativeSource AncestorType=views:DocumentView}, Converter={StaticResource Truthy}}">
+            <!-- 1.0.1's layered preview: play the clip as an action over a state clip (clip documents only). -->
+            <cv:TransportBar.ExtraContent>
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                          DataContext="{Binding DataContext.Layered, RelativeSource={RelativeSource AncestorType=views:DocumentView}}"
+                          Visibility="{Binding Converter={StaticResource Truthy}}">
+                <ToggleButton Style="{DynamicResource ToolToggle}" Height="26" Padding="7,0" IsChecked="{Binding IsActive, Mode=TwoWay}"
+                              ToolTip="{Binding ToolTip}" AutomationProperties.Name="Play as action over state">
+                  <TextBlock Text="Play as action over state" FontSize="12" />
+                </ToggleButton>
+                <ComboBox MinWidth="140" MaxWidth="260" Height="26" Margin="6,0,0,0" Padding="6,2" FontSize="12" VerticalContentAlignment="Center"
+                          ItemsSource="{Binding Options}" SelectedItem="{Binding Selected, Mode=TwoWay}" VirtualizingPanel.IsVirtualizing="True"
+                          ToolTip="{Binding ToolTip}" AutomationProperties.Name="State clip for the layered preview">
+                  <ComboBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                  </ComboBox.ItemsPanel>
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <DockPanel ToolTip="{Binding ToolTip}">
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" Margin="12,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource App.SecondaryText}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </DockPanel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Text="{Binding Status}" Style="{DynamicResource HintText}" Margin="8,0,0,0" VerticalAlignment="Center" MaxWidth="320"
+                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding Status}" />
+              </StackPanel>
+            </cv:TransportBar.ExtraContent>
+          </cv:TransportBar>
+
+          <Grid>
+            <vp:ViewportControl x:Name="Viewport" />
+            <!-- Layered preview badge (clip documents, while "Play as action over state" is on). -->
+            <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" Padding="9,3" CornerRadius="3"
+                    Background="{DynamicResource Viewport.LabelBackground}" IsHitTestVisible="False"
+                    Visibility="{Binding Layered.BadgeText, Converter={StaticResource Truthy}, FallbackValue=Collapsed}"
+                    AutomationProperties.Name="Layered preview active">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource Viewport.Label}"
+                           VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBlock Text="{Binding Layered.BadgeText}" FontSize="11.5" Foreground="{DynamicResource Viewport.Label}" />
+              </StackPanel>
+            </Border>
+          </Grid>
+        </DockPanel>
+      </Border>
+    </DockPanel>
+
+    <GridSplitter x:Name="InspectorSplitter" Grid.Column="1" Style="{StaticResource VerticalSplitter}"
+                  ResizeBehavior="PreviousAndNext" ToolTip="Drag to resize the inspector"
+                  AutomationProperties.Name="Resize the inspector" />
+
+    <!-- Inspector: a tab host; each document kind adds its tabs. -->
+    <Border x:Name="InspectorPane" Grid.Column="2" Style="{StaticResource PaneBorder}" Margin="0,6,0,0">
+      <TabControl Style="{StaticResource PanelTabControl}" ItemsSource="{Binding InspectorTabs}"
+                  SelectedItem="{Binding SelectedInspectorTab, Mode=TwoWay}"
+                  AutomationProperties.Name="Inspector">
+        <TabControl.ItemContainerStyle>
+          <Style TargetType="TabItem" BasedOn="{StaticResource PanelTabItem}">
+            <Setter Property="Header" Value="{Binding Header}" />
+            <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Header}" />
+          </Style>
+        </TabControl.ItemContainerStyle>
+        <TabControl.ContentTemplate>
+          <DataTemplate>
+            <ContentPresenter Content="{Binding Content}" />
+          </DataTemplate>
+        </TabControl.ContentTemplate>
+      </TabControl>
+    </Border>
+  </Grid>
+</UserControl>

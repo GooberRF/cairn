@@ -1,0 +1,53 @@
+{
+  "file": "endgame.tbl",
+  "title": "Endgame texts",
+  "doc": "Texts shown when the game ends, chosen by name, each in three languages.",
+  "aliases": [
+    "localized_endgame.tbl"
+  ],
+  "sections": [
+    {
+      "name": "",
+      "required": false,
+      "repeat": false,
+      "doc": "Entries found by searching for the exact text $Name:; under each, En:, Gr: and Fr: start plain text blocks that end at #end.",
+      "entry": "$Name:",
+      "defines": "endgame",
+      "entrySearch": true,
+      "layout": "text-blocks",
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 127,
+          "doc": "Endgame name used by the level event that ends the game."
+        },
+        {
+          "name": "En:",
+          "type": "text",
+          "required": true,
+          "syntax": "lines",
+          "doc": "English text lines up to a line that is exactly #end (any case) or the end of the file; read by an English game.",
+          "end": "#end"
+        },
+        {
+          "name": "Gr:",
+          "type": "text",
+          "required": false,
+          "syntax": "lines",
+          "doc": "German text lines, ended like En:; only a German game reads it, and there it is required.",
+          "end": "#end"
+        },
+        {
+          "name": "Fr:",
+          "type": "text",
+          "required": false,
+          "syntax": "lines",
+          "doc": "French text lines, ended like En:; only a French game reads it, and there it is required.",
+          "end": "#end"
+        }
+      ]
+    }
+  ]
+}

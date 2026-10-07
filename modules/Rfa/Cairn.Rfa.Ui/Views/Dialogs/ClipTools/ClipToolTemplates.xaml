@@ -1,0 +1,576 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:cui="clr-namespace:Cairn.Ui.Controls;assembly=Cairn.Ui"
+                    xmlns:controls="clr-namespace:Cairn.Rfa.Ui.Controls"
+                    xmlns:t="clr-namespace:Cairn.Rfa.Ui.ViewModels.ClipTools">
+  <!--
+    The settings part of each clip tool's dialog, one data template per view-model type. The window
+    (ClipToolWindow.xaml) supplies the heading, the bone scope group, the summary card, the transport
+    and the buttons. Theme brushes only; every control has a tooltip and an automation name.
+  -->
+
+  <Style x:Key="ToolFieldLabel" TargetType="TextBlock" BasedOn="{StaticResource DialogLabel}">
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="MinWidth" Value="64" />
+  </Style>
+
+  <Style x:Key="ToolRow" TargetType="StackPanel">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+
+  <Style x:Key="ToolList" TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+    <Setter Property="Height" Value="180" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.Border}" />
+    <Setter Property="Background" Value="{DynamicResource App.PaneBackground}" />
+    <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <!-- Compact rows, as the library's lists. -->
+    <Setter Property="ItemContainerStyle">
+      <Setter.Value>
+        <Style TargetType="ListBoxItem" BasedOn="{StaticResource PaneListBoxItem}">
+          <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+          <Setter Property="Padding" Value="6,2" />
+          <Setter Property="AutomationProperties.Name" Value="{Binding Label}" />
+        </Style>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- A library entry (clip or mesh) in a picker list: name, and a dimmed note on the right. -->
+  <DataTemplate x:Key="LibraryEntryTemplate">
+    <DockPanel ToolTip="{Binding ToolTip}">
+      <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" Margin="12,0,0,0" FontSize="11"
+                 Foreground="{DynamicResource App.SecondaryText}" VerticalAlignment="Center" />
+      <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="{DynamicResource App.Text}" />
+    </DockPanel>
+  </DataTemplate>
+
+  <!-- ── Trim ──────────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:TrimToolViewModel}">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="RANGE TO KEEP" />
+      <StackPanel Style="{StaticResource ToolRow}">
+        <TextBlock Style="{StaticResource ToolFieldLabel}" Text="From" />
+        <cui:NumericBox Width="130" Value="{Binding From, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                             Step="{Binding UnitStep}" ToolTip="The first time kept (the new start)" AutomationProperties.Name="Trim from" />
+        <Button Style="{StaticResource DialogSmallButton}" Margin="8,0,0,0" Content="From _playhead" Command="{Binding FromPlayheadCommand}"
+                ToolTip="Use the playhead's time as From" AutomationProperties.Name="From the playhead" />
+      </StackPanel>
+      <StackPanel Style="{StaticResource ToolRow}">
+        <TextBlock Style="{StaticResource ToolFieldLabel}" Text="To" />
+        <cui:NumericBox Width="130" Value="{Binding To, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                             Step="{Binding UnitStep}" ToolTip="The last time kept (the new end)" AutomationProperties.Name="Trim to" />
+        <Button Style="{StaticResource DialogSmallButton}" Margin="8,0,0,0" Content="To p_layhead" Command="{Binding ToPlayheadCommand}"
+                ToolTip="Use the playhead's time as To" AutomationProperties.Name="To the playhead" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="72,2,0,0">
+        <Button Style="{StaticResource DialogSmallButton}" Content="_Whole clip" Command="{Binding UseClipRangeCommand}"
+                ToolTip="Reset to the clip's current start and end" AutomationProperties.Name="Use the whole clip" />
+        <Button Style="{StaticResource DialogSmallButton}" Content="Selected _keys" Command="{Binding UseKeySpanCommand}"
+                ToolTipService.ShowOnDisabled="True" ToolTip="Use the span of the keys selected in the timeline"
+                AutomationProperties.Name="Use the selected keys' span" />
+      </StackPanel>
+      <TextBlock Style="{StaticResource HintText}" Margin="0,6,0,0" Text="{Binding DefaultText}" />
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Shift ─────────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:ShiftToolViewModel}">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="MOVE BY" />
+      <StackPanel Style="{StaticResource ToolRow}">
+        <TextBlock Style="{StaticResource ToolFieldLabel}" Text="Amount" />
+        <cui:NumericBox Width="130" Value="{Binding Delta, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                             Step="{Binding UnitStep}" ToolTip="How far to move every key, start and end (negative: earlier)"
+                             AutomationProperties.Name="Shift amount" />
+        <Button Style="{StaticResource DialogSmallButton}" Margin="8,0,0,0" Content="{Binding StartAtFirstFrameText}"
+                Command="{Binding StartAtFirstFrameCommand}" ToolTip="Move the clip so it starts at frame 1 (tick 160), as stock clips do"
+                AutomationProperties.Name="Start at the first frame" />
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Retime ────────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:RetimeToolViewModel}">
+    <StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="NEW LENGTH" />
+        <StackPanel Style="{StaticResource ToolRow}">
+          <RadioButton GroupName="RetimeMode" MinWidth="120" VerticalAlignment="Center" IsChecked="{Binding IsByFactor, Mode=TwoWay}"
+                       ToolTip="Scale the duration by a percentage (200 % = twice as long, half the speed)" AutomationProperties.Name="Scale by a percentage">
+            <AccessText Text="_Scale by" />
+          </RadioButton>
+          <cui:NumericBox Width="120" Value="{Binding Percent, Mode=TwoWay}" Decimals="2" Suffix="%" Minimum="1" Maximum="10000" Step="5"
+                               IsEnabled="{Binding IsByFactor}" ToolTip="The new duration as a percentage of the current one"
+                               AutomationProperties.Name="Scale percentage" />
+        </StackPanel>
+        <StackPanel Style="{StaticResource ToolRow}">
+          <RadioButton GroupName="RetimeMode" MinWidth="120" VerticalAlignment="Center" IsChecked="{Binding IsToLength, Mode=TwoWay}"
+                       ToolTip="Stretch or squeeze the clip to an exact duration" AutomationProperties.Name="Set a new length">
+            <AccessText Text="Set _length to" />
+          </RadioButton>
+          <cui:NumericBox Width="120" Value="{Binding Length, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                               Step="{Binding UnitStep}" IsEnabled="{Binding IsToLength}" ToolTip="The clip's new duration"
+                               AutomationProperties.Name="New length" />
+        </StackPanel>
+        <TextBlock Style="{StaticResource HintText}" Text="{Binding CurrentLengthText}" />
+      </StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="SCALE ABOUT" />
+        <WrapPanel>
+          <RadioButton GroupName="RetimePivot" Margin="0,0,16,4" IsChecked="{Binding IsPivotStart, Mode=TwoWay}"
+                       ToolTip="The start stays where it is" AutomationProperties.Name="Pivot at the start">
+            <AccessText Text="S_tart" />
+          </RadioButton>
+          <RadioButton GroupName="RetimePivot" Margin="0,0,16,4" IsChecked="{Binding IsPivotPlayhead, Mode=TwoWay}"
+                       ToolTip="The playhead's time stays where it is" AutomationProperties.Name="Pivot at the playhead">
+            <AccessText Text="_Playhead" />
+          </RadioButton>
+          <RadioButton GroupName="RetimePivot" Margin="0,0,0,4" IsChecked="{Binding IsPivotEnd, Mode=TwoWay}"
+                       ToolTip="The end stays where it is" AutomationProperties.Name="Pivot at the end">
+            <AccessText Text="_End" />
+          </RadioButton>
+        </WrapPanel>
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Reverse / recompute range: nothing to set ─────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:ReverseToolViewModel}">
+    <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,12" Text="Nothing to set: the summary below says what will change." />
+  </DataTemplate>
+  <DataTemplate DataType="{x:Type t:RecomputeRangeToolViewModel}">
+    <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,12" Text="Nothing to set: the summary below says what will change." />
+  </DataTemplate>
+
+  <!-- ── Make loopable ─────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:LoopToolViewModel}">
+    <StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="BLEND" />
+        <RadioButton GroupName="LoopMode" Margin="0,0,0,4" IsChecked="{Binding IsEndToStart, Mode=TwoWay}"
+                     ToolTip="The end of the clip fades into the first pose (the usual choice)" AutomationProperties.Name="End blends into the start">
+          <AccessText Text="The _end blends into the first pose" />
+        </RadioButton>
+        <RadioButton GroupName="LoopMode" Margin="0,0,0,8" IsChecked="{Binding IsStartToEnd, Mode=TwoWay}"
+                     ToolTip="The start of the clip fades out of the last pose" AutomationProperties.Name="Start blends out of the end">
+          <AccessText Text="The _start blends out of the last pose" />
+        </RadioButton>
+        <StackPanel Style="{StaticResource ToolRow}">
+          <TextBlock Style="{StaticResource ToolFieldLabel}" Text="Window" />
+          <cui:NumericBox Width="130" Value="{Binding BlendWindow, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                               Step="{Binding UnitStep}" Minimum="0" Maximum="{Binding MaxBlend}"
+                               ToolTip="How long the cross-fade lasts (0 only sets the final key)" AutomationProperties.Name="Blend window" />
+        </StackPanel>
+      </StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="ROOT TRAVEL" />
+        <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,6" Text="{Binding RootText}" />
+        <WrapPanel IsEnabled="{Binding HasRoot}">
+          <CheckBox Margin="0,0,16,4" IsChecked="{Binding KeepX, Mode=TwoWay}" ToolTip="Keep the root's sideways travel (not blended)"
+                    ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Keep sideways travel">
+            <AccessText Text="Keep _X (sideways)" />
+          </CheckBox>
+          <CheckBox Margin="0,0,16,4" IsChecked="{Binding KeepY, Mode=TwoWay}" ToolTip="Keep the root's vertical travel (not blended)"
+                    ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Keep vertical travel">
+            <AccessText Text="Keep _Y (up)" />
+          </CheckBox>
+          <CheckBox Margin="0,0,0,4" IsChecked="{Binding KeepZ, Mode=TwoWay}" ToolTip="Keep the root's forward travel (a walk keeps walking)"
+                    ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Keep forward travel">
+            <AccessText Text="Keep _Z (forward)" />
+          </CheckBox>
+        </WrapPanel>
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Resample ──────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:ResampleToolViewModel}">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="RATE" />
+      <StackPanel Style="{StaticResource ToolRow}">
+        <TextBlock Style="{StaticResource ToolFieldLabel}" Text="Keys" />
+        <cui:NumericBox Width="130" Value="{Binding Fps, Mode=TwoWay}" Decimals="2" Suffix="per s" Minimum="0.5" Maximum="600" Step="5"
+                             ToolTip="How many keys per second (30 = one per frame)" AutomationProperties.Name="Keys per second" />
+        <TextBlock Style="{StaticResource HintText}" Margin="10,0,0,0" VerticalAlignment="Center" Text="{Binding StepText}" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="72,4,0,0">
+        <CheckBox Margin="0,0,16,0" IsChecked="{Binding Rotations, Mode=TwoWay}" ToolTip="Bake the rotation keys" AutomationProperties.Name="Bake rotations">
+          <AccessText Text="_Rotations" />
+        </CheckBox>
+        <CheckBox IsChecked="{Binding Positions, Mode=TwoWay}" ToolTip="Bake the position keys" AutomationProperties.Name="Bake positions">
+          <AccessText Text="_Positions" />
+        </CheckBox>
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Reduce ────────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:ReduceToolViewModel}">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="TOLERANCE" />
+      <StackPanel Style="{StaticResource ToolRow}">
+        <CheckBox MinWidth="110" VerticalAlignment="Center" IsChecked="{Binding Rotations, Mode=TwoWay}" ToolTip="Reduce rotation keys"
+                  AutomationProperties.Name="Reduce rotation keys">
+          <AccessText Text="_Rotations" />
+        </CheckBox>
+        <cui:NumericBox Width="130" Value="{Binding RotationTolerance, Mode=TwoWay}" Decimals="3" Suffix="°" Minimum="0" Maximum="45" Step="0.05"
+                             IsEnabled="{Binding Rotations}" ToolTip="Largest rotation difference allowed on any bone, in degrees"
+                             AutomationProperties.Name="Rotation tolerance in degrees" />
+      </StackPanel>
+      <StackPanel Style="{StaticResource ToolRow}">
+        <CheckBox MinWidth="110" VerticalAlignment="Center" IsChecked="{Binding Positions, Mode=TwoWay}" ToolTip="Reduce position keys"
+                  AutomationProperties.Name="Reduce position keys">
+          <AccessText Text="_Positions" />
+        </CheckBox>
+        <cui:NumericBox Width="130" Value="{Binding PositionTolerance, Mode=TwoWay}" Decimals="4" Suffix="m" Minimum="0" Maximum="1" Step="0.0005"
+                             IsEnabled="{Binding Positions}" ToolTip="Largest position difference allowed on any bone, in metres (0.0005 = half a millimetre)"
+                             AutomationProperties.Name="Position tolerance in metres" />
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Mirror ────────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:MirrorToolViewModel}">
+    <StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="MIRROR" />
+        <StackPanel Style="{StaticResource ToolRow}">
+          <TextBlock Style="{StaticResource ToolFieldLabel}" Text="Plane" />
+          <ComboBox Width="220" MinHeight="28" ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis, Mode=TwoWay}"
+                    ToolTip="Which way the clip is mirrored (left/right is the usual choice)" AutomationProperties.Name="Mirror plane" />
+        </StackPanel>
+        <CheckBox Margin="72,2,0,0" IsChecked="{Binding UseSkeleton, Mode=TwoWay}" IsEnabled="{Binding HasSkeleton}"
+                  ToolTipService.ShowOnDisabled="True" ToolTip="{Binding SkeletonText}" AutomationProperties.Name="Use the preview mesh's rest pose">
+          <AccessText Text="Use the preview mesh's rest _pose (recommended)" />
+        </CheckBox>
+      </StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <DockPanel Margin="0,0,0,6">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+            <Button Style="{StaticResource DialogSmallButton}" Content="_Detect from names" Command="{Binding DetectCommand}"
+                    ToolTipService.ShowOnDisabled="True" ToolTip="Pair bones whose names differ only by side (-l / -r, left / right)"
+                    AutomationProperties.Name="Detect pairs from bone names" />
+            <Button Style="{StaticResource DialogSmallButton}" Margin="0" Content="_Unpair all" Command="{Binding UnpairAllCommand}"
+                    ToolTip="Make every bone a centre bone (mirrored in place)" AutomationProperties.Name="Unpair every bone" />
+          </StackPanel>
+          <TextBlock Style="{StaticResource DialogSubheading}" Text="BONE PAIRS" VerticalAlignment="Center" Margin="0" />
+        </DockPanel>
+        <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,6" Text="{Binding NamesNote}"
+                   Visibility="{Binding NamesNote, Converter={StaticResource Truthy}}" Foreground="{DynamicResource Severity.Warning}" />
+        <Border Style="{StaticResource DialogCard}" Padding="0">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" Background="{DynamicResource Table.HeaderBackground}" Padding="8,5"
+                    BorderBrush="{DynamicResource App.Border}" BorderThickness="0,0,0,1">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="240" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource TableHeaderText}" Text="BONE" />
+                <TextBlock Grid.Column="1" Style="{StaticResource TableHeaderText}" Text="TAKES THE ANIMATION OF" />
+              </Grid>
+            </Border>
+            <ScrollViewer Height="220" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+              <ItemsControl ItemsSource="{Binding Rows}" Focusable="False" AutomationProperties.Name="Bone pairs"
+                            VirtualizingPanel.IsVirtualizing="True">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Padding="8,2">
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="240" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Name}">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Setter Property="Foreground" Value="{DynamicResource App.SecondaryText}" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPaired}" Value="True">
+                                  <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+                        <ComboBox Grid.Column="1" Height="24" Padding="6,1" FontSize="12" ItemsSource="{Binding Options}"
+                                  SelectedItem="{Binding Partner, Mode=TwoWay}" ToolTip="The bone whose animation this bone takes, mirrored (centre: its own)"
+                                  AutomationProperties.Name="{Binding AutomationName}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Offset bone ───────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:OffsetToolViewModel}">
+    <StackPanel>
+      <TextBlock Margin="0,0,0,12" TextWrapping="Wrap" FontSize="12" Text="{Binding BonesText}" Foreground="{DynamicResource App.Text}"
+                 AutomationProperties.Name="Bones to offset" />
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="ROTATE" />
+        <WrapPanel>
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="Pitch (X)" />
+          <cui:NumericBox Width="100" Margin="0,0,14,6" Value="{Binding Pitch, Mode=TwoWay}" Decimals="2" Suffix="°" Step="1" Minimum="-360" Maximum="360"
+                               ToolTip="Rotation about the X axis, degrees" AutomationProperties.Name="Pitch in degrees" />
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="Yaw (Y)" />
+          <cui:NumericBox Width="100" Margin="0,0,14,6" Value="{Binding Yaw, Mode=TwoWay}" Decimals="2" Suffix="°" Step="1" Minimum="-360" Maximum="360"
+                               ToolTip="Rotation about the Y axis, degrees" AutomationProperties.Name="Yaw in degrees" />
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="Roll (Z)" />
+          <cui:NumericBox Width="100" Margin="0,0,0,6" Value="{Binding Roll, Mode=TwoWay}" Decimals="2" Suffix="°" Step="1" Minimum="-360" Maximum="360"
+                               ToolTip="Rotation about the Z axis, degrees" AutomationProperties.Name="Roll in degrees" />
+        </WrapPanel>
+      </StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="MOVE" />
+        <WrapPanel>
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="X" />
+          <cui:NumericBox Width="100" Margin="0,0,14,6" Value="{Binding MoveX, Mode=TwoWay}" Decimals="3" Suffix="m" Step="0.01"
+                               ToolTip="Translation along X, metres" AutomationProperties.Name="Move along X in metres" />
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="Y" />
+          <cui:NumericBox Width="100" Margin="0,0,14,6" Value="{Binding MoveY, Mode=TwoWay}" Decimals="3" Suffix="m" Step="0.01"
+                               ToolTip="Translation along Y, metres" AutomationProperties.Name="Move along Y in metres" />
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="Z" />
+          <cui:NumericBox Width="100" Margin="0,0,0,6" Value="{Binding MoveZ, Mode=TwoWay}" Decimals="3" Suffix="m" Step="0.01"
+                               ToolTip="Translation along Z, metres" AutomationProperties.Name="Move along Z in metres" />
+        </WrapPanel>
+        <StackPanel Style="{StaticResource ToolRow}" Margin="0,2,0,0">
+          <TextBlock Style="{StaticResource ToolFieldLabel}" Text="Axes" />
+          <ComboBox Width="260" MinHeight="28" ItemsSource="{Binding Spaces}" SelectedItem="{Binding SelectedSpace, Mode=TwoWay}"
+                    ToolTip="The frame the rotation and translation are in (model space needs a fitting preview mesh)"
+                    AutomationProperties.Name="Offset space" />
+        </StackPanel>
+      </StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="WHEN" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+          <RadioButton GroupName="OffsetRange" Margin="0,0,16,0" IsChecked="{Binding IsWholeClip, Mode=TwoWay}"
+                       ToolTip="Offset every key of the bones" AutomationProperties.Name="The whole clip">
+            <AccessText Text="The _whole clip" />
+          </RadioButton>
+          <RadioButton GroupName="OffsetRange" IsChecked="{Binding UseRange, Mode=TwoWay}"
+                       ToolTip="Offset only between From and To, fading in and out over the falloff" AutomationProperties.Name="A time range">
+            <AccessText Text="A time _range" />
+          </RadioButton>
+        </StackPanel>
+        <WrapPanel IsEnabled="{Binding UseRange}">
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="From" />
+          <cui:NumericBox Width="110" Margin="0,0,14,6" Value="{Binding From, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                               Step="{Binding UnitStep}" ToolTip="Full offset from this time" AutomationProperties.Name="Offset from" />
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="To" />
+          <cui:NumericBox Width="110" Margin="0,0,14,6" Value="{Binding To, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                               Step="{Binding UnitStep}" ToolTip="Full offset until this time" AutomationProperties.Name="Offset to" />
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="Falloff" />
+          <cui:NumericBox Width="110" Margin="0,0,0,6" Value="{Binding Falloff, Mode=TwoWay}" Decimals="{Binding UnitDecimals}" Suffix="{Binding UnitSuffix}"
+                               Step="{Binding UnitStep}" Minimum="0" ToolTip="How long the offset takes to fade in before From and out after To"
+                               AutomationProperties.Name="Falloff" />
+        </WrapPanel>
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Root motion ───────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:RootMotionToolViewModel}">
+    <StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="ROOT" />
+        <StackPanel Style="{StaticResource ToolRow}">
+          <TextBlock Style="{StaticResource ToolFieldLabel}" Text="Bone" />
+          <ComboBox Width="220" MinHeight="28" ItemsSource="{Binding RootChoices}" SelectedItem="{Binding SelectedRoot, Mode=TwoWay}"
+                    ToolTip="The bone that carries the character's motion through the level" AutomationProperties.Name="Root bone" />
+        </StackPanel>
+        <TextBlock Style="{StaticResource HintText}" Text="{Binding RootNote}" />
+        <TextBlock Style="{StaticResource HintText}" Margin="0,2,0,0" Text="{Binding TravelText}" />
+      </StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="CHANGE" />
+        <RadioButton GroupName="RootMode" Margin="0,0,0,6" IsChecked="{Binding IsRemove, Mode=TwoWay}"
+                     ToolTip="Make the clip play in place on the chosen axes" AutomationProperties.Name="Remove root motion">
+          <AccessText Text="_Remove (play in place)" />
+        </RadioButton>
+        <WrapPanel Margin="22,0,0,8" IsEnabled="{Binding IsRemove}">
+          <CheckBox Margin="0,0,14,4" IsChecked="{Binding RemoveX, Mode=TwoWay}" ToolTip="Remove sideways travel" AutomationProperties.Name="Remove X">
+            <AccessText Text="_X sideways" />
+          </CheckBox>
+          <CheckBox Margin="0,0,14,4" IsChecked="{Binding RemoveY, Mode=TwoWay}" ToolTip="Remove vertical travel (bobbing)" AutomationProperties.Name="Remove Y">
+            <AccessText Text="_Y up" />
+          </CheckBox>
+          <CheckBox Margin="0,0,14,4" IsChecked="{Binding RemoveZ, Mode=TwoWay}" ToolTip="Remove forward travel" AutomationProperties.Name="Remove Z">
+            <AccessText Text="_Z forward" />
+          </CheckBox>
+          <CheckBox Margin="0,0,0,4" IsChecked="{Binding RemoveYaw, Mode=TwoWay}" ToolTip="Remove the root's turn about the vertical axis (tilt and roll stay)"
+                    AutomationProperties.Name="Remove turning">
+            <AccessText Text="_Turning" />
+          </CheckBox>
+        </WrapPanel>
+        <RadioButton GroupName="RootMode" Margin="0,0,0,6" IsChecked="{Binding IsScale, Mode=TwoWay}"
+                     ToolTip="Stretch or shrink how far the root travels on each axis" AutomationProperties.Name="Scale root motion">
+          <AccessText Text="_Scale the travel" />
+        </RadioButton>
+        <WrapPanel Margin="22,0,0,0" IsEnabled="{Binding IsScale}">
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="X" />
+          <cui:NumericBox Width="96" Margin="0,0,14,6" Value="{Binding ScaleX, Mode=TwoWay}" Decimals="3" Step="0.1"
+                               ToolTip="Sideways travel factor (1 = unchanged, 0 = none)" AutomationProperties.Name="Scale X" />
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="Y" />
+          <cui:NumericBox Width="96" Margin="0,0,14,6" Value="{Binding ScaleY, Mode=TwoWay}" Decimals="3" Step="0.1"
+                               ToolTip="Vertical travel factor (1 = unchanged, 0 = none)" AutomationProperties.Name="Scale Y" />
+          <TextBlock Style="{StaticResource ToolFieldLabel}" MinWidth="0" Text="Z" />
+          <cui:NumericBox Width="96" Margin="0,0,0,6" Value="{Binding ScaleZ, Mode=TwoWay}" Decimals="3" Step="0.1"
+                               ToolTip="Forward travel factor (1 = unchanged, 0 = none)" AutomationProperties.Name="Scale Z" />
+        </WrapPanel>
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Bone lengths ──────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:BoneLengthsToolViewModel}">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="REFERENCE" />
+      <RadioButton GroupName="LengthSource" Margin="0,0,0,6" IsChecked="{Binding IsFromClip, Mode=TwoWay}"
+                   ToolTip="Take each bone's length from another clip of the same rig (its first position key)"
+                   AutomationProperties.Name="From a reference clip">
+        <AccessText Text="A reference _clip (usually the character's stand clip)" />
+      </RadioButton>
+      <StackPanel Margin="22,0,0,8" IsEnabled="{Binding IsFromClip}">
+        <TextBox Margin="0,0,0,4" MinHeight="26" VerticalContentAlignment="Center" Text="{Binding References.Filter, UpdateSourceTrigger=PropertyChanged}"
+                 ToolTip="Filter the clips by name (substring, or * and ? wildcards)" AutomationProperties.Name="Filter reference clips" />
+        <ListBox Style="{StaticResource ToolList}" Height="150" ItemsSource="{Binding References.Items}" SelectedItem="{Binding References.Selected, Mode=TwoWay}"
+                 ItemTemplate="{StaticResource LibraryEntryTemplate}" AutomationProperties.Name="Reference clips"
+                 ToolTip="Clips with the same number of bones; the one the tables use as this character's stand clip is first" />
+      </StackPanel>
+      <RadioButton GroupName="LengthSource" IsChecked="{Binding IsFromBind, Mode=TwoWay}" IsEnabled="{Binding HasSkeleton}"
+                   ToolTipService.ShowOnDisabled="True" ToolTip="{Binding BindText}" AutomationProperties.Name="From the bind pose">
+        <AccessText Text="The preview mesh's _bind pose" />
+      </RadioButton>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Conform ───────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:ConformToolViewModel}">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Margin="0,0,0,10" TextWrapping="Wrap" FontSize="12" Text="{Binding NamesText}" AutomationProperties.Name="Bone names">
+        <TextBlock.Style>
+          <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource App.SecondaryText}" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding HasNames}" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource Severity.Warning}" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </TextBlock.Style>
+      </TextBlock>
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="TARGET MESH" />
+      <TextBox Margin="0,0,0,4" MinHeight="26" VerticalContentAlignment="Center" Text="{Binding Meshes.Filter, UpdateSourceTrigger=PropertyChanged}"
+               ToolTip="Filter the meshes by name (substring, or * and ? wildcards)" AutomationProperties.Name="Filter meshes" />
+      <ListBox Style="{StaticResource ToolList}" ItemsSource="{Binding Meshes.Items}" SelectedItem="{Binding Meshes.Selected, Mode=TwoWay}"
+               ItemTemplate="{StaticResource LibraryEntryTemplate}" AutomationProperties.Name="Target meshes"
+               ToolTip="Character meshes in the library; those with another bone count are listed first" />
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Weights ───────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:WeightsToolViewModel}">
+    <StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="BONES" />
+        <WrapPanel>
+          <RadioButton GroupName="WeightTarget" Margin="0,0,16,6" IsChecked="{Binding IsAll, Mode=TwoWay}"
+                       ToolTip="Every bone of the clip" AutomationProperties.Name="All bones">
+            <AccessText Text="_All" />
+          </RadioButton>
+          <RadioButton GroupName="WeightTarget" Margin="0,0,16,6" IsChecked="{Binding IsUpper, Mode=TwoWay}" IsEnabled="{Binding HasSkeleton}"
+                       ToolTipService.ShowOnDisabled="True" ToolTip="The spine and everything above it (head, arms, hands)" AutomationProperties.Name="Upper body">
+            <AccessText Text="_Upper body" />
+          </RadioButton>
+          <RadioButton GroupName="WeightTarget" Margin="0,0,16,6" IsChecked="{Binding IsLower, Mode=TwoWay}" IsEnabled="{Binding HasSkeleton}"
+                       ToolTipService.ShowOnDisabled="True" ToolTip="The root, pelvis and legs" AutomationProperties.Name="Lower body">
+            <AccessText Text="_Lower body" />
+          </RadioButton>
+          <RadioButton GroupName="WeightTarget" Margin="0,0,16,6" IsChecked="{Binding IsSelected, Mode=TwoWay}" IsEnabled="{Binding HasSelectedBones}"
+                       ToolTipService.ShowOnDisabled="True" ToolTip="The bones selected in the viewport" AutomationProperties.Name="Selected bones">
+            <AccessText Text="_Selected bones" />
+          </RadioButton>
+          <RadioButton GroupName="WeightTarget" Margin="0,0,0,6" IsChecked="{Binding IsSubtree, Mode=TwoWay}" IsEnabled="{Binding HasSelectedBones}"
+                       ToolTipService.ShowOnDisabled="True" ToolTip="The selected bones and all their children (needs a fitting preview mesh)"
+                       AutomationProperties.Name="Selected bones and their children">
+            <AccessText Text="Selected and _children" />
+          </RadioButton>
+        </WrapPanel>
+        <TextBlock Style="{StaticResource HintText}" Text="{Binding SkeletonNote}" />
+      </StackPanel>
+      <StackPanel Style="{StaticResource DialogGroup}">
+        <TextBlock Style="{StaticResource DialogSubheading}" Text="WEIGHT" />
+        <StackPanel Style="{StaticResource ToolRow}">
+          <cui:NumericBox Width="110" Value="{Binding Weight, Mode=TwoWay}" Decimals="2" Minimum="0" Maximum="100" Step="1"
+                               ToolTip="The weight to set (10 replaces the state, 5 shares half and half, 0 leaves the bone to the state)"
+                               AutomationProperties.Name="Weight" />
+          <Button Style="{StaticResource DialogSmallButton}" MinWidth="40" Margin="10,0,6,0" Content="0" Command="{Binding SetWeightCommand}" CommandParameter="0"
+                  ToolTip="Weight 0: this clip does not drive the bones" AutomationProperties.Name="Weight 0" />
+          <Button Style="{StaticResource DialogSmallButton}" MinWidth="40" Margin="0,0,6,0" Content="2" Command="{Binding SetWeightCommand}" CommandParameter="2"
+                  ToolTip="Weight 2 (a stock value)" AutomationProperties.Name="Weight 2" />
+          <Button Style="{StaticResource DialogSmallButton}" MinWidth="40" Margin="0,0,6,0" Content="5" Command="{Binding SetWeightCommand}" CommandParameter="5"
+                  ToolTip="Weight 5: shares the bones half and half with the state" AutomationProperties.Name="Weight 5" />
+          <Button Style="{StaticResource DialogSmallButton}" MinWidth="40" Margin="0" Content="10" Command="{Binding SetWeightCommand}" CommandParameter="10"
+                  ToolTip="Weight 10: replaces the state on these bones" AutomationProperties.Name="Weight 10" />
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Normalise ─────────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:NormalizeToolViewModel}">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="REPAIRS" />
+      <ItemsControl ItemsSource="{Binding Fixes}" Focusable="False" AutomationProperties.Name="Repairs">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="0,0,0,6">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <CheckBox Grid.Column="0" Content="{Binding Label}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" ToolTip="{Binding ToolTip}"
+                        AutomationProperties.Name="{Binding Label}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding Effect}" FontSize="12" TextWrapping="Wrap" Margin="8,0,0,0" VerticalAlignment="Center">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource App.SecondaryText}" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding HasEffect}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </DataTemplate>
+
+  <!-- ── Compare with ──────────────────────────────────────────────────────── -->
+  <DataTemplate DataType="{x:Type t:CompareDialogViewModel}">
+    <StackPanel Style="{StaticResource DialogGroup}">
+      <TextBlock Style="{StaticResource DialogSubheading}" Text="CLIP TO COMPARE WITH" />
+      <TextBox Margin="0,0,0,4" MinHeight="26" VerticalContentAlignment="Center" Text="{Binding Clips.Filter, UpdateSourceTrigger=PropertyChanged}"
+               ToolTip="Filter the clips by name (substring, or * and ? wildcards)" AutomationProperties.Name="Filter clips" />
+      <ListBox Style="{StaticResource ToolList}" Height="240" ItemsSource="{Binding Clips.Items}" SelectedItem="{Binding Clips.Selected, Mode=TwoWay}"
+               ItemTemplate="{StaticResource LibraryEntryTemplate}" AutomationProperties.Name="Clips"
+               ToolTip="Library clips; those with as many bones as this clip are listed first" />
+    </StackPanel>
+  </DataTemplate>
+</ResourceDictionary>

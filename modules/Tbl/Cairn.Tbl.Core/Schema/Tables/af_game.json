@@ -1,0 +1,161 @@
+{
+  "file": "af_game.tbl",
+  "title": "Alpine Game Options",
+  "doc": "Game options for a total conversion mod, read by Alpine Faction only when a mod is loaded.",
+  "syntax": "alpine-lines",
+  "alpine": {
+    "since": "1.0",
+    "notes": "Alpine reads this file line by line, not with the game's table parser: lines are trimmed, everything before a line that is exactly #Start is ignored, reading stops at a line that is exactly #End, blank lines and lines starting with // are skipped, and every other line is 'name: value' split at the first colon. Field order does not matter, a later line overrides an earlier one, and unknown names are only logged. Comments after a value become part of the value."
+  },
+  "sections": [
+    {
+      "name": "#Start",
+      "end": "#End",
+      "required": true,
+      "repeat": false,
+      "order": "free",
+      "entry": null,
+      "doc": "Options between #Start and #End, in any order.",
+      "fields": [
+        {
+          "name": "$Default Geomod Smoke Emitter:",
+          "type": "ref",
+          "required": false,
+          "ref": "emitter",
+          "quotes": "optional",
+          "doc": "Emitter used for geomod smoke."
+        },
+        {
+          "name": "$Driller Geomod Smoke Emitter:",
+          "type": "ref",
+          "required": false,
+          "ref": "emitter",
+          "quotes": "optional",
+          "doc": "Emitter used for driller geomod smoke."
+        },
+        {
+          "name": "$Ice Geomod Texture:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "quotes": "optional",
+          "doc": "Crater texture used on ice."
+        },
+        {
+          "name": "$First Level Filename:",
+          "type": "file",
+          "required": false,
+          "file": "any",
+          "quotes": "optional",
+          "doc": "Level started by New Game."
+        },
+        {
+          "name": "$Training Level Filename:",
+          "type": "file",
+          "required": false,
+          "file": "any",
+          "quotes": "optional",
+          "doc": "Level started by Training."
+        },
+        {
+          "name": "$Use Base Game Players Config:",
+          "type": "bool",
+          "required": false,
+          "syntax": "alpine-bool",
+          "doc": "Use the base game's player config file instead of the mod's. 1, true or True mean yes; anything else means no."
+        },
+        {
+          "name": "$Player Entity Type:",
+          "type": "ref",
+          "required": false,
+          "ref": "entity",
+          "quotes": "optional",
+          "doc": "Entity class of the player."
+        },
+        {
+          "name": "$Player Undercover Suit Entity Type:",
+          "type": "ref",
+          "required": false,
+          "ref": "entity",
+          "quotes": "optional",
+          "doc": "Entity class of the player in the undercover suit."
+        },
+        {
+          "name": "$Player Undercover Scientist Entity Type:",
+          "type": "ref",
+          "required": false,
+          "ref": "entity",
+          "quotes": "optional",
+          "doc": "Entity class of the player disguised as a scientist."
+        },
+        {
+          "name": "$Fall Damage Land Multiplier:",
+          "type": "float",
+          "required": false,
+          "doc": "Scales damage from landing hard."
+        },
+        {
+          "name": "$Fall Damage Slam Multiplier:",
+          "type": "float",
+          "required": false,
+          "doc": "Scales damage from slamming into things."
+        },
+        {
+          "name": "$Multiplayer Walk Speed:",
+          "type": "float",
+          "required": false,
+          "default": "9.0",
+          "doc": "Walk speed in multiplayer (default 9)."
+        },
+        {
+          "name": "$Multiplayer Crouch Walk Speed:",
+          "type": "float",
+          "required": false,
+          "default": "7.0",
+          "doc": "Crouched walk speed in multiplayer (default 7)."
+        },
+        {
+          "name": "$Walkable Slope Threshold:",
+          "type": "float",
+          "required": false,
+          "default": "0.5",
+          "doc": "Steepest walkable slope as a surface normal threshold (default 0.5)."
+        },
+        {
+          "name": "$Player Headlamp Color:",
+          "type": "color",
+          "required": false,
+          "syntax": "alpine-color",
+          "doc": "Head lamp colour. Colour as hex RRGGBB or RRGGBBAA, or r, g, b (optionally in { } or < >), quotes optional."
+        },
+        {
+          "name": "$Player Headlamp Intensity:",
+          "type": "float",
+          "required": false,
+          "doc": "Head lamp intensity."
+        },
+        {
+          "name": "$Player Headlamp Range:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Head lamp range."
+        },
+        {
+          "name": "$Player Headlamp Radius:",
+          "type": "float",
+          "required": false,
+          "doc": "Head lamp cone radius."
+        },
+        {
+          "name": "$Default Third Person:",
+          "type": "bool",
+          "required": false,
+          "syntax": "alpine-bool",
+          "alpineSince": "1.1",
+          "doc": "Start with the third person camera. 1, true or True mean yes; anything else means no."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2549 @@
+{
+  "file": "weapons.tbl",
+  "title": "Weapons",
+  "doc": "Every weapon and projectile: models, first person animations, ammunition, damage, sounds and effects.",
+  "sections": [
+    {
+      "name": "#Primary Weapons",
+      "required": true,
+      "repeat": false,
+      "doc": "Weapons listed first; each entry starts at $Name: and the list ends at #End.",
+      "entry": "$Name:",
+      "defines": "weapon",
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Unique weapon name that other tables and levels use to refer to this weapon."
+        },
+        {
+          "name": "$Display Name:",
+          "type": "text",
+          "required": false,
+          "syntax": "xstr",
+          "doc": "Localised name shown in the interface, written as XSTR(id, \"text\")."
+        },
+        {
+          "name": "$V3D Filename:",
+          "type": "file",
+          "required": true,
+          "file": "mesh",
+          "doc": "Projectile model (.v3d/.v3m or .vfx); \"\" draws no projectile."
+        },
+        {
+          "name": "$Flags:",
+          "type": "flags",
+          "required": true,
+          "values": [
+            "alt_fire",
+            "continuous_fire",
+            "alt_continuous_fire",
+            "flickers",
+            "thruster",
+            "melee",
+            "remote_charge",
+            "player_wep",
+            "alt_zoom",
+            "underwater",
+            "from_eye",
+            "infrared",
+            "gravity",
+            "fixed_muz_flash",
+            "alt_lock",
+            "silent",
+            "torpedo",
+            "drill",
+            "detonator",
+            "alt_custom_mode",
+            "semi_automatic",
+            "autoaim",
+            "ps2_fp_full_clip"
+          ],
+          "doc": "Weapon behaviour flags; an unknown flag name stops the game."
+        },
+        {
+          "name": "$Flags2:",
+          "type": "flags",
+          "required": false,
+          "values": [
+            "pierces_all",
+            "random_bmp_orient",
+            "cycle_alpha",
+            "no_fire_through",
+            "no_world_collide",
+            "undeviating",
+            "flame",
+            "has_scanner",
+            "damage_self",
+            "has_pilot_flame",
+            "multi_mesh_collide"
+          ],
+          "doc": "More weapon behaviour flags."
+        },
+        {
+          "name": "$Cycle Position:",
+          "type": "int",
+          "required": false,
+          "min": 0,
+          "max": 31,
+          "when": "required if $Flags contains player_wep",
+          "otherwise": "absent",
+          "doc": "Slot of this player weapon in the weapon cycle; required (and unique) when $Flags has player_wep, not allowed otherwise."
+        },
+        {
+          "name": "$Pref Position:",
+          "type": "int",
+          "required": false,
+          "min": 0,
+          "max": 31,
+          "when": "required if $Flags contains player_wep",
+          "otherwise": "absent",
+          "doc": "Auto-switch preference of this player weapon (0 is best); required (and unique) when $Flags has player_wep, not allowed otherwise."
+        },
+        {
+          "name": "$Fine Aim Region Size:",
+          "type": "float",
+          "required": false,
+          "default": "0.65",
+          "when": "required if $Flags contains player_wep",
+          "doc": "Size of the fine aiming window as a fraction of the screen; required for player weapons."
+        },
+        {
+          "name": "$Fine Aim Region Size SS:",
+          "type": "float",
+          "required": false,
+          "default": "0.65",
+          "when": "required if $Flags contains player_wep",
+          "doc": "Fine aiming window size used in split screen; required for player weapons."
+        },
+        {
+          "name": "$Weapon Type:",
+          "type": "enum",
+          "required": false,
+          "values": [
+            "close combat",
+            "semi-auto",
+            "heavy",
+            "explosive"
+          ],
+          "strict": false,
+          "children": [
+            {
+              "name": "$Weapon Icon:",
+              "type": "file",
+              "required": true,
+              "file": "texture",
+              "doc": "Icon bitmap used by the weapon switching interface; required after $Weapon Type, may be \"\"."
+            }
+          ],
+          "doc": "Weapon switching category; other text is silently treated as no category."
+        },
+        {
+          "name": "$Damage Type:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "bash",
+            "bullet",
+            "armor piercing bullet",
+            "explosive",
+            "fire",
+            "energy",
+            "electrical",
+            "acid",
+            "scalding"
+          ],
+          "strict": false,
+          "doc": "Kind of damage the weapon deals."
+        },
+        {
+          "name": "$3rd Person V3D:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "doc": "Model held by characters in third person."
+        },
+        {
+          "name": "$3rd Person Muzzle Flash Glare:",
+          "type": "ref",
+          "required": false,
+          "ref": "glare",
+          "doc": "Glare effect shown at the muzzle in third person."
+        },
+        {
+          "name": "$1st Person Mesh:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "children": [
+            {
+              "name": "$1st person FOV:",
+              "type": "float",
+              "required": false,
+              "unit": "degrees",
+              "doc": "Field of view for drawing the first person weapon."
+            },
+            {
+              "name": "$Splitscreen FOV:",
+              "type": "float",
+              "required": false,
+              "unit": "degrees",
+              "doc": "First person field of view in split screen."
+            },
+            {
+              "name": "$1st Person offset:",
+              "type": "vec3",
+              "required": true,
+              "unit": "metres",
+              "doc": "Offset of the first person weapon from the eye."
+            },
+            {
+              "name": "$1st Person offset SS:",
+              "type": "vec3",
+              "required": true,
+              "unit": "metres",
+              "doc": "First person weapon offset in split screen."
+            }
+          ],
+          "doc": "First person weapon model; the view fields below are read only after it."
+        },
+        {
+          "name": "$1st person muzzle flash bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "children": [
+            {
+              "name": "$1st person muzzle flash radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius of the first person muzzle flash bitmap."
+            }
+          ],
+          "doc": "Muzzle flash bitmap seen in first person."
+        },
+        {
+          "name": "$1st person alt muzzle flash bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "children": [
+            {
+              "name": "$1st person alt muzzle flash radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius of the alternate fire muzzle flash bitmap."
+            }
+          ],
+          "doc": "Muzzle flash bitmap for alternate fire in first person."
+        },
+        {
+          "name": "$Silencer V3D:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "doc": "Silencer model attached to the first person weapon."
+        },
+        {
+          "name": "$Spark VFX:",
+          "type": "file",
+          "required": false,
+          "file": "vfx",
+          "doc": "Spark effect shown on the first person weapon (riot stick)."
+        },
+        {
+          "name": "+State:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "enum",
+              "values": [
+                "idle",
+                "run",
+                "loop_fire"
+              ],
+              "strict": false,
+              "doc": "state name"
+            },
+            {
+              "type": "file",
+              "file": "anim",
+              "doc": "animation file (.mvf)"
+            }
+          ],
+          "doc": "First person looping animation: state name, then animation file."
+        },
+        {
+          "name": "+Action:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "enum",
+              "values": [
+                "fire",
+                "alt_fire",
+                "fire_fail",
+                "idle_1",
+                "idle_2",
+                "idle_3",
+                "draw",
+                "holster",
+                "reload",
+                "jump",
+                "custom_start",
+                "custom_leave"
+              ],
+              "strict": false,
+              "doc": "action name"
+            },
+            {
+              "type": "file",
+              "file": "anim",
+              "doc": "animation file (.mvf)"
+            },
+            {
+              "type": "ref",
+              "ref": "foley",
+              "doc": "foley name; \"\" for none"
+            }
+          ],
+          "doc": "First person one-shot animation: action name, animation file, foley played with it."
+        },
+        {
+          "name": "$Bitmap Filename:",
+          "type": "file",
+          "required": true,
+          "file": "texture",
+          "childrenWhen": "length>4",
+          "children": [
+            {
+              "name": "$Head Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius of the projectile bitmap head; only read when a bitmap is named."
+            },
+            {
+              "name": "+Length:",
+              "type": "float",
+              "required": false,
+              "unit": "metres",
+              "doc": "Length of the projectile streak."
+            },
+            {
+              "name": "+Tail Radius:",
+              "type": "float",
+              "required": false,
+              "unit": "metres",
+              "when": "required after +Length",
+              "doc": "Radius of the streak tail; required after +Length."
+            }
+          ],
+          "doc": "Bitmap drawn for the projectile (a .vbm animates); \"\" for none, and then the radius fields are left out."
+        },
+        {
+          "name": "$HUD Icon Filename:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Icon used on the HUD for this weapon."
+        },
+        {
+          "name": "$HUD Reticle Filename:",
+          "type": "file",
+          "nameSuffix": "_0",
+          "required": false,
+          "file": "texture",
+          "doc": "Reticle bitmap."
+        },
+        {
+          "name": "$HUD Zoomed Reticle Filename:",
+          "type": "file",
+          "nameSuffix": "_0",
+          "required": false,
+          "file": "texture",
+          "doc": "Reticle bitmap while zoomed."
+        },
+        {
+          "name": "$HUD Locked Reticle Filename:",
+          "type": "file",
+          "nameSuffix": "_0",
+          "required": false,
+          "file": "texture",
+          "doc": "Reticle bitmap shown once the weapon has a lock."
+        },
+        {
+          "name": "$PS2 Selection Icon Filemame:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Weapon select icon of the console version (the marker really is spelled Filemame)."
+        },
+        {
+          "name": "$Collision Radius:",
+          "type": "float",
+          "required": true,
+          "unit": "metres",
+          "doc": "Projectile collision radius."
+        },
+        {
+          "name": "$Max Ammo:",
+          "type": "int",
+          "required": true,
+          "parts": [
+            {
+              "type": "int",
+              "doc": "single player"
+            },
+            {
+              "type": "int",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Most ammunition the player can carry: single player, then multiplayer."
+        },
+        {
+          "name": "$Ammo Type:",
+          "type": "ref",
+          "required": true,
+          "ref": "ammo",
+          "doc": "Ammunition this weapon uses (an ammo.tbl name)."
+        },
+        {
+          "name": "$AI Attack Range:",
+          "type": "float",
+          "required": true,
+          "unit": "metres",
+          "parts": [
+            {
+              "type": "float",
+              "doc": "single player"
+            },
+            {
+              "type": "float",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Distance AI tries to keep when attacking: single player, then multiplayer."
+        },
+        {
+          "name": "$Clip Size:",
+          "type": "int",
+          "required": false,
+          "parts": [
+            {
+              "type": "int",
+              "doc": "single player"
+            },
+            {
+              "type": "int",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Rounds per clip: single player, then multiplayer."
+        },
+        {
+          "name": "$Clip Reload Time:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds to reload a clip."
+        },
+        {
+          "name": "$Clip Drain Time:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds for a power weapon to drain a clip."
+        },
+        {
+          "name": "$Mass:",
+          "type": "float",
+          "required": true,
+          "unit": "kg",
+          "doc": "Projectile mass."
+        },
+        {
+          "name": "$Velocity:",
+          "type": "float",
+          "required": true,
+          "unit": "metres/second",
+          "doc": "Projectile speed."
+        },
+        {
+          "name": "$Velocity Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "metres/second",
+          "doc": "Projectile speed in multiplayer; defaults to $Velocity."
+        },
+        {
+          "name": "$Fire Wait:",
+          "type": "float",
+          "required": true,
+          "unit": "seconds",
+          "doc": "Seconds between shots."
+        },
+        {
+          "name": "$Alt Fire Wait:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds between alternate fire shots."
+        },
+        {
+          "name": "$Num Projectiles:",
+          "type": "int",
+          "required": false,
+          "default": "1",
+          "doc": "Projectiles per shot."
+        },
+        {
+          "name": "$Spread Degrees:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "default": "0",
+          "doc": "Random spread of shots."
+        },
+        {
+          "name": "$Spread Degrees Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "doc": "Spread in multiplayer; defaults to $Spread Degrees."
+        },
+        {
+          "name": "$AI Spread Degrees:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "parts": [
+            {
+              "type": "float",
+              "doc": "single player"
+            },
+            {
+              "type": "float",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Spread when fired by AI: single player, then multiplayer."
+        },
+        {
+          "name": "$Alt Spread Degrees:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "doc": "Spread of alternate fire."
+        },
+        {
+          "name": "$Alt Spread Degrees Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "doc": "Alternate fire spread in multiplayer."
+        },
+        {
+          "name": "$AI Alt Spread Degrees:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "parts": [
+            {
+              "type": "float",
+              "doc": "single player"
+            },
+            {
+              "type": "float",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Alternate fire spread for AI: single player, then multiplayer."
+        },
+        {
+          "name": "$Start Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when a continuous weapon spins up."
+        },
+        {
+          "name": "$Start Delay:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds between wanting to fire and firing."
+        },
+        {
+          "name": "$Stop Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when a continuous weapon winds down."
+        },
+        {
+          "name": "$Burst Mode:",
+          "type": "bool",
+          "required": false,
+          "children": [
+            {
+              "name": "+Burst Count:",
+              "type": "int",
+              "required": true,
+              "doc": "Shots per burst."
+            },
+            {
+              "name": "+Burst Delay:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "Seconds between shots of a burst."
+            },
+            {
+              "name": "+Burst Launch Sound:",
+              "type": "file",
+              "required": true,
+              "file": "sound",
+              "parts": [
+                {
+                  "type": "file",
+                  "file": "sound",
+                  "doc": "sound file name; \"\" means none (then nothing else follows)"
+                },
+                {
+                  "type": "float",
+                  "optional": true,
+                  "when": "file not empty",
+                  "doc": "minimum distance in metres (only when a file is given)"
+                },
+                {
+                  "type": "float",
+                  "optional": true,
+                  "when": "file not empty",
+                  "doc": "volume scale (only when a file is given)"
+                }
+              ],
+              "doc": "Sound for each burst shot: file, minimum distance, volume."
+            },
+            {
+              "name": "+Burst Alt Fire:",
+              "type": "bool",
+              "required": true,
+              "doc": "Whether alternate fire also bursts."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the weapon fires in bursts; the + fields follow only when true."
+        },
+        {
+          "name": "$Damage:",
+          "type": "float",
+          "required": true,
+          "doc": "Damage per hit in single player."
+        },
+        {
+          "name": "$Damage Multi:",
+          "type": "float",
+          "required": false,
+          "doc": "Damage per hit in multiplayer; defaults to $Damage."
+        },
+        {
+          "name": "$Alt Damage:",
+          "type": "float",
+          "required": false,
+          "doc": "Alternate fire damage in single player."
+        },
+        {
+          "name": "$Alt Damage Multi:",
+          "type": "float",
+          "required": false,
+          "doc": "Alternate fire damage in multiplayer."
+        },
+        {
+          "name": "$AI Damage Scale:",
+          "type": "float",
+          "required": false,
+          "parts": [
+            {
+              "type": "float",
+              "doc": "single player"
+            },
+            {
+              "type": "float",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Damage factor when fired by AI: single player, then multiplayer."
+        },
+        {
+          "name": "$Lifetime:",
+          "type": "float",
+          "required": true,
+          "unit": "seconds",
+          "doc": "Seconds the projectile lives."
+        },
+        {
+          "name": "$Lifetime Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Projectile lifetime in multiplayer."
+        },
+        {
+          "name": "$Homing:",
+          "type": "bool",
+          "required": true,
+          "children": [
+            {
+              "name": "+Turn Time:",
+              "type": "float",
+              "required": true,
+              "doc": "How fast the projectile turns (lower turns quicker)."
+            },
+            {
+              "name": "+View Cone:",
+              "type": "float",
+              "required": true,
+              "unit": "degrees",
+              "doc": "Field of view of the seeker."
+            },
+            {
+              "name": "+Scanning Range:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "How far ahead the seeker looks."
+            },
+            {
+              "name": "+Wakeup Time:",
+              "type": "float",
+              "required": false,
+              "unit": "seconds",
+              "doc": "Seconds before the seeker starts tracking."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the projectile homes in; the + fields follow only when true."
+        },
+        {
+          "name": "$Launch:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Foley played when the weapon fires; may be \"\"."
+        },
+        {
+          "name": "$Alt Launch:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played on alternate fire."
+        },
+        {
+          "name": "$Silent Launch:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when fired with a silencer."
+        },
+        {
+          "name": "$Underwater Launch:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when fired underwater."
+        },
+        {
+          "name": "$Launch Fail:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when the weapon cannot fire."
+        },
+        {
+          "name": "$Fly Sound:",
+          "type": "file",
+          "required": true,
+          "file": "sound",
+          "parts": [
+            {
+              "type": "file",
+              "file": "sound",
+              "doc": "sound file name; \"\" means none (then nothing else follows)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "minimum distance in metres (only when a file is given)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "volume scale (only when a file is given)"
+            }
+          ],
+          "doc": "Looping sound of the projectile in flight: file, minimum distance, volume; may be \"\"."
+        },
+        {
+          "name": "$Zoom Sound:",
+          "type": "file",
+          "required": false,
+          "file": "sound",
+          "parts": [
+            {
+              "type": "file",
+              "file": "sound",
+              "doc": "sound file name; \"\" means none (then nothing else follows)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "minimum distance in metres (only when a file is given)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "volume scale (only when a file is given)"
+            }
+          ],
+          "doc": "Sound played when zooming: file, minimum distance, volume."
+        },
+        {
+          "name": "$Impact Delay:",
+          "type": "float",
+          "required": false,
+          "repeat": true,
+          "unit": "seconds",
+          "maxCount": 2,
+          "doc": "Seconds before melee damage or projectile creation; at most two lines (single player, multiplayer)."
+        },
+        {
+          "name": "$Alt Impact Delay:",
+          "type": "float",
+          "required": false,
+          "repeat": true,
+          "unit": "seconds",
+          "maxCount": 2,
+          "doc": "Impact delay for alternate fire; at most two lines."
+        },
+        {
+          "name": "$Impact Sound:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "ref",
+              "ref": "material",
+              "doc": "material name, or \"underwater\""
+            },
+            {
+              "type": "ref",
+              "ref": "foley",
+              "doc": "foley name"
+            }
+          ],
+          "doc": "Foley played on impact with a material: material name (or \"underwater\"), then foley name."
+        },
+        {
+          "name": "$Near Miss Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley for near misses."
+        },
+        {
+          "name": "$Near Miss Underwater:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley for near misses underwater."
+        },
+        {
+          "name": "$Geomod Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when the weapon makes a geomod crater."
+        },
+        {
+          "name": "$Impact Vclips:",
+          "type": "list",
+          "required": true,
+          "of": "ref",
+          "ref": "vclip",
+          "maxCount": 3,
+          "doc": "Up to three vclips played on impact; (\"\") for none."
+        },
+        {
+          "name": "$Impact Vclips Radius:",
+          "type": "list",
+          "required": true,
+          "of": "float",
+          "maxCount": 3,
+          "unit": "metres",
+          "doc": "Radius of each impact vclip."
+        },
+        {
+          "name": "$Impact Decal:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "parts": [
+            {
+              "type": "file",
+              "file": "texture",
+              "doc": "decal bitmap"
+            },
+            {
+              "type": "float",
+              "doc": "size"
+            },
+            {
+              "type": "float",
+              "doc": "size"
+            }
+          ],
+          "doc": "Decal left on impact: bitmap, then two sizes."
+        },
+        {
+          "name": "$Trail emitter:",
+          "type": "ref",
+          "required": false,
+          "ref": "emitter",
+          "doc": "Particle emitter that trails the projectile."
+        },
+        {
+          "name": "$Damage Radius:",
+          "type": "float",
+          "required": true,
+          "unit": "metres",
+          "doc": "Splash damage radius in single player."
+        },
+        {
+          "name": "$Damage Radius Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Splash damage radius in multiplayer."
+        },
+        {
+          "name": "+Crater Radius:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Geomod crater radius."
+        },
+        {
+          "name": "$Sticky:",
+          "type": "bool",
+          "required": true,
+          "children": [
+            {
+              "name": "+Stick Sound:",
+              "type": "ref",
+              "required": false,
+              "repeat": true,
+              "parts": [
+                {
+                  "type": "ref",
+                  "ref": "material",
+                  "doc": "material name"
+                },
+                {
+                  "type": "file",
+                  "file": "sound",
+                  "doc": "sound file name; \"\" means none (then nothing else follows)"
+                },
+                {
+                  "type": "float",
+                  "optional": true,
+                  "when": "file not empty",
+                  "doc": "minimum distance in metres (only when a file is given)"
+                },
+                {
+                  "type": "float",
+                  "optional": true,
+                  "when": "file not empty",
+                  "doc": "volume scale (only when a file is given)"
+                }
+              ],
+              "doc": "Sound when sticking to a material: material, then sound file, minimum distance, volume."
+            },
+            {
+              "name": "+Embedded V3D Filename:",
+              "type": "file",
+              "required": false,
+              "file": "mesh",
+              "doc": "Model shown while stuck."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the projectile sticks to what it hits; the + fields follow only when true."
+        },
+        {
+          "name": "$Glow:",
+          "type": "bool",
+          "required": true,
+          "children": [
+            {
+              "name": "+Inner Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius where the light is at full strength."
+            },
+            {
+              "name": "+Outer Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius where the light has faded out."
+            },
+            {
+              "name": "+Color:",
+              "type": "color",
+              "required": true,
+              "doc": "Light colour as {r, g, b} or {r, g, b, a}, components 0 to 255."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the projectile casts light; the + fields follow only when true."
+        },
+        {
+          "name": "$Muzzle Flash Light:",
+          "type": "bool",
+          "required": false,
+          "children": [
+            {
+              "name": "+Inner Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius where the light is at full strength."
+            },
+            {
+              "name": "+Outer Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius where the light has faded out."
+            },
+            {
+              "name": "+Color:",
+              "type": "color",
+              "required": true,
+              "doc": "Light colour as {r, g, b} or {r, g, b, a}, components 0 to 255."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether firing casts a muzzle light; the + fields follow only when true."
+        },
+        {
+          "name": "$Drill Time:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Drill time."
+        },
+        {
+          "name": "$Drill Range:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Drill reach."
+        },
+        {
+          "name": "$Drill Charge:",
+          "type": "float",
+          "required": false,
+          "doc": "Drill charge."
+        },
+        {
+          "name": "$Scorch Bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Scorch decal bitmap."
+        },
+        {
+          "name": "$Scorch Size:",
+          "type": "vec3",
+          "required": false,
+          "unit": "metres",
+          "doc": "Scorch decal size."
+        },
+        {
+          "name": "$Glass Decal Bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Decal bitmap left on glass."
+        },
+        {
+          "name": "$Glass Decal Size:",
+          "type": "vec3",
+          "required": false,
+          "unit": "metres",
+          "doc": "Glass decal size."
+        },
+        {
+          "name": "$Shells Ejected:",
+          "type": "none",
+          "required": false,
+          "children": [
+            {
+              "name": "+V3D:",
+              "type": "file",
+              "required": true,
+              "file": "mesh",
+              "doc": "Shell model."
+            },
+            {
+              "name": "+Base Dir:",
+              "type": "vec3",
+              "required": true,
+              "doc": "Ejection direction."
+            },
+            {
+              "name": "+Eject Velocity:",
+              "type": "float",
+              "required": true,
+              "unit": "metres/second",
+              "doc": "Ejection speed."
+            },
+            {
+              "name": "+Custom Sound Set:",
+              "type": "ref",
+              "required": false,
+              "ref": "impactsoundset",
+              "doc": "Impact sound set used when the shell lands."
+            },
+            {
+              "name": "+Primary Pause Time Before Eject:",
+              "type": "float",
+              "required": false,
+              "unit": "seconds",
+              "doc": "Delay before the shell is ejected."
+            }
+          ],
+          "doc": "Marker without a value that starts the ejected shell description."
+        },
+        {
+          "name": "$Clips Ejected:",
+          "type": "none",
+          "required": false,
+          "children": [
+            {
+              "name": "+V3D:",
+              "type": "file",
+              "required": true,
+              "file": "mesh",
+              "doc": "Clip model."
+            },
+            {
+              "name": "+Drop Pause Time:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "Delay before the clip drops."
+            },
+            {
+              "name": "+Custom Sound Set:",
+              "type": "ref",
+              "required": false,
+              "ref": "impactsoundset",
+              "doc": "Impact sound set used when the clip lands."
+            }
+          ],
+          "doc": "Marker without a value that starts the dropped clip description."
+        },
+        {
+          "name": "$Camera Shake:",
+          "type": "none",
+          "required": false,
+          "children": [
+            {
+              "name": "+Distance:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Shake amount."
+            },
+            {
+              "name": "+Time:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "Shake duration."
+            }
+          ],
+          "doc": "Marker without a value that starts the camera shake description."
+        },
+        {
+          "name": "$Tracers:",
+          "type": "bool",
+          "required": false,
+          "children": [
+            {
+              "name": "+Tracer Frequency:",
+              "type": "int",
+              "required": true,
+              "doc": "Rounds fired between tracers."
+            },
+            {
+              "name": "+Tracer Effect:",
+              "type": "file",
+              "required": false,
+              "file": "any",
+              "doc": "Effect or model used for the tracer."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the weapon fires tracers; the + fields follow only when true."
+        },
+        {
+          "name": "$Piercing:",
+          "type": "bool",
+          "required": false,
+          "children": [
+            {
+              "name": "+Piercing Power:",
+              "type": "float",
+              "required": true,
+              "doc": "Mass the shot can pierce before stopping."
+            },
+            {
+              "name": "+Ricochet Angle:",
+              "type": "float",
+              "required": false,
+              "unit": "degrees",
+              "doc": "Angle at which shots ricochet instead of piercing."
+            },
+            {
+              "name": "+Ricochet Bitmap:",
+              "type": "file",
+              "required": false,
+              "file": "texture",
+              "doc": "Ricochet decal bitmap."
+            },
+            {
+              "name": "+Ricochet Size:",
+              "type": "vec3",
+              "required": false,
+              "unit": "metres",
+              "doc": "Ricochet decal size."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether shots pierce geometry; the + fields follow only when true."
+        },
+        {
+          "name": "$Thrust Lifetime:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds the projectile thruster burns."
+        },
+        {
+          "name": "$Reload Zero Drain:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds into a reload after which the current clip empties."
+        },
+        {
+          "name": "$Multi BBox Size Factor:",
+          "type": "float",
+          "required": false,
+          "default": "1.0",
+          "doc": "Hit box scale in multiplayer."
+        }
+      ]
+    },
+    {
+      "name": "#Secondary Weapons",
+      "required": true,
+      "repeat": false,
+      "doc": "The remaining weapons, with the same fields; the list ends at #End.",
+      "entry": "$Name:",
+      "defines": "weapon",
+      "fields": [
+        {
+          "name": "$Name:",
+          "type": "string",
+          "required": true,
+          "maxLength": 254,
+          "doc": "Unique weapon name that other tables and levels use to refer to this weapon."
+        },
+        {
+          "name": "$Display Name:",
+          "type": "text",
+          "required": false,
+          "syntax": "xstr",
+          "doc": "Localised name shown in the interface, written as XSTR(id, \"text\")."
+        },
+        {
+          "name": "$V3D Filename:",
+          "type": "file",
+          "required": true,
+          "file": "mesh",
+          "doc": "Projectile model (.v3d/.v3m or .vfx); \"\" draws no projectile."
+        },
+        {
+          "name": "$Flags:",
+          "type": "flags",
+          "required": true,
+          "values": [
+            "alt_fire",
+            "continuous_fire",
+            "alt_continuous_fire",
+            "flickers",
+            "thruster",
+            "melee",
+            "remote_charge",
+            "player_wep",
+            "alt_zoom",
+            "underwater",
+            "from_eye",
+            "infrared",
+            "gravity",
+            "fixed_muz_flash",
+            "alt_lock",
+            "silent",
+            "torpedo",
+            "drill",
+            "detonator",
+            "alt_custom_mode",
+            "semi_automatic",
+            "autoaim",
+            "ps2_fp_full_clip"
+          ],
+          "doc": "Weapon behaviour flags; an unknown flag name stops the game."
+        },
+        {
+          "name": "$Flags2:",
+          "type": "flags",
+          "required": false,
+          "values": [
+            "pierces_all",
+            "random_bmp_orient",
+            "cycle_alpha",
+            "no_fire_through",
+            "no_world_collide",
+            "undeviating",
+            "flame",
+            "has_scanner",
+            "damage_self",
+            "has_pilot_flame",
+            "multi_mesh_collide"
+          ],
+          "doc": "More weapon behaviour flags."
+        },
+        {
+          "name": "$Cycle Position:",
+          "type": "int",
+          "required": false,
+          "min": 0,
+          "max": 31,
+          "when": "required if $Flags contains player_wep",
+          "otherwise": "absent",
+          "doc": "Slot of this player weapon in the weapon cycle; required (and unique) when $Flags has player_wep, not allowed otherwise."
+        },
+        {
+          "name": "$Pref Position:",
+          "type": "int",
+          "required": false,
+          "min": 0,
+          "max": 31,
+          "when": "required if $Flags contains player_wep",
+          "otherwise": "absent",
+          "doc": "Auto-switch preference of this player weapon (0 is best); required (and unique) when $Flags has player_wep, not allowed otherwise."
+        },
+        {
+          "name": "$Fine Aim Region Size:",
+          "type": "float",
+          "required": false,
+          "default": "0.65",
+          "when": "required if $Flags contains player_wep",
+          "doc": "Size of the fine aiming window as a fraction of the screen; required for player weapons."
+        },
+        {
+          "name": "$Fine Aim Region Size SS:",
+          "type": "float",
+          "required": false,
+          "default": "0.65",
+          "when": "required if $Flags contains player_wep",
+          "doc": "Fine aiming window size used in split screen; required for player weapons."
+        },
+        {
+          "name": "$Weapon Type:",
+          "type": "enum",
+          "required": false,
+          "values": [
+            "close combat",
+            "semi-auto",
+            "heavy",
+            "explosive"
+          ],
+          "strict": false,
+          "children": [
+            {
+              "name": "$Weapon Icon:",
+              "type": "file",
+              "required": true,
+              "file": "texture",
+              "doc": "Icon bitmap used by the weapon switching interface; required after $Weapon Type, may be \"\"."
+            }
+          ],
+          "doc": "Weapon switching category; other text is silently treated as no category."
+        },
+        {
+          "name": "$Damage Type:",
+          "type": "enum",
+          "required": true,
+          "values": [
+            "bash",
+            "bullet",
+            "armor piercing bullet",
+            "explosive",
+            "fire",
+            "energy",
+            "electrical",
+            "acid",
+            "scalding"
+          ],
+          "strict": false,
+          "doc": "Kind of damage the weapon deals."
+        },
+        {
+          "name": "$3rd Person V3D:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "doc": "Model held by characters in third person."
+        },
+        {
+          "name": "$3rd Person Muzzle Flash Glare:",
+          "type": "ref",
+          "required": false,
+          "ref": "glare",
+          "doc": "Glare effect shown at the muzzle in third person."
+        },
+        {
+          "name": "$1st Person Mesh:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "children": [
+            {
+              "name": "$1st person FOV:",
+              "type": "float",
+              "required": false,
+              "unit": "degrees",
+              "doc": "Field of view for drawing the first person weapon."
+            },
+            {
+              "name": "$Splitscreen FOV:",
+              "type": "float",
+              "required": false,
+              "unit": "degrees",
+              "doc": "First person field of view in split screen."
+            },
+            {
+              "name": "$1st Person offset:",
+              "type": "vec3",
+              "required": true,
+              "unit": "metres",
+              "doc": "Offset of the first person weapon from the eye."
+            },
+            {
+              "name": "$1st Person offset SS:",
+              "type": "vec3",
+              "required": true,
+              "unit": "metres",
+              "doc": "First person weapon offset in split screen."
+            }
+          ],
+          "doc": "First person weapon model; the view fields below are read only after it."
+        },
+        {
+          "name": "$1st person muzzle flash bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "children": [
+            {
+              "name": "$1st person muzzle flash radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius of the first person muzzle flash bitmap."
+            }
+          ],
+          "doc": "Muzzle flash bitmap seen in first person."
+        },
+        {
+          "name": "$1st person alt muzzle flash bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "children": [
+            {
+              "name": "$1st person alt muzzle flash radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius of the alternate fire muzzle flash bitmap."
+            }
+          ],
+          "doc": "Muzzle flash bitmap for alternate fire in first person."
+        },
+        {
+          "name": "$Silencer V3D:",
+          "type": "file",
+          "required": false,
+          "file": "mesh",
+          "doc": "Silencer model attached to the first person weapon."
+        },
+        {
+          "name": "$Spark VFX:",
+          "type": "file",
+          "required": false,
+          "file": "vfx",
+          "doc": "Spark effect shown on the first person weapon (riot stick)."
+        },
+        {
+          "name": "+State:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "enum",
+              "values": [
+                "idle",
+                "run",
+                "loop_fire"
+              ],
+              "strict": false,
+              "doc": "state name"
+            },
+            {
+              "type": "file",
+              "file": "anim",
+              "doc": "animation file (.mvf)"
+            }
+          ],
+          "doc": "First person looping animation: state name, then animation file."
+        },
+        {
+          "name": "+Action:",
+          "type": "string",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "enum",
+              "values": [
+                "fire",
+                "alt_fire",
+                "fire_fail",
+                "idle_1",
+                "idle_2",
+                "idle_3",
+                "draw",
+                "holster",
+                "reload",
+                "jump",
+                "custom_start",
+                "custom_leave"
+              ],
+              "strict": false,
+              "doc": "action name"
+            },
+            {
+              "type": "file",
+              "file": "anim",
+              "doc": "animation file (.mvf)"
+            },
+            {
+              "type": "ref",
+              "ref": "foley",
+              "doc": "foley name; \"\" for none"
+            }
+          ],
+          "doc": "First person one-shot animation: action name, animation file, foley played with it."
+        },
+        {
+          "name": "$Bitmap Filename:",
+          "type": "file",
+          "required": true,
+          "file": "texture",
+          "childrenWhen": "length>4",
+          "children": [
+            {
+              "name": "$Head Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius of the projectile bitmap head; only read when a bitmap is named."
+            },
+            {
+              "name": "+Length:",
+              "type": "float",
+              "required": false,
+              "unit": "metres",
+              "doc": "Length of the projectile streak."
+            },
+            {
+              "name": "+Tail Radius:",
+              "type": "float",
+              "required": false,
+              "unit": "metres",
+              "when": "required after +Length",
+              "doc": "Radius of the streak tail; required after +Length."
+            }
+          ],
+          "doc": "Bitmap drawn for the projectile (a .vbm animates); \"\" for none, and then the radius fields are left out."
+        },
+        {
+          "name": "$HUD Icon Filename:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Icon used on the HUD for this weapon."
+        },
+        {
+          "name": "$HUD Reticle Filename:",
+          "type": "file",
+          "nameSuffix": "_0",
+          "required": false,
+          "file": "texture",
+          "doc": "Reticle bitmap."
+        },
+        {
+          "name": "$HUD Zoomed Reticle Filename:",
+          "type": "file",
+          "nameSuffix": "_0",
+          "required": false,
+          "file": "texture",
+          "doc": "Reticle bitmap while zoomed."
+        },
+        {
+          "name": "$HUD Locked Reticle Filename:",
+          "type": "file",
+          "nameSuffix": "_0",
+          "required": false,
+          "file": "texture",
+          "doc": "Reticle bitmap shown once the weapon has a lock."
+        },
+        {
+          "name": "$PS2 Selection Icon Filemame:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Weapon select icon of the console version (the marker really is spelled Filemame)."
+        },
+        {
+          "name": "$Collision Radius:",
+          "type": "float",
+          "required": true,
+          "unit": "metres",
+          "doc": "Projectile collision radius."
+        },
+        {
+          "name": "$Max Ammo:",
+          "type": "int",
+          "required": true,
+          "parts": [
+            {
+              "type": "int",
+              "doc": "single player"
+            },
+            {
+              "type": "int",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Most ammunition the player can carry: single player, then multiplayer."
+        },
+        {
+          "name": "$Ammo Type:",
+          "type": "ref",
+          "required": true,
+          "ref": "ammo",
+          "doc": "Ammunition this weapon uses (an ammo.tbl name)."
+        },
+        {
+          "name": "$AI Attack Range:",
+          "type": "float",
+          "required": true,
+          "unit": "metres",
+          "parts": [
+            {
+              "type": "float",
+              "doc": "single player"
+            },
+            {
+              "type": "float",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Distance AI tries to keep when attacking: single player, then multiplayer."
+        },
+        {
+          "name": "$Clip Size:",
+          "type": "int",
+          "required": false,
+          "parts": [
+            {
+              "type": "int",
+              "doc": "single player"
+            },
+            {
+              "type": "int",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Rounds per clip: single player, then multiplayer."
+        },
+        {
+          "name": "$Clip Reload Time:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds to reload a clip."
+        },
+        {
+          "name": "$Clip Drain Time:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds for a power weapon to drain a clip."
+        },
+        {
+          "name": "$Mass:",
+          "type": "float",
+          "required": true,
+          "unit": "kg",
+          "doc": "Projectile mass."
+        },
+        {
+          "name": "$Velocity:",
+          "type": "float",
+          "required": true,
+          "unit": "metres/second",
+          "doc": "Projectile speed."
+        },
+        {
+          "name": "$Velocity Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "metres/second",
+          "doc": "Projectile speed in multiplayer; defaults to $Velocity."
+        },
+        {
+          "name": "$Fire Wait:",
+          "type": "float",
+          "required": true,
+          "unit": "seconds",
+          "doc": "Seconds between shots."
+        },
+        {
+          "name": "$Alt Fire Wait:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds between alternate fire shots."
+        },
+        {
+          "name": "$Num Projectiles:",
+          "type": "int",
+          "required": false,
+          "default": "1",
+          "doc": "Projectiles per shot."
+        },
+        {
+          "name": "$Spread Degrees:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "default": "0",
+          "doc": "Random spread of shots."
+        },
+        {
+          "name": "$Spread Degrees Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "doc": "Spread in multiplayer; defaults to $Spread Degrees."
+        },
+        {
+          "name": "$AI Spread Degrees:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "parts": [
+            {
+              "type": "float",
+              "doc": "single player"
+            },
+            {
+              "type": "float",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Spread when fired by AI: single player, then multiplayer."
+        },
+        {
+          "name": "$Alt Spread Degrees:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "doc": "Spread of alternate fire."
+        },
+        {
+          "name": "$Alt Spread Degrees Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "doc": "Alternate fire spread in multiplayer."
+        },
+        {
+          "name": "$AI Alt Spread Degrees:",
+          "type": "float",
+          "required": false,
+          "unit": "degrees",
+          "parts": [
+            {
+              "type": "float",
+              "doc": "single player"
+            },
+            {
+              "type": "float",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Alternate fire spread for AI: single player, then multiplayer."
+        },
+        {
+          "name": "$Start Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when a continuous weapon spins up."
+        },
+        {
+          "name": "$Start Delay:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds between wanting to fire and firing."
+        },
+        {
+          "name": "$Stop Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when a continuous weapon winds down."
+        },
+        {
+          "name": "$Burst Mode:",
+          "type": "bool",
+          "required": false,
+          "children": [
+            {
+              "name": "+Burst Count:",
+              "type": "int",
+              "required": true,
+              "doc": "Shots per burst."
+            },
+            {
+              "name": "+Burst Delay:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "Seconds between shots of a burst."
+            },
+            {
+              "name": "+Burst Launch Sound:",
+              "type": "file",
+              "required": true,
+              "file": "sound",
+              "parts": [
+                {
+                  "type": "file",
+                  "file": "sound",
+                  "doc": "sound file name; \"\" means none (then nothing else follows)"
+                },
+                {
+                  "type": "float",
+                  "optional": true,
+                  "when": "file not empty",
+                  "doc": "minimum distance in metres (only when a file is given)"
+                },
+                {
+                  "type": "float",
+                  "optional": true,
+                  "when": "file not empty",
+                  "doc": "volume scale (only when a file is given)"
+                }
+              ],
+              "doc": "Sound for each burst shot: file, minimum distance, volume."
+            },
+            {
+              "name": "+Burst Alt Fire:",
+              "type": "bool",
+              "required": true,
+              "doc": "Whether alternate fire also bursts."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the weapon fires in bursts; the + fields follow only when true."
+        },
+        {
+          "name": "$Damage:",
+          "type": "float",
+          "required": true,
+          "doc": "Damage per hit in single player."
+        },
+        {
+          "name": "$Damage Multi:",
+          "type": "float",
+          "required": false,
+          "doc": "Damage per hit in multiplayer; defaults to $Damage."
+        },
+        {
+          "name": "$Alt Damage:",
+          "type": "float",
+          "required": false,
+          "doc": "Alternate fire damage in single player."
+        },
+        {
+          "name": "$Alt Damage Multi:",
+          "type": "float",
+          "required": false,
+          "doc": "Alternate fire damage in multiplayer."
+        },
+        {
+          "name": "$AI Damage Scale:",
+          "type": "float",
+          "required": false,
+          "parts": [
+            {
+              "type": "float",
+              "doc": "single player"
+            },
+            {
+              "type": "float",
+              "doc": "multiplayer"
+            }
+          ],
+          "doc": "Damage factor when fired by AI: single player, then multiplayer."
+        },
+        {
+          "name": "$Lifetime:",
+          "type": "float",
+          "required": true,
+          "unit": "seconds",
+          "doc": "Seconds the projectile lives."
+        },
+        {
+          "name": "$Lifetime Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Projectile lifetime in multiplayer."
+        },
+        {
+          "name": "$Homing:",
+          "type": "bool",
+          "required": true,
+          "children": [
+            {
+              "name": "+Turn Time:",
+              "type": "float",
+              "required": true,
+              "doc": "How fast the projectile turns (lower turns quicker)."
+            },
+            {
+              "name": "+View Cone:",
+              "type": "float",
+              "required": true,
+              "unit": "degrees",
+              "doc": "Field of view of the seeker."
+            },
+            {
+              "name": "+Scanning Range:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "How far ahead the seeker looks."
+            },
+            {
+              "name": "+Wakeup Time:",
+              "type": "float",
+              "required": false,
+              "unit": "seconds",
+              "doc": "Seconds before the seeker starts tracking."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the projectile homes in; the + fields follow only when true."
+        },
+        {
+          "name": "$Launch:",
+          "type": "ref",
+          "required": true,
+          "ref": "foley",
+          "doc": "Foley played when the weapon fires; may be \"\"."
+        },
+        {
+          "name": "$Alt Launch:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played on alternate fire."
+        },
+        {
+          "name": "$Silent Launch:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when fired with a silencer."
+        },
+        {
+          "name": "$Underwater Launch:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when fired underwater."
+        },
+        {
+          "name": "$Launch Fail:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when the weapon cannot fire."
+        },
+        {
+          "name": "$Fly Sound:",
+          "type": "file",
+          "required": true,
+          "file": "sound",
+          "parts": [
+            {
+              "type": "file",
+              "file": "sound",
+              "doc": "sound file name; \"\" means none (then nothing else follows)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "minimum distance in metres (only when a file is given)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "volume scale (only when a file is given)"
+            }
+          ],
+          "doc": "Looping sound of the projectile in flight: file, minimum distance, volume; may be \"\"."
+        },
+        {
+          "name": "$Zoom Sound:",
+          "type": "file",
+          "required": false,
+          "file": "sound",
+          "parts": [
+            {
+              "type": "file",
+              "file": "sound",
+              "doc": "sound file name; \"\" means none (then nothing else follows)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "minimum distance in metres (only when a file is given)"
+            },
+            {
+              "type": "float",
+              "optional": true,
+              "when": "file not empty",
+              "doc": "volume scale (only when a file is given)"
+            }
+          ],
+          "doc": "Sound played when zooming: file, minimum distance, volume."
+        },
+        {
+          "name": "$Impact Delay:",
+          "type": "float",
+          "required": false,
+          "repeat": true,
+          "unit": "seconds",
+          "maxCount": 2,
+          "doc": "Seconds before melee damage or projectile creation; at most two lines (single player, multiplayer)."
+        },
+        {
+          "name": "$Alt Impact Delay:",
+          "type": "float",
+          "required": false,
+          "repeat": true,
+          "unit": "seconds",
+          "maxCount": 2,
+          "doc": "Impact delay for alternate fire; at most two lines."
+        },
+        {
+          "name": "$Impact Sound:",
+          "type": "ref",
+          "required": false,
+          "repeat": true,
+          "parts": [
+            {
+              "type": "ref",
+              "ref": "material",
+              "doc": "material name, or \"underwater\""
+            },
+            {
+              "type": "ref",
+              "ref": "foley",
+              "doc": "foley name"
+            }
+          ],
+          "doc": "Foley played on impact with a material: material name (or \"underwater\"), then foley name."
+        },
+        {
+          "name": "$Near Miss Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley for near misses."
+        },
+        {
+          "name": "$Near Miss Underwater:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley for near misses underwater."
+        },
+        {
+          "name": "$Geomod Sound:",
+          "type": "ref",
+          "required": false,
+          "ref": "foley",
+          "doc": "Foley played when the weapon makes a geomod crater."
+        },
+        {
+          "name": "$Impact Vclips:",
+          "type": "list",
+          "required": true,
+          "of": "ref",
+          "ref": "vclip",
+          "maxCount": 3,
+          "doc": "Up to three vclips played on impact; (\"\") for none."
+        },
+        {
+          "name": "$Impact Vclips Radius:",
+          "type": "list",
+          "required": true,
+          "of": "float",
+          "maxCount": 3,
+          "unit": "metres",
+          "doc": "Radius of each impact vclip."
+        },
+        {
+          "name": "$Impact Decal:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "parts": [
+            {
+              "type": "file",
+              "file": "texture",
+              "doc": "decal bitmap"
+            },
+            {
+              "type": "float",
+              "doc": "size"
+            },
+            {
+              "type": "float",
+              "doc": "size"
+            }
+          ],
+          "doc": "Decal left on impact: bitmap, then two sizes."
+        },
+        {
+          "name": "$Trail emitter:",
+          "type": "ref",
+          "required": false,
+          "ref": "emitter",
+          "doc": "Particle emitter that trails the projectile."
+        },
+        {
+          "name": "$Damage Radius:",
+          "type": "float",
+          "required": true,
+          "unit": "metres",
+          "doc": "Splash damage radius in single player."
+        },
+        {
+          "name": "$Damage Radius Multi:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Splash damage radius in multiplayer."
+        },
+        {
+          "name": "+Crater Radius:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Geomod crater radius."
+        },
+        {
+          "name": "$Sticky:",
+          "type": "bool",
+          "required": true,
+          "children": [
+            {
+              "name": "+Stick Sound:",
+              "type": "ref",
+              "required": false,
+              "repeat": true,
+              "parts": [
+                {
+                  "type": "ref",
+                  "ref": "material",
+                  "doc": "material name"
+                },
+                {
+                  "type": "file",
+                  "file": "sound",
+                  "doc": "sound file name; \"\" means none (then nothing else follows)"
+                },
+                {
+                  "type": "float",
+                  "optional": true,
+                  "when": "file not empty",
+                  "doc": "minimum distance in metres (only when a file is given)"
+                },
+                {
+                  "type": "float",
+                  "optional": true,
+                  "when": "file not empty",
+                  "doc": "volume scale (only when a file is given)"
+                }
+              ],
+              "doc": "Sound when sticking to a material: material, then sound file, minimum distance, volume."
+            },
+            {
+              "name": "+Embedded V3D Filename:",
+              "type": "file",
+              "required": false,
+              "file": "mesh",
+              "doc": "Model shown while stuck."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the projectile sticks to what it hits; the + fields follow only when true."
+        },
+        {
+          "name": "$Glow:",
+          "type": "bool",
+          "required": true,
+          "children": [
+            {
+              "name": "+Inner Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius where the light is at full strength."
+            },
+            {
+              "name": "+Outer Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius where the light has faded out."
+            },
+            {
+              "name": "+Color:",
+              "type": "color",
+              "required": true,
+              "doc": "Light colour as {r, g, b} or {r, g, b, a}, components 0 to 255."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the projectile casts light; the + fields follow only when true."
+        },
+        {
+          "name": "$Muzzle Flash Light:",
+          "type": "bool",
+          "required": false,
+          "children": [
+            {
+              "name": "+Inner Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius where the light is at full strength."
+            },
+            {
+              "name": "+Outer Radius:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Radius where the light has faded out."
+            },
+            {
+              "name": "+Color:",
+              "type": "color",
+              "required": true,
+              "doc": "Light colour as {r, g, b} or {r, g, b, a}, components 0 to 255."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether firing casts a muzzle light; the + fields follow only when true."
+        },
+        {
+          "name": "$Drill Time:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Drill time."
+        },
+        {
+          "name": "$Drill Range:",
+          "type": "float",
+          "required": false,
+          "unit": "metres",
+          "doc": "Drill reach."
+        },
+        {
+          "name": "$Drill Charge:",
+          "type": "float",
+          "required": false,
+          "doc": "Drill charge."
+        },
+        {
+          "name": "$Scorch Bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Scorch decal bitmap."
+        },
+        {
+          "name": "$Scorch Size:",
+          "type": "vec3",
+          "required": false,
+          "unit": "metres",
+          "doc": "Scorch decal size."
+        },
+        {
+          "name": "$Glass Decal Bitmap:",
+          "type": "file",
+          "required": false,
+          "file": "texture",
+          "doc": "Decal bitmap left on glass."
+        },
+        {
+          "name": "$Glass Decal Size:",
+          "type": "vec3",
+          "required": false,
+          "unit": "metres",
+          "doc": "Glass decal size."
+        },
+        {
+          "name": "$Shells Ejected:",
+          "type": "none",
+          "required": false,
+          "children": [
+            {
+              "name": "+V3D:",
+              "type": "file",
+              "required": true,
+              "file": "mesh",
+              "doc": "Shell model."
+            },
+            {
+              "name": "+Base Dir:",
+              "type": "vec3",
+              "required": true,
+              "doc": "Ejection direction."
+            },
+            {
+              "name": "+Eject Velocity:",
+              "type": "float",
+              "required": true,
+              "unit": "metres/second",
+              "doc": "Ejection speed."
+            },
+            {
+              "name": "+Custom Sound Set:",
+              "type": "ref",
+              "required": false,
+              "ref": "impactsoundset",
+              "doc": "Impact sound set used when the shell lands."
+            },
+            {
+              "name": "+Primary Pause Time Before Eject:",
+              "type": "float",
+              "required": false,
+              "unit": "seconds",
+              "doc": "Delay before the shell is ejected."
+            }
+          ],
+          "doc": "Marker without a value that starts the ejected shell description."
+        },
+        {
+          "name": "$Clips Ejected:",
+          "type": "none",
+          "required": false,
+          "children": [
+            {
+              "name": "+V3D:",
+              "type": "file",
+              "required": true,
+              "file": "mesh",
+              "doc": "Clip model."
+            },
+            {
+              "name": "+Drop Pause Time:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "Delay before the clip drops."
+            },
+            {
+              "name": "+Custom Sound Set:",
+              "type": "ref",
+              "required": false,
+              "ref": "impactsoundset",
+              "doc": "Impact sound set used when the clip lands."
+            }
+          ],
+          "doc": "Marker without a value that starts the dropped clip description."
+        },
+        {
+          "name": "$Camera Shake:",
+          "type": "none",
+          "required": false,
+          "children": [
+            {
+              "name": "+Distance:",
+              "type": "float",
+              "required": true,
+              "unit": "metres",
+              "doc": "Shake amount."
+            },
+            {
+              "name": "+Time:",
+              "type": "float",
+              "required": true,
+              "unit": "seconds",
+              "doc": "Shake duration."
+            }
+          ],
+          "doc": "Marker without a value that starts the camera shake description."
+        },
+        {
+          "name": "$Tracers:",
+          "type": "bool",
+          "required": false,
+          "children": [
+            {
+              "name": "+Tracer Frequency:",
+              "type": "int",
+              "required": true,
+              "doc": "Rounds fired between tracers."
+            },
+            {
+              "name": "+Tracer Effect:",
+              "type": "file",
+              "required": false,
+              "file": "any",
+              "doc": "Effect or model used for the tracer."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether the weapon fires tracers; the + fields follow only when true."
+        },
+        {
+          "name": "$Piercing:",
+          "type": "bool",
+          "required": false,
+          "children": [
+            {
+              "name": "+Piercing Power:",
+              "type": "float",
+              "required": true,
+              "doc": "Mass the shot can pierce before stopping."
+            },
+            {
+              "name": "+Ricochet Angle:",
+              "type": "float",
+              "required": false,
+              "unit": "degrees",
+              "doc": "Angle at which shots ricochet instead of piercing."
+            },
+            {
+              "name": "+Ricochet Bitmap:",
+              "type": "file",
+              "required": false,
+              "file": "texture",
+              "doc": "Ricochet decal bitmap."
+            },
+            {
+              "name": "+Ricochet Size:",
+              "type": "vec3",
+              "required": false,
+              "unit": "metres",
+              "doc": "Ricochet decal size."
+            }
+          ],
+          "if": "true",
+          "doc": "Whether shots pierce geometry; the + fields follow only when true."
+        },
+        {
+          "name": "$Thrust Lifetime:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds the projectile thruster burns."
+        },
+        {
+          "name": "$Reload Zero Drain:",
+          "type": "float",
+          "required": false,
+          "unit": "seconds",
+          "doc": "Seconds into a reload after which the current clip empties."
+        },
+        {
+          "name": "$Multi BBox Size Factor:",
+          "type": "float",
+          "required": false,
+          "default": "1.0",
+          "doc": "Hit box scale in multiplayer."
+        }
+      ]
+    }
+  ]
+}

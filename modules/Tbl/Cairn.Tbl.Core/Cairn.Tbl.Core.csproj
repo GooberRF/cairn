@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Tbl</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Collections.Immutable" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Cairn.Formats\Cairn.Formats.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Workspace\Cairn.Workspace.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Assets\Cairn.Assets.csproj" />
+  </ItemGroup>
+
+  <!-- One schema per table, embedded so the module needs no files beside the exe. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Schema\Tables\*.json" LogicalName="Cairn.Tbl.Schema.Tables.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cairn.Tbl.Tests" />
+    <InternalsVisibleTo Include="Cairn.Tbl.Ui" />
+  </ItemGroup>
+
+</Project>

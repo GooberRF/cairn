@@ -1,0 +1,31 @@
+{
+  "file": "events.tbl",
+  "title": "Editor events",
+  "doc": "Event types and their folders in the level editor's event list; the game itself does not read this file.",
+  "editorOnly": true,
+  "sections": [
+    {
+      "name": "#Events",
+      "required": true,
+      "repeat": false,
+      "doc": "Entries are found by searching for the exact text $Event Name:, so the folder headers (#Trigger, #AI_Actions, ...) and their #End lines are skipped.",
+      "entry": "$Event Name:",
+      "defines": "event",
+      "entrySearch": true,
+      "fields": [
+        {
+          "name": "$Event Name:",
+          "type": "string",
+          "required": true,
+          "doc": "Event type name; it must be one the editor knows."
+        },
+        {
+          "name": "$RFE Level1:",
+          "type": "string",
+          "required": false,
+          "doc": "Folder of the event in the editor's list; searched for before the next $Event Name:."
+        }
+      ]
+    }
+  ]
+}
