@@ -10,12 +10,12 @@ using ModuleShortcut = Cairn.Ui.Modules.ShortcutInfo;
 namespace Cairn.Rfa.Ui;
 
 /// <summary>The animations and meshes module hosted by the Cairn shell.</summary>
-public sealed class RfaModule : ModuleBase, IAssetPreviewProvider
+public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatchConverter
 {
     /// <inheritdoc/>
     public bool CanPreview(string fileName) =>
         fileName.EndsWith(".v3m", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".v3c", StringComparison.OrdinalIgnoreCase)
-        || fileName.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase);
+        || fileName.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase) || Formats.Legacy.LegacyMeshSupport.IsLegacyName(fileName);
 
     /// <inheritdoc/>
     public FrameworkElement? CreatePreview(byte[] bytes, string fileName) => CreatePreview(bytes, fileName, null);
@@ -28,12 +28,27 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider
     public const string SettingsPageTitle = "Animations and meshes";
     /// <summary>Help topic id of the RFA/V3C format reference.</summary>
     public const string FormatHelpTopicId = "rfa.formats";
+    /// <summary>Help topic id of the exporter and PS2 meshes page (.v3d, .vcm, .rfm, .rfc).</summary>
+    public const string LegacyHelpTopicId = "rfa.legacy-meshes";
 
     /// <summary>Clips (.rfa).</summary>
     public static RfaDocumentKind ClipKind { get; } = new("rfa.clip", "Animation clip", [".rfa"], "Animation clips (*.rfa)|*.rfa", "Red Faction animation");
 
     /// <summary>Meshes (.v3c; .v3m opens read-only).</summary>
     public static RfaDocumentKind MeshKind { get; } = new("rfa.mesh", "Mesh", [".v3c", ".v3m"], "Meshes (*.v3c;*.v3m)|*.v3c;*.v3m", "Red Faction mesh");
+
+    /// <summary>The meshes Cairn reads and converts but never saves: exporter (.v3d, .vcm) and PS2 (.rfm, .rfc).</summary>
+    public static RfaDocumentKind LegacyMeshKind { get; } = new("rfa.legacymesh", "Exporter or PS2 mesh", [".v3d", ".vcm", ".rfm", ".rfc"],
+        "Exporter and PS2 meshes (*.v3d;*.vcm;*.rfm;*.rfc)|*.v3d;*.vcm;*.rfm;*.rfc", "Red Faction exporter or PS2 mesh");
+
+    /// <summary>
+    /// What an open legacy static mesh tab reports to the shell: Save As writes the converted .v3m (the legacy formats
+    /// are never written). Not listed in <see cref="DocumentKinds"/>.
+    /// </summary>
+    internal static RfaDocumentKind LegacyStaticSaveKind { get; } = new("rfa.legacymesh", "Exporter or PS2 mesh", [".v3m"], "Static meshes (*.v3m)|*.v3m", "Red Faction exporter or PS2 mesh");
+
+    /// <summary>The character counterpart of <see cref="LegacyStaticSaveKind"/> (.v3c).</summary>
+    internal static RfaDocumentKind LegacyCharacterSaveKind { get; } = new("rfa.legacymesh", "Exporter or PS2 mesh", [".v3c"], "Character meshes (*.v3c)|*.v3c", "Red Faction exporter or PS2 mesh");
 
     /// <summary>The module's workspace (the old app's main view model, RFA half).</summary>
     public static RfaWorkspace Workspace { get; private set; } = null!;
@@ -61,7 +76,7 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider
     /// <inheritdoc/>
     public override string DisplayName => "Animations and meshes";
 
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [ClipKind, MeshKind];
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [ClipKind, MeshKind, LegacyMeshKind];
     public override IReadOnlyList<IFileImporter> Importers { get; } = [new GltfImporter()];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     public override IReadOnlyList<ModuleShortcut> Shortcuts => _shortcuts;
@@ -74,11 +89,14 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider
     private static bool IsRfa(IDocument? d) => d is DocumentViewModel;
     private static bool IsClip(IDocument? d) => d is ClipDocumentViewModel;
     private static bool IsMesh(IDocument? d) => d is MeshDocumentViewModel;
+    private static bool IsLegacyMesh(IDocument? d) => d is MeshDocumentViewModel { IsLegacy: true };
 
     /// <inheritdoc/>
     public override void Initialize(IShellContext shell)
     {
         base.Initialize(shell);
+        // The one place the legacy mesh readers (.v3d, .vcm, .rfm, .rfc) are registered.
+        Formats.Legacy.LegacyMeshSupport.EnsureRegistered();
         RfaUi.Shell = shell;
         RfaUi.Theme = shell.Theme;
         var ws = new RfaWorkspace(shell.Dispatcher, shell.Dialogs, shell.Settings, shell.Theme, shell.IsDiagnosticRun);
@@ -103,6 +121,9 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider
         _menus.Add(new MenuContribution(MenuSlot.FileImport, 100, Item("Animation from glTF…", "Import a glTF animation as a new clip", ws.Gltf.ImportAnimationCommand)));
         _menus.Add(new MenuContribution(MenuSlot.FileImport, 110, Item("Mesh from glTF…", "Import a glTF mesh as a new mesh", ws.Gltf.ImportMeshCommand)));
         _menus.Add(new MenuContribution(MenuSlot.FileExport, 100, Item("glTF…", "Export the clip or mesh in front as glTF", ws.Gltf.ExportCommand), IsRfa));
+        _menus.Add(new MenuContribution(MenuSlot.FileExport, 105, Item("Convert to .v3m/.v3c…", "Convert the exporter or PS2 mesh in front to the PC format, with a report of what was approximated",
+            new RelayCommand(() => { if (shell.ActiveDocument is MeshDocumentViewModel { IsLegacy: true } m) ws.Legacy.ConvertDocument(m); },
+                () => shell.ActiveDocument is MeshDocumentViewModel { Legacy.Mesh: not null })), IsLegacyMesh));
         _menus.Add(new MenuContribution(MenuSlot.Tools, 100, Item("_Batch Retarget…", "Retarget many clips onto another skeleton", ws.Retarget.BatchCommand)));
         _menus.Add(new MenuContribution(MenuSlot.Tools, 110, Item("_Refresh Library", "Look through the game directory and search folders again", ws.RefreshLibraryCommand)));
         // 1.0.1's Edit menu after Undo/Redo: bone selection and the timeline's key commands.
@@ -123,8 +144,23 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider
         _panels.Add(new PanelContribution("rfa.tables", "Table usage", PanelSide.Bottom, 120, d => d is DocumentViewModel r ? TableUsageViewModel.For(r) : null));
     }
 
+    // ── "Convert meshes..." for packfile entries (IArchiveBatchConverter) ───────────────────────────────────────
+
+    /// <inheritdoc/>
+    public string CommandText => "Convert _meshes...";
+
+    /// <inheritdoc/>
+    public string CommandToolTip => "Convert the selected exporter and PS2 meshes (.v3d, .vcm, .rfm, .rfc) to .v3m/.v3c: into the packfile as new entries (one undo step) or into a folder";
+
+    /// <inheritdoc/>
+    public bool CanConvert(string entryName) => Formats.Legacy.LegacyMeshSupport.IsLegacyName(entryName);
+
+    /// <inheritdoc/>
+    public Task<string?> ConvertAsync(ArchiveBatchRequest request) => Workspace.Legacy.ConvertBatchAsync(request);
+
     public override IReadOnlyList<HelpTopic> HelpTopics { get; } =
-        [new HelpTopic(FormatHelpTopicId, "RFA & V3C format reference", HelpDocuments.FormatReference)];
+        [new HelpTopic(FormatHelpTopicId, "RFA & V3C format reference", HelpDocuments.FormatReference),
+         new HelpTopic(LegacyHelpTopicId, "Exporter and PS2 meshes", HelpDocuments.LegacyMeshes)];
 
     private IReadOnlyDictionary<string, string>? _pendingOptions;
 

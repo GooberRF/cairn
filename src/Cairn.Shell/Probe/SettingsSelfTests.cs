@@ -9,7 +9,10 @@ namespace Cairn.Shell;
 /// <summary>Settings self-tests and the settings dialog capture. Everything runs in temp folders; the real settings file is never touched.</summary>
 public static class SettingsSelfTests
 {
-    /// <summary><c>--dialog settings</c>: the dialog, shown modelessly over the main window and never applied. <c>--settings-page title</c> picks the page.</summary>
+    /// <summary>
+    /// <c>--dialog settings</c>: the dialog, shown modelessly over the main window and never applied. <c>--settings-page
+    /// title</c> picks the page; <c>--scroll end</c> scrolls the page to its end.
+    /// </summary>
     [ScreenshotDialog("settings")]
     public static async Task<Window?> ShowSettings(ScreenshotContext ctx)
     {
@@ -21,7 +24,19 @@ public static class SettingsSelfTests
         // The game folder check runs off the UI thread; give it a moment so the status line is final.
         await Task.Delay(400);
         await ctx.SettleAsync();
+        if (ctx.Options.TryGetValue("scroll", out var scroll) && scroll == "end")
+        {
+            foreach (var viewer in Visible<System.Windows.Controls.ScrollViewer>(dialog)) viewer.ScrollToEnd();
+            await ctx.SettleAsync();
+        }
         return dialog;
+    }
+
+    private static IEnumerable<T> Visible<T>(DependencyObject root) where T : FrameworkElement
+    {
+        if (root is T t && t.IsVisible) yield return t;
+        for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            foreach (var child in Visible<T>(System.Windows.Media.VisualTreeHelper.GetChild(root, i))) yield return child;
     }
 
     private static string NewTempFolder()

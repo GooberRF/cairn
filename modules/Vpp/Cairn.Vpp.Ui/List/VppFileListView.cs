@@ -38,6 +38,9 @@ public sealed class VppFileListView : Grid
     {
         _doc = doc;
         _list.SelectionMode = SelectionMode.Extended;
+        // type-to-select: typing a name's first letters selects and scrolls to the first entry that starts with them
+        _list.IsTextSearchEnabled = true;
+        TextSearch.SetTextPath(_list, nameof(VppEntryRow.Name));
         _list.BorderThickness = new Thickness(0);
         _list.SetResourceReference(Control.BackgroundProperty, "App.PaneBackground");
         _list.SetResourceReference(Control.ForegroundProperty, "App.Text");
@@ -198,6 +201,17 @@ public sealed class VppFileListView : Grid
     }
 
     /// <summary>Selects every row shown (Ctrl+A).</summary>
+    /// <summary>Self-test hook: delivers <paramref name="text"/> to the list as typed text (type-to-select).</summary>
+    internal void TypeForTest(string text)
+    {
+        _list.Focus();
+        foreach (char c in text)
+        {
+            var composition = new TextComposition(InputManager.Current, _list, c.ToString());
+            _list.RaiseEvent(new TextCompositionEventArgs(Keyboard.PrimaryDevice, composition) { RoutedEvent = TextCompositionManager.TextInputEvent });
+        }
+    }
+
     public void SelectAllShown()
     {
         _list.SelectAll();
@@ -303,9 +317,36 @@ public sealed class VppFileListView : Grid
         var toDds = Item("Con_vert to DDS...", "Ctrl+Shift+D", "Convert the selected TGA/PNG/JPG images to DDS for Alpine Faction (other entries are skipped)",
             () => c.Fire(() => _doc.Module.ConvertToDdsAsync(_doc)));
         _menu.Opened += (_, _) => toDds.IsEnabled = !_doc.IsBusy && _doc.SelectedItems.Any(i => Conversion.DdsConversion.IsConvertible(i.Name));
+        // PlayStation 2 texture packs: shown only when the selection holds a .peg entry
+        var toTga = Item(VppModule.ConvertPegsHeader, null, VppModule.ConvertPegsTip, () => c.Fire(() => _doc.Module.ConvertSelectedPegsAsync(_doc)));
+        AutomationProperties.SetName(toTga, "Convert to .tga");
+        _menu.Opened += (_, _) => UpdatePegItem(toTga);
+        ContextMenuPegItem = toTga;
+        // other modules' batch converters ("Convert sounds..."), enabled when the selection holds an entry they take
+        foreach (var converterItem in _doc.Module.BatchConverterMenuItems(_doc, _menu)) _menu.Items.Add(converterItem);
         _remove = Item("_Remove", "Del", "Remove the selected entries (undoable)", c.RemoveSelected);
         _menu.Items.Add(new Separator());
         _selectType = Item("Select all of this _type", null, "Select every entry with the same extension", c.SelectAllOfType);
+    }
+
+    /// <summary>The context menu's "Convert to .tga..." item (self-tests).</summary>
+    internal MenuItem? ContextMenuPegItem { get; private set; }
+
+    /// <summary>The entry list's context menu (self-tests, captures).</summary>
+    internal ContextMenu EntryMenu => _menu;
+
+    private void UpdatePegItem(MenuItem item)
+    {
+        bool pegs = VppModule.HasSelectedPegs(_doc);
+        item.Visibility = pegs ? Visibility.Visible : Visibility.Collapsed;
+        item.IsEnabled = pegs && !_doc.IsBusy;
+    }
+
+    /// <summary>Brings the context menu's items up to date with the selection, as opening it does (self-tests, captures).</summary>
+    internal void RefreshContextMenu()
+    {
+        UpdateContextMenu();
+        if (ContextMenuPegItem is { } peg) UpdatePegItem(peg);
     }
 
     private void UpdateContextMenu()

@@ -88,7 +88,7 @@ public abstract class MeshNodeEditor : ObservableObject
         Error = null;
         if (Document.IsReadOnly)
         {
-            Error = "Static meshes open read-only.";
+            Error = MeshStructureViewModel.ReadOnlyReason(Document);
             return false;
         }
         if (Document.IsEditing) Document.CommitEdit();

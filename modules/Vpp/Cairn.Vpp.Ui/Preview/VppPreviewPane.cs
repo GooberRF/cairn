@@ -11,7 +11,14 @@ namespace Cairn.Vpp.Ui.Preview;
 /// </summary>
 public sealed class VppPreviewPane : AssetPreviewPane
 {
-    public VppPreviewPane(IShellContext? shell) : base(shell) => BusyLabel = "vpp preview";
+    public VppPreviewPane(IShellContext? shell) : base(shell)
+    {
+        BusyLabel = "vpp preview";
+        AutoPlayAudio = () => AutoPlaySounds?.Invoke() ?? false;
+    }
+
+    /// <summary>The packfile module's autoplay toggle (set by the module when it starts).</summary>
+    internal static Func<bool>? AutoPlaySounds { get; set; }
 
     /// <summary>The entry the current or pending preview is for.</summary>
     public VppItem? Item { get; private set; }

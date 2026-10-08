@@ -20,6 +20,9 @@ show it (for example "Alpine Faction 1.1+").
 - [Effects (VFX)](#effects-vfx)
 - [Packfiles (VPP)](#packfiles-vpp)
 - [Tables (TBL)](#tables-tbl)
+- [Fonts (VF)](#fonts-vf)
+- [Volition bitmaps (VBM)](#volition-bitmaps-vbm)
+- [Sounds (VSE, VMU, WAV, OGG)](#sounds-vse-vmu-wav-ogg)
 
 ## The Cairn window
 
@@ -39,7 +42,8 @@ What moved:
 - **File › New** has one entry per document type (animated texture, clip, effect, and so on).
 - The module menus appear only while a document of their type is in front: **Frames** for an animated texture,
   **Clip** for an animation clip, **Mesh** for a mesh, **Effect** for an effect, **Packfile** for a packfile,
-  **Table** for a table. They sit between **Edit** and **View**.
+  **Table** for a table, **Font** for a font, **Bitmap** for a Volition bitmap and **Sound** for a sound. They sit between **Edit** and
+  **View**.
 - Importers and exporters from every module are under **File › Import** and **File › Export**.
 - There is one settings dialog (**Tools › Settings…**) with a **General** page shared by all modules (theme, game
   directory, search folders) followed by one page per module.
@@ -55,9 +59,10 @@ What moved:
   tab instead of opening it twice.
 - **Left pane.** Belongs to the document in front: the **Animations** library for clips and meshes, the
   **Effects** library for effects, the **File types** panel and the **Packfiles** browser for a packfile, the
-  **Outline** of sections and entries for a table, and nothing for an animated texture (the pane then hides). With
-  no document open it shows every library, for browsing, with **Packfiles** first; the start page remembers the
-  tab you chose last, separately from the documents' tabs. **Ctrl+Shift+L** shows or hides it.
+  **Outline** of sections and entries for a table, and nothing for an animated texture, a font, a Volition
+  bitmap or a sound (the pane then hides). With no document open it shows every library, for browsing, with **Packfiles**
+  first; the start page remembers the tab you chose last, separately from the documents' tabs. **Ctrl+Shift+L**
+  shows or hides it.
 - **Packfiles browser.** Every `.vpp` in the game folder, its `user_maps` folders, each folder of the game's `mods`
   folder that holds packfiles (only the files directly inside it) and your search folders, grouped by folder (hover
   a heading for the full folder path, a file for its full path) with its size. Each folder heading collapses and
@@ -82,6 +87,10 @@ What moved:
 - **Files from archives.** A file opened from inside a `.vpp` (from a library, for example) is read-only in place:
   **Save** asks where to write a copy, and no save ever defaults to the game directory. To change the files inside a
   packfile, open the packfile itself; see [Packfiles (VPP)](#packfiles-vpp).
+- **Where Save As starts.** **Save As…** starts in the file's own folder, and an export where it last wrote, except
+  when that is the game directory or a folder inside it (a loose file there changes what the game loads): then the
+  dialog starts in the last folder you saved to outside it, or in your Documents folder. You can still pick the game
+  directory yourself.
 - **Save** (**Ctrl+S**), **Save As…** (**Ctrl+Shift+S**) and **Save All** write through a temporary file, so a
   failed save never leaves a half-written file behind.
 - **Close Tab** (**Ctrl+W** or **Ctrl+F4**) asks before discarding unsaved changes; closing the window lists every
@@ -202,6 +211,9 @@ For one frame, right-click it › **Edit frame time…**.
    from VPP...** for one inside the game's archives.
 2. Cairn writes the VBM's frames as images and opens a ready-to-use `.atx` that lists them. Check the timing and
    save it.
+
+A `.vbm` you open (or open from a packfile with **Open in Cairn**) opens in its own tab; **Convert to ATX…** there
+does the same import for the bitmap as it is in the tab. See [Volition bitmaps (VBM)](#volition-bitmaps-vbm).
 
 #### Fix a frame whose image cannot be found
 
@@ -818,6 +830,55 @@ the move (**W**) and rotate (**E**) tools.
   that preview this mesh in the same action.
 
 Details are in [Mesh editing](#mesh-editing).
+
+#### Open and convert exporter and PS2 meshes (.v3d, .vcm, .rfm, .rfc)
+
+Cairn reads four mesh formats the PC game does not load, shows them in 3D, and converts them to `.v3m`/`.v3c`. It
+never saves them.
+
+| Format | What it is | Converts to |
+|---|---|---|
+| `.v3d` | The 3ds Max exporter's static mesh: the source a `.v3m` was compiled from | `.v3m` |
+| `.vcm` | The exporter's character mesh, with its skeleton, collision spheres, prop points and weights | `.v3c` |
+| `.rfm` | Red Faction's PlayStation 2 static mesh | `.v3m` |
+| `.rfc` | Red Faction's PlayStation 2 character mesh | `.v3c` |
+
+1. **Open one** like any file (double-click it if Cairn is associated with it, drop it on the window, **File ›
+   Open**), or select it in a packfile and use **Open in Cairn**. The packfile preview pane shows it in 3D too, and
+   the **Info** column summarises it. A file is recognised by its contents: an exporter mesh named `.v3m` still
+   opens as one.
+2. **What the tab shows** is the mesh converting the file makes, read-only. A banner says so, with a **Convert…**
+   button. A character mesh shows its skeleton and plays preview clips like a `.v3c`; nothing can be edited.
+   **Problems** lists, as information (LEG100), what converting approximates.
+3. **Convert**: **Convert…** on the banner, or **File › Export › Convert to .v3m/.v3c…**. Choose where the file
+   goes: next to the source (for a packfile entry: beside the packfile), into a folder, or into the packfile the
+   mesh came from as a new entry (one undo step in the packfile's tab; save the packfile to keep it). A taken name
+   gets a free one (`box (2).v3m`) unless you tick **Replace**. The window lists what the conversion changes.
+   **Next to the source** is off when the source (or its packfile) is in the game directory: a loose mesh there
+   changes what the game loads, so choose a folder. **Save As** on the tab writes the converted mesh too, never over
+   the file the tab was read from. A file that could not be read opens with the reason in **Problems**, and **Save**
+   and **Save As** are off: there is no mesh to write.
+4. **Many at once**: in a packfile, select the meshes and use **Convert meshes…** (right-click, or the Packfile
+   menu). One window for all of them, one undo step, and a report: what could not be converted and each remark
+   with the meshes it concerns. A PS2 mesh converts from its exporter twin when the packfile holds one, selected or
+   not.
+
+What the conversion does, measured on the stock meshes compiled from the same exporter files (the eight `.v3d` files
+the PlayStation 2 demo keeps beside their `.v3m` convert to the same geometry and size):
+
+- **Exporter meshes** convert the way the game's mesh compiler did: one smooth normal per position (hard edges are
+  smoothed; files without usable normals get computed ones), each triangle's UVs moved by whole tiles into 0..1,
+  corners whose UVs differ by less than 0.03 joined, materials naming the same texture drawn as one batch, LOD
+  submeshes folded into the submesh that names them (at most three levels), bone names in lower case, a character's
+  weights kept byte for byte. The report names each of these that applied.
+- **PS2 meshes** lost their submesh names and their welded vertices in the PS2 build; their weights are 1/16 steps.
+  When the same-named `.v3d`/`.vcm` is beside a `.rfm`/`.rfc` (the same packfile or folder), Cairn converts that
+  instead and says so in the report. Texture names are kept (they name `.tga` files, which the packfile's
+  **Convert to .tga…** makes from the PEG texture packs).
+- **Red Faction II** `.rfm`/`.rfc` files (version 0x114) and damaged files open with the reason in Problems
+  (LEG001) and cannot be converted.
+- Material flag 0x8 (a texture with alpha), which the compiler set by reading the texture file, is not set; the
+  engine does not read material flags.
 
 #### Get the result into the game
 
@@ -1751,6 +1812,7 @@ read-only `.v3m`); for name problems, **Save as…**.
 | V3C024 | A collision sphere's radius is zero or negative. | Set the radius to 0.1 m |
 | V3C025 | LOD distances are not increasing. | Sort the LOD distances |
 | V3C026 | The file name is longer than 59 characters. | Save as… |
+| V3C027 | The mesh has no submeshes: it holds no geometry, so the game draws nothing for it. | Re-export the mesh |
 
 The glTF mesh import's pre-flight codes (MI…) are listed under
 [Import Mesh from glTF](#import-mesh-from-gltf).
@@ -1824,6 +1886,8 @@ copies (`%LOCALAPPDATA%\Cairn\recovery`) and the crash log (`%LOCALAPPDATA%\Cair
 - **RFA & V3C Format Reference**: every stored field of clips and meshes, what the game does with it and
   its limits, and how the engine plays clips (states and actions, weights, ramps, sampling, morph data, time
   units). It is the same text as the inspector tooltips.
+- **Exporter and PS2 meshes**: the four mesh formats Cairn reads and converts (`.v3d`, `.vcm`, `.rfm`, `.rfc`) and
+  what the conversion does (see [Open and convert exporter and PS2 meshes](#open-and-convert-exporter-and-ps2-meshes-v3d-vcm-rfm-rfc)).
 - **Keyboard Shortcuts** (**F1**): every shortcut Cairn binds, grouped by document type, generated from the same list that installs them.
 - **About Cairn**: version, the MIT licence and third-party notices (select and **Ctrl+C** to copy).
 
@@ -2316,7 +2380,8 @@ you can undo, and nothing is written until you save. Saving never writes over th
    double-clicking it in Explorer once `.vpp` is associated with Cairn (see [File associations](#file-associations)).
 2. Type part of a name into the filter box above the list: the list shows only entries whose name contains it,
    ignoring case. Wildcards work too: `*.tga` shows every Targa image, `lev??.rfl` matches `lev01.rfl`. **Esc**
-   clears the box.
+   clears the box. To jump instead of filter, click in the list and type the first letters of a name: the first
+   entry starting with them is selected and scrolled into view (pause briefly to start a new search).
 3. To see only some kinds of file, tick the types you want in the **File types** panel on the left (or open
    **All types** next to the filter, which offers the same check boxes). Types are grouped (**Images**, **Sounds**,
    **Meshes**, **Animations**, **Effects**, **Levels**, **Tables** and others) and each shows how many entries it
@@ -2337,20 +2402,27 @@ there are, their total size and a bar per type instead.
 - **Images** (`.tga`, `.dds`, `.png`, `.jpg`, `.vbm`): on a checkerboard so transparency shows. **Fit** fits the
   image to the pane, **100%** shows it pixel for pixel, and the mouse wheel zooms. **Alpha** shows the alpha
   channel alone (white is opaque). A `.dds` with mipmaps has a box to pick the mip level. An animated `.vbm` plays,
-  with pause and frame steps.
+  with pause and frame steps; **Open in Cairn** above it opens it in a bitmap tab (see
+  [Volition bitmaps (VBM)](#volition-bitmaps-vbm)).
 - **Tables** (`.tbl`): read-only, highlighted and foldable as in a table tab (see [Tables (TBL)](#tables-tbl)).
   **Open in Cairn** above the preview opens the table in a tab of its own.
 - **Text** (`.txt`, `.log`, `.gltf` and similar): numbered lines and the encoding Cairn detected.
   **Find** (**Ctrl+F**, then **F3** / **Shift+F3**) searches the text; **Copy** (**Ctrl+C**) copies the selected
   lines, or everything.
-- **Sounds** (`.wav`, `.ogg`, `.aif`, `.mp3`): **Play** and **Stop**, a position slider and a waveform you can click
-  to jump to a point. Compressed sounds (Ogg Vorbis, ADPCM `.wav`, the stock `.aif` files) play as well; an `.mp3`
-  plays without a waveform.
-- **Meshes and clips** (`.v3m`, `.v3c`, `.rfa`), **effects** (`.vfx`) and **animated textures** (`.atx`): a
+- **Sounds** (`.wav`, `.ogg`, `.aif`, `.mp3`, and the PS2 `.vse` and `.vmu`): **Play** and **Stop**, a position
+  slider and a waveform you can click to jump to a point. Compressed sounds (Ogg Vorbis, ADPCM `.wav`, the stock
+  `.aif` files, PS ADPCM) play as well; an `.mp3` plays without a waveform. **Open in Cairn** opens any but an `.mp3`
+  in a sound tab (see [Sounds (VSE, VMU, WAV, OGG)](#sounds-vse-vmu-wav-ogg)). Turn on the speaker button on the main
+  toolbar (**Autoplay sounds**, shown with a packfile open) to play each sound as soon as you select it; it stays on
+  until you turn it off.
+- **Fonts** (`.vf`): a summary line, the sample text and every character drawn with the font, with **Open in Cairn**
+  (see [Fonts (VF)](#fonts-vf)).
+- **Meshes and clips** (`.v3m`, `.v3c`, `.rfa`, and the exporter and PS2 meshes `.v3d`, `.vcm`, `.rfm`, `.rfc`),
+  **effects** (`.vfx`) and **animated textures** (`.atx`): a
   read-only 3D or animated preview from the module that edits that type, playing on its own. Mesh previews have the
   viewport's display toggles; a clip plays on a character mesh with the same number of bones. **Open in Cairn**
   above the preview opens the entry in a tab of its own (see the next walk-throughs).
-- **Other types**, such as fonts (`.vf`): the first bytes in hex.
+- **Other types**: the first bytes in hex.
 
 **Files from the same packfile come first.** A preview looks for the files it needs inside the packfile before it
 looks anywhere else: a mesh or an effect takes its textures from the packfile's own images, an animated texture
@@ -2476,18 +2548,116 @@ new one, tick **Keep a .bak copy when saving over a packfile** on the Packfiles 
 After a save, the undo history starts again from the saved packfile (see
 [Packfile known limitations](#packfile-known-limitations)).
 
+#### PlayStation 2 packfiles and PEG texture packs
+
+Red Faction's PlayStation 2 version uses packfiles with the PC layout, so Cairn opens them like any other. What they
+hold is different: textures come in PEG texture packs (`.peg`), and there are PS2 meshes (`.rfm`, `.rfc`), sound
+effects (`.vse`), music (`.vmu`) and PS2 levels, none of which the PC game loads. The list and the **File types**
+panel name these types (**PS2 texture pack**, **PS2 static mesh**, **PS2 character mesh**, **PS2 sound effect**,
+**PS2 music**), and the problem list says which entries come from the PS2 version (VPP009).
+
+**Convert a PS2 packfile's textures.**
+
+1. Open the PS2 `.vpp`. A bar above the list says: "This packfile is from the PlayStation 2 version. To convert its
+   PEG texture packs to .tga for the PC game, select .peg entries and use Convert to .tga... (right-click them, or
+   the Packfile menu); Convert meshes... makes .v3m/.v3c from its meshes. Levels (.rfl) are not compatible."
+2. Select a `.peg` entry. The preview lists its textures (size, format, mip levels, frames) and shows the selected
+   one; an animated texture plays. The **Info** column says what each pack holds (`PEG v6: 28 textures (6
+   animated)`). Select several `.peg` entries to convert them together (**Select all of this type** selects them
+   all).
+3. Right-click and choose **Convert to .tga...** (or **Packfile › Convert to .tga...**, enabled when the selection
+   holds a `.peg` entry). A dialog lists the textures of the selected packs, each with a tick (all ticked): its size,
+   its kind (**MPEG-2 background**, **animated, 12 frames**, or its pixel format), what it **Becomes** (`name.tga`;
+   `name.atx + 12 .tga frames` for an animation; `plan-0001.tga (a frame of interface-bg-mm.atx)` for the main
+   menu's frames) and a **Note** when the packfile already has that name ("replaces the 64×64 already in the
+   packfile", "already in the packfile at 128×128: left out") or another selected pack holds it too. **Tick all**,
+   **Tick none** and **Only MPEG-2 backgrounds** change the ticks. Below the list: **Treat black as transparent
+   (MPEG-2 backgrounds)** with its **Threshold** and **Soft edge** (they start as set in
+   **Settings › Packfiles**, and apply to this conversion only), and **Keep the .peg entries in the packfile** (off:
+   each `.peg` is replaced by its files; on: the files are added after it, so you can convert more of it later).
+4. Press **Convert**. Cairn converts the ticked textures and puts them where the `.peg` was, as one change you can
+   undo (**Ctrl+Z** brings the `.peg` entries back). A notice says how many textures were converted, how many were
+   not ticked and what was left out. Convert the other `.peg` entries the same way, one or several at a time.
+5. Save the packfile as usual (**File › Save As…** keeps the original): the result is a packfile the PC game
+   reads. PS2 meshes and sounds stay as they are until you convert them too (**Convert meshes...**, see
+   [Open and convert exporter and PS2 meshes](#open-and-convert-exporter-and-ps2-meshes-v3d-vcm-rfm-rfc);
+   **Convert sounds...**, see [Convert many sounds in a packfile](#convert-many-sounds-in-a-packfile)); PS2 levels
+   cannot be used by the PC game.
+
+**Open a PEG texture pack on its own.** Open a `.peg` with **File › Open…**, from **File › Open Recent**, by
+double-clicking it once `.peg` is associated with Cairn, or with **Open in Cairn** on a `.peg` entry of a packfile.
+It opens in a packfile tab that lists the files its textures become, under a bar: "PlayStation 2 texture pack.
+Saving writes a PC packfile (.vpp) with each texture as a .tga." The bar also names what is not converted. The
+`.peg` is only read: **File › Save** asks where to save a new `.vpp` and never writes the `.peg`. After that first
+save a summary lists the textures left out, and the tab is an ordinary packfile from then on. Before saving you can
+preview, extract (**Ctrl+E** writes the `.tga` files), **Extract as PNG...**, rename or remove entries as in any
+packfile.
+
+**How the textures are converted.**
+
+- A texture with one frame becomes `name.tga`: 32-bit with alpha, the full-size image (smaller mip levels are left
+  out). A texture named `.vbm` becomes a `.tga` too; the game looks for a `.vbm` and then a `.tga` of the same name,
+  whichever was asked for, so nothing that names it needs changing.
+- An animated texture (most are named `.vbm`) becomes its frames, `name_00.tga`, `name_01.tga` and so on, plus
+  `name.atx`, an animated texture that lists them (Alpine Faction 1.4.0 or later; see
+  [Animated textures (ATX)](#animated-textures-atx)). The game looks for an `.atx` before any other texture of that
+  name, so levels and meshes that use the animation need no change. The PS2 files store no frame rate: Cairn uses
+  the rate of the PC game's own `.vbm` of that name when your game folder has one, else 15 frames a second. Open the
+  `.atx` in Cairn to change its `frame_time`. Frame names are shortened when needed so they fit the game's 31
+  characters; when two long names shorten alike, the second animation's frames get a number before theirs
+  (`explosion_big_fire_anim1_00.tga`), and its `.atx` lists them.
+- Colours come out as the PS2 shows them: its alpha runs from 0 to 128 (128 is opaque) and becomes 0 to 255.
+- **MPEG-2 compressed backgrounds** (the full-screen menu pictures, the legal screen, the Extras pages, the
+  multiplayer previews and the HUD portraits) are decoded and become `name.tga`, 24-bit: they have no alpha, so the
+  PS2 files' few UI strips and portraits come out as opaque rectangles. The Info column says
+  `640x448, from PS2 MPEG-2 (6 tiles)`. A background that cannot be decoded is left out and the summary says why.
+- **Treat black as transparent** (**Settings › Packfiles**, off by default; also in the convert dialog) gives the
+  backgrounds alpha the way the PS2 could when it decoded them: every pixel whose red, green and blue are all below
+  the **Threshold** (0 to 64; 25, the value the PS2 game uses) becomes transparent, and the backgrounds become 32-bit
+  `.tga` files. **Soft edge** makes the pixels just above the threshold (up to twice it) half transparent, so edges
+  blend. It applies to the preview, to conversion and to **Extract as PNG...**; the Info column adds `black below 25
+  transparent`. (The PS2 game only does this for a background whose PEG entry asks for it, which no known file does,
+  so its own backgrounds are all opaque; a background that does ask for it is keyed at 25 even with the setting
+  off.)
+- **The main menu's spinning planet** is 150 numbered backgrounds, `plan-0001` to `plan-0150`. They stay as 150
+  `.tga` files, and Cairn also writes `interface-bg-mm.atx` (named after the `.peg`; `plan.atx` when that name is
+  taken) that loops them at 30 frames a second. The PS2 version's real rate is not known: 30 is the rate the
+  pictures declare. Change `frame_time` if it plays too fast or too slow. Cairn treats numbered backgrounds as
+  frames only when there are at least 8 of one size, numbered one after another with at least 3 digits, so numbered
+  pages such as `extras01` to `extras26` stay plain stills. Nothing in the PC game asks for these frames: use them
+  in your own levels or interface mods.
+- **Settings › Packfiles › Decode PS2 MPEG-2 backgrounds** (on by default) switches this off: the backgrounds are
+  then listed ("MPEG-2 compressed background — not converted") and left out, in the preview, when converting and
+  when extracting as PNG.
+- The game finds textures by name, so only one texture of a name can stay. When several of the packs converted
+  together hold a texture of the same name, or the packfile already has an entry of that name (from an earlier
+  conversion, or its own), Cairn compares them: identical copies are converted once; copies that differ keep the one
+  with the most pixels (the one already in the packfile, or the first, when they are the same size). A larger
+  texture replaces the entry already there (for an animation, its `.atx` and the frames it listed; the new frames get
+  a number before theirs, such as `boom1_00.tga`). An old frame that another `.atx` of the packfile still names, as a
+  frame (`file`) or an alpha mask, stays, and so does every old frame when another `.atx` cannot be read; the summary
+  says which were removed and which were kept. The summary lists each case ("envirohand.tga: 2 different
+  versions, kept 128×128 from a.peg, skipped 64×64 from b.peg"; "envirohand.tga: replaced the 64×64 already in the
+  packfile by 128×128 from c.peg"; "envirohand.tga: kept the 128×128 already in the packfile, skipped 64×64 from
+  d.peg") so you can check the choice. An entry of that name whose size cannot be read is kept. Animation frames
+  never take a name an entry already has.
+
 ### Packfile reference
 
-**Packfile menu.** **Add files...**, **Add folder...**; **Extract selected...** (**Ctrl+E**), **Extract all...**;
-**Remove** (**Del**), **Rename** (**F2**), **Replace...**, **Select all of type** (every entry with the selected
+**Packfile menu.** **Add files...**, **Add folder...**; **Extract selected...** (**Ctrl+E**), **Extract all...**,
+**Extract as PNG...** (the selected images, and every texture of selected `.peg` entries, as PNG files; animations as
+numbered frames); **Remove** (**Del**), **Rename** (**F2**), **Replace...**, **Select all of type** (every entry with the selected
 entry's extension); **Sort by** › **Name**, **Type**, **Size** or **Original order** (reorders the entries inside the
 packfile, as one undoable step; the game does not care about the order, but some people like their packfiles
-tidy); **Validate** (checks the packfile now, including whether added files changed on disk).
+tidy); **Convert images to DDS...**; **Convert to .tga...** (the selected `.peg` entries, through a dialog; see
+[PlayStation 2 packfiles and PEG texture packs](#playstation-2-packfiles-and-peg-texture-packs)); **Validate** (checks
+the packfile now, including whether added files changed on disk).
 
 **Context menu** (right-click an entry). **Open** (**Enter**), **Open with...**, **Open in Cairn**; **Extract
 to...** (**Ctrl+E**), **Extract here**, **Copy name** (copies the selected names as text); **Rename** (**F2**),
-**Replace...**, **Remove** (**Del**); **Select all of this type**. **Open in Cairn** is available for the types Cairn
-opens; **Extract here** once the packfile has been saved somewhere.
+**Replace...**, **Convert to DDS...**, **Convert to .tga...** (shown when the selection holds a `.peg` entry),
+**Remove** (**Del**); **Select all of this type**. **Open in Cairn** is available for the types Cairn opens; **Extract
+here** once the packfile has been saved somewhere.
 
 **Toolbars.** Above the list: **Add files...**, **Add folder...**, **Extract...**, **Remove**, **Rename**, the filter
 box and the type filter. The main toolbar adds two buttons with a packfile in front: add files and extract the
@@ -2529,6 +2699,8 @@ compares the numbers in it by value.
 | Animated texture (`.atx`) | `8 frames, 100 ms each, loop` |
 | Table (`.tbl`) | `weapons table, 30 entries`; `level info, 3 settings`; otherwise its kind and number of lines |
 | Text, bitmap font, editor group | `67 lines`; `69 glyphs, 49 px high`; `3 groups` |
+| PS2 texture pack (`.peg`) | `PEG v6: 28 textures (6 animated, 3 MPEG-2 compressed)` |
+| A file converted from a `.peg` | `64x64, from PS2 8-bit indexed, 32-bit palette, 3 mips (level 0 kept)`; a frame adds `frame 2 of 12`; a background `640x448, from PS2 MPEG-2 (6 tiles)` (adds `black below 25 transparent` when black was treated as transparent) |
 
 Types Cairn does not read leave the cell empty. Data that cannot be read as its type shows a dim *unreadable*
 (the tooltip says why), and an entry whose content is another type than its name says names it first (`DDS data:
@@ -2539,17 +2711,20 @@ Types Cairn does not read leave the cell empty. Data that cannot be read as its 
 | Type | Preview |
 |---|---|
 | `.tga`, `.dds`, `.png`, `.jpg`, `.vbm` | Image on a checkerboard: **Fit**, **100%**, wheel zoom, **Alpha**; mip level for `.dds`; play, pause and frame steps for an animated `.vbm`. |
-| `.wav`, `.ogg`, `.aif`, `.mp3` | **Play**, **Stop**, position slider, time, clickable waveform (none for `.mp3`). |
+| `.wav`, `.ogg`, `.aif`, `.mp3`, `.vse`, `.vmu` | **Play**, **Stop**, position slider, time, clickable waveform (none for `.mp3`). |
+| `.vf` | A summary line, the sample text and every character drawn with the font. |
 | `.tbl` | The table, read-only, highlighted and foldable as in a table tab. |
 | `.txt`, `.log`, `.gltf` and other text | Numbered lines, encoding, **Find** (**Ctrl+F**, **F3**), **Copy**. |
-| `.v3m`, `.v3c` | The mesh with its textures, with the viewport's display toggles and orbit camera. |
+| `.v3m`, `.v3c`, `.v3d`, `.vcm`, `.rfm`, `.rfc` | The mesh with its textures, with the viewport's display toggles and orbit camera (exporter and PS2 meshes as they convert). |
 | `.rfa` | The clip playing on a character mesh with the same bone count (from the packfile first, then the game). |
 | `.vfx` | The effect playing. |
 | `.atx` | The animated texture playing, with its alpha mask. |
+| `.peg` | The pack's textures (size, format, mip levels, frames; MPEG-2 backgrounds marked as not converted when decoding them is switched off) above the selected one as an image (an MPEG-2 background with black as transparent when that setting is on); an animated texture plays. |
 | `.rfl` | No preview: one line pointing to the details. |
 | anything else | The first 4 KB in hex. |
 
-Mesh, clip, effect, animated texture and table previews have **Open in Cairn**.
+Mesh, clip, effect, animated texture, PEG texture pack, table, font, bitmap (`.vbm`) and sound (all but `.mp3`)
+previews have **Open in Cairn**.
 
 **Details pane.** First the entry itself: **Name**, **Original name** (after a rename), **Type**, **Size**, **Game**
 (**Loaded by the game** or **Not loaded by the game**), **Offset** in the packfile or
@@ -2564,7 +2739,10 @@ table's lines and encoding; a level's groups as described in
 pending changes are lost) or **Keep mine** hides the bar; saving stays blocked until you reload, because Cairn reads
 the entries from that file. **The packfile was deleted or renamed on disk**: use **File › Save As…** to write it
 somewhere. **A work copy was changed outside the packfile**: **Update packfile** or **Ignore** (see
-[Edit a file and put it back](#edit-a-file-and-put-it-back)).
+[Edit a file and put it back](#edit-a-file-and-put-it-back)). **This packfile is from the PlayStation 2 version**:
+while it holds `.peg` entries it says to select them and use **Convert to .tga...**; **Dismiss** hides it; a `.peg`
+opened on its own says what saving writes instead (see
+[PlayStation 2 packfiles and PEG texture packs](#playstation-2-packfiles-and-peg-texture-packs)).
 
 **Status bar.** Entries, the size when saved (the tooltip has the exact bytes), pending changes, the problem count
 and, while saving or extracting, the progress (click to cancel). Click the problem count to open the problems.
@@ -2574,7 +2752,8 @@ one (or press **Enter**) to select its entry. Each problem has a code and a kind
 
 - **Errors** stop saving, because the game could not use the packfile or Cairn could not write it: an empty name
   (VPP001), a name longer than 59 characters (VPP002), characters a packfile cannot store (VPP003), a `\` or `/` in a
-  name (VPP004), two names that differ only in case (VPP005), an entry over 1.5 GB (VPP006), a packfile too large
+  name (VPP004), the same name twice (VPP005, also when only the case differs; copies with identical contents, as
+  in the stock `ui.vpp`, are only a note), an entry over 1.5 GB (VPP006), a packfile too large
   for the format (VPP007), an entry that would start beyond 2 GB (VPP008), an added file that changed or vanished
   (VPP010), an entry whose data is missing from a damaged packfile (VPP011), the packfile changed on disk (VPP012),
   more entries than Alpine Faction accepts (VPP016).
@@ -2587,7 +2766,10 @@ one (or press **Enter**) to select its entry. Each problem has a code and a kind
 
 **Settings › Packfiles** (**Tools › Settings…**). **Keep a .bak copy when saving over a packfile**; **Ask before
 removing entries**; **Folder for work copies** (empty means `%LOCALAPPDATA%\Cairn\work`; each open packfile gets its
-own sub-folder, deleted when it closes).
+own sub-folder, deleted when it closes); **Decode PS2 MPEG-2 backgrounds** (on by default; off lists them and
+leaves them out of previews, conversions and PNG extracts); under it **Treat black as transparent** (off by
+default), its **Threshold** (0 to 64, 25 by default, the PS2 game's value) and **Soft edge** (see
+[How the textures are converted](#playstation-2-packfiles-and-peg-texture-packs)).
 
 **Help.** **Help › Packfiles › Packfiles: format and limits** summarises the format and the limits below.
 
@@ -2613,16 +2795,24 @@ These are the game's rules, not Cairn's; Cairn checks them so you find out befor
 - **Types**: textures may be `.tga`, `.vbm`, `.dds`, `.png`, `.jpg` or `.atx` (a `.dds` is found in place of a
   requested `.tga` of the same name), sounds `.wav` or `.ogg`; the game only treats a sound as Ogg Vorbis when its
   name ends in lower-case `.ogg`. `.aif`, `.mp3`, `.mvf`, `.rfg`,
-  `.psd`, `.gltf`, `.txt` and `.log` are found in some packfiles but the game never loads them.
+  `.psd`, `.gltf`, `.txt` and `.log` are found in some packfiles but the game never loads them, nor the
+  PlayStation 2 version's `.peg`, `.rfm`, `.rfc`, `.vse` and `.vmu`.
 
 ### Packfile known limitations
 
 - The undo history is cleared after saving. The saved packfile replaces the old file, and older steps refer to
   entry data inside that old file, which no longer exists; undoing past the save could not get that data back.
 - Levels (`.rfl`) have no visual preview, only their details.
-- No preview for fonts (`.vf`), legacy motion files (`.mvf`), editor groups (`.rfg`), Photoshop files (`.psd`),
-  `.v3d` files and unknown types: they show the first bytes in hex.
+- No preview for legacy motion files (`.mvf`), editor groups (`.rfg`), Photoshop files (`.psd`) and unknown types:
+  they show the first bytes in hex.
 - A packfile inside a packfile cannot be opened directly: extract it first, then open the extracted copy.
+- PlayStation 2 content: textures, meshes and sounds convert; levels do not. MPEG-2 compressed backgrounds have no alpha of their own
+  (**Treat black as transparent** makes black transparent the way the PS2 can; which backgrounds should get it is up
+  to you), and the menu animation's 30 frames a second is a guess. A `.peg` opened on its own is converted with the
+  settings when it opens (every texture; no dialog). Only intra-coded MPEG-2 pictures (what every known PEG holds) are decoded; **Convert to .tga...** leaves PS2 meshes
+  (`.rfm`, `.rfc`), sounds (`.vse`, `.vmu`) and levels as they are. PEG files of
+  version 6 (and version 4, from early PS2 builds) are read; any other variant is reported as an "unsupported PEG
+  variant" instead of being guessed at.
 - Recovery after a crash keeps the list of changes and the paths of added files, not the packfile's data: an added
   file you deleted in the meantime cannot be restored.
 
@@ -2883,3 +3073,559 @@ These are the game's rules, not Cairn's; Cairn checks them so you find out befor
   sound length and so on); open the file or its packfile for those.
 - The index of tables is built in the background after Cairn has read the game data; until then go to definition
   and find usages may miss tables (the status bar says so).
+
+## Fonts (VF)
+
+Fonts (`.vf`) are Red Faction's bitmap fonts: one small picture (a glyph) per character, all of the same height.
+The game's own fonts are in `ui.vpp`: `bigfont.vf` and `smallfont.vf` (the large HUD numbers and older text),
+and `rfpc-large.vf`, `rfpc-medium.vf` and `rfpc-small.vf` (menus, HUD and scoreboard). A font tab shows every glyph,
+a line of sample text drawn exactly the way the game draws text, and the selected glyph's details. You can edit
+glyph metrics and kerning, paint pixels, replace a glyph with a picture, add or remove characters, change the height
+and the pixel format, and round-trip the whole font through an image sheet. Every edit is one undo step (**Ctrl+Z**,
+**Ctrl+Y**) and the checks re-run after it; opening a font and saving it unchanged gives back the same bytes.
+
+The window around a font tab: the glyph grid with its toolbar at the top left, the sample strip below it, the
+inspector on the right, and the **Problems** panel in the bottom pane.
+
+### Font walk-throughs
+
+#### Open a font
+
+- **From disk**: **File › Open…** (**Ctrl+O**), drop the file on the window, or double-click it in Explorer once
+  `.vf` is associated with Cairn (see [File associations](#file-associations)).
+- **From a packfile**: open `ui.vpp` (or a mod's packfile) and click a `.vf` entry: the preview shows a summary line,
+  the sample text and every character drawn with the font. **Open in Cairn** above the preview opens it in a font
+  tab.
+
+#### Look at how text will look in the game
+
+1. Type in the **Sample** box under the glyph grid. The text is drawn with the font's own spacing and kerning, the
+   way the game draws it, at the **Zoom** you pick (1× to 8×, pixels stay sharp).
+2. The line under the sample gives the size the game measures for the text (width × height in pixels) and lists
+   the characters the font does not have: the game leaves a gap of the font's default spacing for each.
+3. **All characters** shows every character of the font, 16 to a line, instead of the sample.
+
+#### Inspect a glyph
+
+Click a glyph in the grid, or move with the arrow keys (**Home** and **End** jump to the first and last). The
+inspector shows the glyph enlarged and its **Character**, **Code**, **Width** (its pixels), **Spacing** (how far the
+pen moves after it), **Pixel offset**, **Kerning index**, **User data** and every **Kerning** pair it takes part
+in. Problems that concern the glyph are listed under it. Hover a glyph in the grid for its width and spacing.
+
+#### Edit a font and save it
+
+1. Open the font. A font opened from a packfile with **Open in Cairn** is a work copy: save the tab (**Ctrl+S**) and
+   the packfile's bar offers **Update packfile**, as for any other type (see
+   [Edit a file and put it back](#edit-a-file-and-put-it-back)). To edit a stock font, save a copy first
+   (**File › Save As…**) and put the copy in your mod's packfile; never change the game's own `ui.vpp`.
+2. Edit (see below). The tab shows `*` while there are unsaved changes; **Edit › Undo** and **Redo** step through
+   them.
+3. **Ctrl+S** saves. When the font has errors (for example **Font too big**), Cairn asks once before saving it.
+
+#### Change a glyph's metrics
+
+Select the glyph. In the inspector, **Width**, **Spacing** and **User data** are number boxes: type a value and press
+**Enter**, or use the arrows or the mouse wheel (a whole spin is one undo step). A narrower width cuts columns off
+the right of the glyph; a wider one adds clear columns. Under **Font**, **Height** (rows are added or cut at the
+bottom) and **Default spacing** work the same way.
+
+#### Paint pixels
+
+The enlarged glyph at the top of the inspector is a small pixel editor. The left button paints the value in the box
+next to **Pencil** and **Eraser** (coverage 0 to 14 for a monochrome font, a palette entry 0 to 255 for an indexed
+one; click a palette colour to pick it; four hex digits ARGB such as `FFFF` for an RGBA 4444 font); the right
+button, or the left with **Eraser**, clears (value 0). One stroke is one undo step.
+
+#### Replace a glyph with a picture
+
+1. Select the glyph and choose **Font › Replace Glyph from Image…** (**Ctrl+R**, or **Replace Glyph…** on the
+   toolbar), or copy a picture in another program and choose **Font › Paste Glyph Image** (**Ctrl+Shift+V**).
+2. The window shows the picture and the glyph it becomes. **Height**: scale the picture to the font height, or keep
+   its size (top- or bottom-aligned, rows cut or added). **Width**: the picture's, or the glyph's present width.
+   **Coverage from** (monochrome fonts and indexed fonts whose palette is white with transparency, like the stock
+   ones): the picture's transparency, its brightness (light on dark) or its darkness (dark on light); **Automatic**
+   picks transparency when the picture has any. **Threshold** 0 keeps soft edges; 1 to 255 makes each pixel solid
+   or clear. **Move the spacing with the width** keeps the gap after the glyph.
+3. **Replace**. Colour fonts take the nearest colour they can hold: RGBA 4444 rounds each channel to 4 bits, an
+   indexed font takes the nearest palette colour.
+
+#### Edit kerning
+
+The inspector's **Kerning** list shows every pair the selected character takes part in, each with its offset (type
+or spin it; 0 removes the pair) and **Remove**. To add one, pick **followed by** (this character first) or
+**after** (the other one first), type the other character (or `#` and its code, `#65`), an offset, and **Add pair**.
+Cairn keeps the pairs sorted the way the game needs. The game never applies a pair that involves glyph number 128 or
+later (character 160 and above in a font that starts at space); the list says so, and the Problems panel reports it
+(VF044).
+
+#### Add or remove characters, change the height or the format
+
+- **Font › Add or Remove Characters…**: the first and last character code and the width of the blank glyphs that
+  are added. Characters in both ranges keep their glyphs; removed ones lose their kerning pairs.
+- **Font › Change Height…**: the new height and whether rows are added or cut at the bottom or at the top.
+- **Font › Pixel Format**: converts every glyph. Monochrome to indexed or RGBA 4444 looks the same in the game (an
+  indexed font gets a white palette like the stock fonts); colours to monochrome keep only the transparency; a
+  colour font with more than 256 colours loses some when it becomes indexed. A version 0 font becomes version 1
+  when it stops being monochrome.
+
+After each of these the checks run again; the **Texture** row and the Problems panel show when the font no longer
+fits the game's font texture (**Font too big**).
+
+#### Edit the whole font in an image editor (image sheet)
+
+1. **Font › Export Image Sheet…** (**Ctrl+Shift+E**, also **File › Export**): choose the **Extra cell width**
+   (room to widen glyphs), whether a **Guide colour** marks the space outside the glyphs, and, for monochrome
+   fonts, grey on black or white on transparent. Then pick where to save the `.png`; a `.json` file of the same name
+   is written next to it. When that `.json` (or the `.png`) is already there, Cairn asks before replacing it: metrics
+   you edited in it by hand would be lost.
+2. Edit the PNG in any image editor, keeping its size. Paint inside each glyph's rectangle; to make a glyph wider,
+   paint into the guide colour to its right and raise its `width` in the JSON file.
+3. **Font › Import Image Sheet…** (**Ctrl+Shift+I**, also **File › Import**) and pick the `.png` (or the `.json`).
+   The whole import is one undo step; importing a sheet you did not change changes nothing.
+
+### Font reference
+
+#### Toolbar and sample strip
+
+| Control | What it does |
+|---|---|
+| **Glyphs** | Zoom of the glyph grid (1× to 6×). |
+| **Backdrop** | What glyphs are drawn on: **Dark** (default: the stock fonts are white), **Checker** or **Light**. |
+| **Sample** | The text drawn below; characters are taken in the game's code page (Windows-1252). |
+| **All characters** | Draws every character of the font instead of the sample. |
+| **Zoom** | Zoom of the sample (1× to 8×). |
+
+#### Font menu and shortcuts
+
+The **Font** menu and the **Replace Glyph…**, **Export Sheet…** and **Import Sheet…** toolbar buttons appear while a
+font is the active tab.
+
+| Command | Shortcut | What it does |
+|---|---|---|
+| **Replace Glyph from Image…** | **Ctrl+R** | Replaces the selected glyph with a picture file. |
+| **Paste Glyph Image** | **Ctrl+Shift+V** | The same with the picture on the clipboard. |
+| **Add or Remove Characters…** | | Changes the first and last character. |
+| **Change Height…** | | Adds or cuts rows of every glyph. |
+| **Pixel Format** | | Converts to 4-bit monochrome, 8-bit indexed or RGBA 4444. |
+| **Export Image Sheet…** | **Ctrl+Shift+E** | Writes the PNG and JSON sheet. |
+| **Import Image Sheet…** | **Ctrl+Shift+I** | Reads an edited sheet back. |
+
+#### Image sheet format
+
+The PNG is a grid of 16 cells per row with a 1-pixel line around every cell. Every cell is as wide as the widest
+glyph plus the extra width, and as high as the font; cell *n* (glyph *n*, counting from 0) starts at
+x = 1 + (n mod 16) × (cell width + 1), y = 1 + (n div 16) × (cell height + 1). Each glyph is drawn at the top left of
+its cell, its width × the font height; the rest of the cell and the lines are the guide colour (opaque magenta) or
+clear. Pixels are written as:
+
+| Format | Pixel colour |
+|---|---|
+| 4-bit monochrome | Grey on black, coverage *v* as grey *v* × 255 / 14 (or white with that transparency). |
+| 8-bit indexed | The palette colour as stored; a palette of white with transparency (the stock fonts') is written like monochrome. |
+| RGBA 4444 | Each 4-bit channel widened to 8 bits (`A` becomes `AA`). |
+
+The JSON file (`"kind": "cairn-vf-sheet"`) holds `font` (`version`, `format`: `mono`, `indexed` or `rgba4444`,
+`height`, `firstCharacter`, `defaultSpacing`), `layout` (`columns`, `cellWidth`, `cellHeight`, `gap`, `monoStyle`,
+`guide`), `glyphs` (one per character in order: `code`, `char` for reading only, `width`, `spacing`, `userData`),
+`kerning` (`left` and `right` character codes, `offset`) and, for indexed fonts, `palette` (256 colours as hex
+`AARRGGBB`). On import every value comes from the JSON file: widths up to the cell width, spacings, user data,
+kerning (sorted again), the default spacing, the palette and the character range (the glyphs must run from
+`firstCharacter` without gaps). A pixel is converted to the font's format as in **Replace Glyph from Image**; a pixel
+whose colour is exactly what the export wrote keeps its value, so an exported sheet imports back to the same bytes
+(checked for every stock PC and PS2 font).
+
+#### Font facts (inspector)
+
+**Version** (0: the older header, monochrome only; 1), **Format**, **Height**, **Glyphs**, **Characters** (the
+first and last character code), **Default spacing** (the gap for characters the font does not have), **Widest
+glyph**, **Kerning pairs**, **Pixel data** and **Texture**: the size of the texture the game builds for the font
+when it loads it, and how much of it the glyphs use. Indexed fonts also show their **Palette**, 256 colours in a
+16 × 16 grid (hover a colour for its number and value; unused colours have a thin border).
+
+#### Status bar
+
+Format version and pixel format, glyph count, height, the selected character, and the number of errors and
+warnings (click it to open the **Problems** panel).
+
+#### Pixel formats
+
+| Format | Stored per pixel | How the game shows it |
+|---|---|---|
+| 4-bit monochrome | 1 byte, coverage 0 (clear) to 14 (solid) | White, more or less see-through. Values above 14 count as 14. |
+| 8-bit indexed | 1 byte, a palette index | The palette colour (0xAARRGGBB), keeping the low hex digit of each channel. |
+| RGBA 4444 | 2 bytes, 4 bits each of alpha, red, green, blue | As stored. |
+
+The game turns every font into a texture with 4 bits per channel; Cairn shows the colours that texture has.
+
+#### How the game spaces text
+
+Each character is drawn at the pen position with its own width, then the pen moves right by the character's
+**spacing**. A **kerning pair** adds an offset (usually negative) when one particular character follows another.
+A character the font does not have moves the pen by the default spacing and draws nothing; a line feed starts a
+new line one font height lower. The game finds a kerning pair only when the pairs are sorted by first, then second
+character and the first character's kerning index points at its first pair.
+
+#### Font problems
+
+| Code | Meaning |
+|---|---|
+| VF000 | The file cannot be read (not a font, an unsupported version or pixel format, cut short, or sizes no font can have: a height over 1,024 pixels, a glyph over 4,096 pixels wide, or far more pixels than the file holds). |
+| VF001–VF006 | Header values the game cannot use: height 0, no characters, a first character outside 0–255, no default spacing, a version 0 font that is not monochrome, a palette of the wrong size. |
+| VF010 | A glyph's pixels lie outside the pixel data; the game would draw whatever lies beyond. |
+| VF020 | Bytes after the end of the font (ignored by the game, kept by Cairn). |
+| VF030, VF031, VF033 | Character range notes: a first character other than space, glyphs past code 255 that can never be drawn, characters that draw nothing. |
+| VF040–VF045 | Kerning: a pair names a glyph the font lacks, a pair the game never applies (out of order, or a glyph number of 128 or more), a wrong kerning index, a duplicate pair. |
+| VF046 | Kerning the game applies to two characters that have no pair: its lookup runs past the first character's last pair and uses the next pair in the table (another character's). The message names both pairs and how far the text moves; the glyph's kerning list shows it too. Give the two characters a pair of their own to set their spacing. |
+| VF050–VF055 | Glyph metrics: negative width (damage; read as 0) or spacing, spacing 0, a glyph wider than the texture, pixels of the wrong size, a spacing of thousands of pixels (text with it is too wide to draw; the sample says so instead). |
+| VF060 | **Font too big**: the glyphs do not fit the font's texture (at most 256 × 256); the game stops with "Font too big!" when it loads the font. |
+| VF061 | The font is taller than its texture, but its glyphs fit one row: the game's "Font too big!" check only runs when a second row starts, so it loads the font and writes past the texture (the characters draw wrongly; the game can crash). |
+| VF070–VF073 | Pixel and layout notes: coverage above 14, palette colours that change in the game, unused pixel data, unused header fields that do not match. |
+
+Double-click a problem (or press **Enter**) to select its character.
+
+### Font known limitations
+
+- The pixel editor has a pencil and an eraser only (no lines, fills or selections); use an image sheet for bigger
+  changes.
+- Image sheets are read with the JSON file Cairn wrote; sheets from other font tools (glyphs separated by a key
+  colour, no JSON) are not read.
+- Characters are named by the Windows-1252 code page; a font made for another code page (for example a Russian
+  translation) shows its glyphs correctly but under Western character names.
+- Cairn does not create fonts from TrueType fonts. Alpine Faction can use a TrueType font directly where a font is
+  asked for by name (`name.ttf:size`); the stock interface still asks for `.vf` files.
+
+## Volition bitmaps (VBM)
+
+A Volition bitmap (`.vbm`) is Red Faction's own image format: one or more frames of 16-bit pixels, each with
+optional mip levels, and a frame rate for an animated one. Interface panels (`ui.vpp`), animated level textures and
+many effect textures are VBMs. A bitmap tab shows the animation large, a strip of every frame, and the bitmap's
+facts; you can change the frame rate, replace, add, remove and reorder frames, export frames as images, make a new
+bitmap from images, and convert a bitmap to an animated texture (`.atx`). Every edit is one undo step, and frames you
+do not touch keep their exact bytes: opening a bitmap and saving it gives back the same file.
+
+The window around a bitmap tab: the toolbar and the preview in the middle, the facts and actions on the right, the
+frame strip along the bottom of the tab, and the **Problems** panel in the bottom pane. The **Bitmap** menu and the
+**Convert to ATX…** and **Export Frames…** toolbar buttons appear while a bitmap is the active tab.
+
+### Bitmap walk-throughs
+
+#### Open a bitmap
+
+- **From disk**: **File › Open…** (**Ctrl+O**), drop the file on the window, or double-click it in Explorer once
+  `.vbm` is associated with Cairn (see [File associations](#file-associations)).
+- **From a packfile**: open the packfile (for example `maps2.vpp` or `ui.vpp`) and click a `.vbm` entry: the preview
+  plays it. **Open in Cairn** above the preview opens it in a bitmap tab; saving that tab offers to update the
+  packfile, as for every type.
+
+An animated bitmap starts playing. It pauses while another tab is in front and goes on when you come back.
+
+#### Look at the frames
+
+1. **Play** / **Pause** (**Space**) plays at the bitmap's own frame rate. **|<**, **<**, **>** and **>|** (or
+   **comma** and **period**) step through the frames and pause.
+2. Click a frame in the strip to show it; **Ctrl**+click and **Shift**+click select several (for export, remove,
+   duplicate, copy and move). The frame on show (the playing one) has an accent outline and a play mark under its
+   number, so you can see where the animation is while other frames stay selected.
+3. **Fit** and **100%** set the zoom; the mouse wheel and **+** / **−** zoom in and out. **Smooth** and **Pixels**
+   choose how a zoomed bitmap is drawn: blended, or each pixel a sharp square. Until you click one, Cairn follows the
+   zoom as the animated textures preview does: pixels above 100%, smooth at 100% and below.
+4. **Alpha** shows the transparency as grey (white is opaque). **Checkerboard** turns the pattern behind
+   transparent pixels on or off.
+5. For a bitmap with mipmaps, the mip box shows a smaller level stretched to the full size, so you can see how much
+   detail a distant surface keeps.
+
+#### Change the frame rate
+
+Type the new rate in **Frame rate** on the right (or use its arrows or the mouse wheel) and press **Enter**. It is one
+undo step; the playback follows at once.
+
+#### Replace a frame with an image
+
+1. Select the frame and choose **Bitmap › Replace Frame…** (**Ctrl+R**), or **Replace frame…** on the right.
+2. Pick a `.tga`, `.png`, `.jpg`, `.dds`, `.bmp` or another `.vbm` (its first frame).
+3. If the image is not the bitmap's size, **Resize to the frame size** opens (see
+   [Images of another size](#images-of-another-size)). The image is converted to the bitmap's pixel format, and
+   the frame's mip levels are rebuilt from it.
+
+#### Images of another size
+
+Whenever an image going into a bitmap (replace, add, drop, paste) is not the bitmap's frame size, **Resize to the
+frame size** shows the image next to the frame it will become, after the conversion to the bitmap's pixel format:
+
+- **Filter**: **Nearest (sharp pixels)** copies the nearest pixel (best for pixel art and small icons), **Bilinear
+  (smooth)** blends neighbouring pixels, **High quality** resamples with a Lanczos filter (the sharpest smooth
+  result).
+- **Fit**: **Stretch to the frame** fills the frame and may change the image's shape; **Keep aspect (transparent
+  padding)** fits the whole image inside, centred, and leaves the rest of the frame transparent; **Crop the centre**
+  fills the frame keeping the shape and cuts off what sticks out, evenly on both sides.
+
+**Resize** uses the choice for every image of that drop or paste and remembers it. Tick **Use this every time without
+asking** to skip the window from then on; **Settings › Volition bitmaps** turns the question back on and sets the
+choice too.
+
+#### Add, remove and reorder frames
+
+- **Bitmap › Add Frames…** (**Insert**) adds the images you pick after the selected frames, in the order picked (a
+  `.vbm` adds all its frames).
+- **Drop image files on the frame strip** (`.tga`, `.png`, `.jpg`, `.dds`, `.bmp` or `.vbm`) to add them as frames
+  where you drop them: an accent line shows the place. Files of other types are ignored; dropping a file anywhere
+  else in the window still opens it.
+- **Drag frames along the strip** to reorder them: the selected frames move together, in their order, to the
+  accent line. Each drop is one undo step. Frames dragged from another bitmap's strip are copied in instead.
+- **Ctrl+C** (**Bitmap › Copy Frames**, also in the **Edit** menu and the strip's right-click menu) copies the
+  selected frames; **Ctrl+V** (**Paste Frames**) pastes them after the selection, in the same bitmap or another
+  bitmap tab. Between bitmaps of the same size, pixel format and mip levels the frames keep their exact bytes;
+  otherwise they are resized and converted like any image. Copying also puts the first frame on the Windows
+  clipboard as a picture, for other programs.
+- **Ctrl+V** with a picture on the clipboard (copied in an image editor or a browser), or image files copied in
+  Explorer, adds them as new frames after the selection. If the Windows clipboard is busy or cannot be read, Cairn
+  still pastes the frames you copied in Cairn.
+- **Duplicate Frames** (**Ctrl+D**), **Remove Frames** (**Delete**; the last frame cannot be removed), **Move
+  Earlier** / **Move Later** (**Alt+Left** / **Alt+Right**) and **Reverse Frame Order** act on the selection.
+- **Bitmap › Pixel Format** converts every frame to 1555, 4444 or 565, and **Bitmap › Mip Levels** sets how many mip
+  levels each frame has (rebuilt from the full-size frame). Fewer bits per channel lose colour or transparency.
+
+#### Make a new bitmap from images
+
+1. Choose **File › New › Volition bitmap** (or **Volition bitmap** under **New** on the start page) and pick the
+   images in the order the frames should play (a numbered set such as `flame_00.tga`… sorts that way by name).
+2. In **New VBM** check the **Size** (the first image's by default; the others are resized to it), the **Pixel
+   format** (Cairn suggests 565 for opaque images, 1555 for on/off transparency and 4444 for soft transparency),
+   the **Frame rate** and the **Mip levels** (interface images need none; textures on level geometry usually want a
+   few). The window starts with the defaults from **Settings › Volition bitmaps**, and images of another size are
+   resized with the filter and fit chosen there.
+3. **Create** opens the bitmap in a new tab; save it with **Ctrl+S**.
+
+#### Export frames as images
+
+1. Choose **Bitmap › Export Frames…** (**Ctrl+Shift+E**, or **File › Export › VBM Frames as Images…**).
+2. Pick the **Folder**, the **File name** stem, **TGA** or **PNG**, and **All frames** or the **Selected frames**.
+   The window lists the names it writes: `stem_00.tga`, `stem_01.tga`… numbered by frame from 0, the way **Import
+   VBM** names frames.
+3. **Export**. Existing images are replaced only after you confirm. TGAs are 32-bit when the bitmap has
+   transparency and 24-bit otherwise; PNGs always keep the alpha channel.
+
+#### Convert a bitmap to an animated texture
+
+1. Choose **Convert to ATX…** on the toolbar, on the right or in the **Bitmap** menu (also **File › Export › VBM as
+   ATX…**).
+2. The animated textures module's **Import VBM** window opens for the bitmap as it is in the tab (unsaved edits
+   included): pick the folder, the `.atx` name and the frame names, as in
+   [Convert an old animated VBM](#convert-an-old-animated-vbm).
+3. The new `.atx` opens in its own tab. A bitmap opened from a packfile offers your last import folder, never the
+   temporary copy's folder.
+
+### Bitmap reference
+
+#### Settings
+
+**Settings › Volition bitmaps** (**Tools › Settings…**):
+
+| Setting | What it does |
+|---|---|
+| **Frame rate** | The frame rate **New VBM** starts with (15 fps until changed). |
+| **Pixel format** | The pixel format **New VBM** starts with: **Suggested from the images** (565 for opaque images, 1555 for on/off transparency, 4444 for soft transparency) or always 1555, 4444 or 565. |
+| **Make mipmaps for new bitmaps** | **New VBM** starts with mip levels down to 16 pixels on the shorter side, as the game's own textures have (off: no mipmaps). Frames added to or replaced in an existing bitmap always get that bitmap's mip levels, made again from the new image. |
+| **Filter** and **Fit** | How images of another size are resized (see [Images of another size](#images-of-another-size)); also what the resize window last used. |
+| **Ask each time, with a preview** | Off: images of another size are resized with the filter and fit above without asking. |
+
+#### Facts
+
+**Size**, **Format** (pixel format), **Version**, **Frames**, **Length** (frames divided by the frame rate), **Mip
+levels** (and the smallest level's size), **Pixel data** and **File size**. The status bar shows the size, the pixel
+format, the frames and frame rate, and the number of errors and warnings (click it to open **Problems**).
+
+#### Pixel formats and versions
+
+| Format | Bits per pixel | Transparency |
+|---|---|---|
+| 1555 | 5 bits each of red, green and blue | 1 bit: each pixel is opaque or clear |
+| 4444 | 4 bits each of red, green, blue and alpha | 16 levels |
+| 565 | 5 bits red, 6 green, 5 blue | none |
+
+Version 1 bitmaps store the 1555 transparency bit inverted (set means clear); version 2 store it the standard way.
+Every stock 1555 bitmap is version 1, so Cairn writes new 1555 bitmaps as version 1 and 4444 and 565 bitmaps as
+version 2, the newest stock version. Edits keep a bitmap's version. Converting a pixel to 16 bits keeps the top
+bits of each channel, as the game does when it converts an image itself.
+
+#### Bitmap problems
+
+| Code | Meaning |
+|---|---|
+| VBM001 | The file cannot be read (not a VBM, an unknown pixel format, or not even one frame complete). It opens read-only and cannot be saved. |
+| VBM002 | The file stops early: the complete frames are shown, and saving keeps only those. |
+| VBM003 | Bytes after the last frame (ignored by the game, kept by Cairn). |
+| VBM004 | The header's mip count does not fit the size; it is read as the most the size holds and corrected when saved. |
+| VBM005 | More than 255 frames: the game keeps the frame count in one byte. |
+| VBM006 | A side is not a power of two: fine for interface images, not for textures on level geometry and meshes. |
+| VBM007 | An animated bitmap with a frame rate of 0. |
+| VBM008 | A version other than 1 or 2. |
+| VBM009 | The header's frame count is 0 or negative (read as 1). |
+| VBM010 | A version 2 1555 bitmap: no stock file uses it, so check it in the game. |
+
+### Bitmap known limitations
+
+- The frame strip and the preview show the frames as Cairn decodes them; there is no painting or per-pixel editing
+  (edit the frame in an image editor and use **Replace Frame**).
+- **New VBM** sizes are limited to 4096 pixels a side; mip levels are made with a box filter.
+- Frames cannot be dragged out of Cairn as image files; use **Export Frames** (or **Ctrl+C** to put the first
+  selected frame on the clipboard as a picture).
+- A picture pasted from another program has whatever transparency that program put on the clipboard; many put none,
+  and such a picture is pasted fully opaque.
+
+## Sounds (VSE, VMU, WAV, OGG)
+
+The Sounds module opens sound files in read-only tabs: the PlayStation 2 version's sound effects (`.vse`) and music
+(`.vmu`), and the PC game's `.wav`, `.ogg` and `.aif` files. A sound tab shows a waveform of each channel, plays the
+sound (its loop included), lists everything the file says about itself, and converts it to a WAV or Ogg Vorbis file. PS2 sounds are
+only ever read: Cairn never writes a `.vse` or `.vmu`.
+
+The window around a sound tab: the transport and zoom toolbar at the top, the waveform in the middle, the details on
+the right, and the **Problems** panel in the bottom pane. The **Sound** menu appears while a sound is the active tab.
+
+### Sound walk-throughs
+
+#### Open a sound
+
+- **From disk**: **File › Open…** (**Ctrl+O**), drop the file on the window, or double-click it in Explorer once its
+  type is associated with Cairn (see [File associations](#file-associations); `.wav` and `.ogg` are general formats,
+  so **Select all** there leaves them unticked).
+- **From a packfile**: open the packfile (the PS2 version's `RF_PS2.VPP` holds about a thousand `.vse` files and two
+  `.vmu` pieces of music) and click a sound entry: the preview plays it with a waveform. **Open in Cairn** on the
+  preview's toolbar opens it in a sound tab.
+
+#### Listen
+
+1. **Play** / **Pause** (**Space**), **Stop** (back to the start), **Home** (go to the start).
+2. **Loop** (**L**) repeats the sound's loop without a gap: the loop points the file carries, or the whole sound when
+   it has none. A looping PS2 sound starts with **Loop** on; the loop region is shaded in the waveform.
+3. Click the waveform to move the play position. The time on the toolbar shows where you are and the length.
+4. **Volume** sets the playing volume of every sound tab (remembered).
+
+The sound pauses when another tab comes to the front.
+
+#### Zoom into the waveform
+
+The mouse wheel zooms in and out around the pointer, **Shift**+wheel scrolls, and **+**, **−** and **Fit** on the
+toolbar zoom around the middle or show the whole sound. The ruler above the waveform shows the time; the toolbar shows
+how many samples one pixel holds. Zoomed in, the view follows the play head while the sound plays.
+
+#### Convert a sound to WAV or Ogg Vorbis
+
+1. **Sound › Convert…** (**Ctrl+Shift+E**, or **Convert…** on the toolbar).
+2. **Format**:
+   - **WAV (16-bit PCM)**: the decoded sound exactly. **Keep loop points** writes the loop into the WAV's `smpl`
+     chunk, which many tools and players read.
+   - **Ogg Vorbis (smaller, lossy)**: made with the Xiph.Org reference encoder (libvorbis 1.3.7, variable bitrate).
+     **Quality** runs from q-1 (smallest) to q10 (best); the default q5 is about 160 kbit/s for 44.1 kHz stereo music
+     and far less for a mono effect at 11,025 or 22,050 Hz, and the text beside the slider gives the nominal rate.
+     **Keep loop points** writes the loop as `LOOPSTART` and `LOOPLENGTH` comments (in samples), which Cairn and many
+     players read. The file is named with a lower-case `.ogg`, which the game needs to treat it as Ogg Vorbis. The
+     stock game loads `.wav`; Alpine Faction also loads `.ogg`.
+
+   The game loops a sound because a table or a level asks it to, not because of the file. A format the sound is in
+   already is not offered: a 16-bit WAV to WAV, or an Ogg Vorbis to Ogg Vorbis (encoding it again would only lose
+   quality). A WAV in another coding (24-bit, ADPCM) does convert to a 16-bit WAV.
+3. **Where**: into the packfile the sound came from, as a new entry (available for a sound opened from a packfile;
+   one undo step in the packfile's tab, and the packfile is changed only when you save it), next to the source (its
+   own folder, or for a packfile entry the packfile's folder), or into a folder you choose. **Next to the source**
+   is off when that folder is the game directory: a loose sound there changes what the game loads.
+4. The file is named after the sound (`alarm_03.vse` gives `alarm_03.wav`; a 24-bit `master.wav` gives
+   `master (converted).wav`, so a conversion never takes its source's place). When the name is taken, a free name
+   such as `alarm_03 (2).wav` is used. With **Replace** ticked Cairn asks first (**Replace**, **Keep both** or
+   **Cancel**); Replace starts unticked every time.
+5. **What the conversion changes** lists every approximation before you convert, and follows the format you pick:
+   the source's lossy coding (and, for Ogg Vorbis, that it is encoded again), the console's exact playing rate, the
+   loop, the header fields WAV and Ogg cannot hold. Nothing is ever refused for them.
+
+**File › Save As** on a sound tab also writes a WAV (with the loop, as Settings › Sounds says).
+
+#### Convert many sounds in a packfile
+
+1. In the packfile's list, select the sounds (tick the **Sounds** types in the **File types** pane to list only them,
+   then **Ctrl+A**).
+2. **Packfile › Convert sounds…** (also on the list's right-click menu). Entries that are not sounds are left out.
+3. Choose the format (and the Ogg quality), loop points, where the files go and what happens to taken names, as for
+   one sound.
+4. The conversion runs with the packfile's progress bar (**Cancel** stops it with nothing changed). New entries are
+   added as **one undo step**; **Ctrl+Z** in the packfile removes them all. A report lists sounds that could not be
+   converted (a damaged file is listed and the others go on), sounds left out, and what the conversion approximated,
+   each kind of remark once with how many sounds it concerns.
+5. **Left out**: sounds in the chosen format already (a packfile's `x.wav` to WAV); sounds whose converted name another
+   selected sound also makes (`x.wav` and `x.aif` both give `x.ogg`: the `.wav` is converted, the other left out);
+   and sounds whose converted name the packfile or folder already has (`x.aif` to WAV when the packfile holds the
+   `x.wav` the game plays). Those are left as they are unless **Replace** is ticked, and then Cairn lists them and
+   asks before replacing anything.
+
+### Sound reference
+
+#### Details pane
+
+| Row | What it shows |
+|---|---|
+| Format | The file type (PS2 sound effect, PS2 music, WAVE, Ogg Vorbis, AIFF). |
+| Codec | PS ADPCM, PCM, Microsoft or IMA ADPCM, Vorbis, IMA4. |
+| Sample rate | The rate the sound plays at; for a PS2 sound also the exact rate the console plays (its pitch value). |
+| Channels | 1 (mono) or 2 (stereo). |
+| Bit depth | The stored sample size: 16-bit, 8-bit, 4-bit ADPCM (decoded to 16-bit). |
+| Duration, Samples | The length, and the number of samples per channel. |
+| Loop, Loop from | The loop region and where it comes from (the PS2 header and frame flags, a `smpl` chunk, Ogg comments). |
+| Size | The file's size. |
+| Header and layout | Every header field of a PS2 sound (sound time, key-off time, envelope, data size, pitch, flags, blocks). |
+| About this format | What is special about the format, for example how a `.vmu` stores its two channels. |
+
+#### PlayStation 2 sound formats
+
+- **`.vse`** (sound effect): mono, 11,025, 22,050 or 44,100 Hz. The current 24-byte header holds the sound time and
+  key-off time in milliseconds, an envelope, the data size, a loop start, the pitch and flags (bit 1: looping); an
+  older 12-byte header (duration, data size, pitch) pads its data with silence, which Cairn drops when it lies past
+  the header's duration. The sound data is PS ADPCM: 16-byte frames of 28 samples, each with a filter, a shift and
+  loop flags. A one-shot sound ends on a frame flagged "end" followed by a never-played end marker; a looping one
+  ends on a "loop end" frame. Sounds longer than 64 KB carry loop flags every 4,096 frames for the console's
+  streaming buffer; Cairn reads them as such, not as loops.
+- **`.vmu`** (music): stereo, 44,100 Hz, a 12-byte header (block count, pitch with bit 15 set for music that loops,
+  block time, loop start). Left and right alternate in 16 KB blocks; the last, shorter block is split in half.
+- **Pitch**: the console stores a rate as a pitch value (rate × 4096 / 48,000, rounded down), so a 22,050 Hz sound
+  plays at 22,043 Hz. Cairn plays and converts at the standard rate and says so.
+
+#### Info column in packfiles
+
+`22,050 Hz mono, 1.4 s, PS ADPCM` for a `.vse`; `, loops` is added for a looping sound or piece of music.
+
+#### Settings › Sounds
+
+| Setting | What it does |
+|---|---|
+| Format | WAV (16-bit PCM) or Ogg Vorbis: what Convert offers first. |
+| Ogg Vorbis quality | q-1 to q10 (default q5), with the nominal bitrate for 44.1 kHz stereo beside it. |
+| Where the files go | Into the packfile, next to the source, or a folder: what Convert offers first. A sound that is not from a packfile falls back to the next choice. |
+| Keep loop points | Writes the loop into a WAV's `smpl` chunk, or as `LOOPSTART`/`LOOPLENGTH` comments in an Ogg. |
+
+Replacing files or entries of the same name is not a setting: it is ticked in the Convert window for one conversion,
+and Cairn asks before it replaces anything.
+
+#### Problems
+
+| Code | Meaning |
+|---|---|
+| SND002 | The header's data size differs from the data in the file (cut short, or extra bytes). |
+| SND003 | Frames with an out-of-range filter or shift, decoded as the console does. |
+| SND004 | Bytes at the end that do not make a whole 16-byte frame (ignored). |
+| SND005 | A one-shot sound without an end flag: it may be cut short. |
+| SND006 | An unusual envelope value (information). |
+| SND007 | An implausible pitch value: the sound plays at 22,050 Hz. |
+| SND008 | The header's time and the data's length differ by more than 50 ms (information). |
+| SND009, SND010 | A `.vmu` whose block count or last block does not match its data. |
+| SND011, SND012 | The older 12-byte header; silent padding dropped (information). |
+| SND013 | The file holds no sound data. |
+| SND014 | Streaming-buffer loop flags in a sound that does not loop (information). |
+| SND015 | The two channels of a `.vmu` end at different frames. |
+| SND016 | The looping flag and the sound time disagree (information). |
+| SND020, SND021 | Samples wider than 16 bits; loop points outside the sound. |
+
+### Sound known limitations
+
+- **File › Save As** on a sound tab writes WAV only; use **Convert…** for Ogg Vorbis.
+- Sounds are not edited: no trimming, gain or resampling.
+- MP3 files play in packfile previews but do not open in sound tabs.
+- AIFF loop markers are not read.

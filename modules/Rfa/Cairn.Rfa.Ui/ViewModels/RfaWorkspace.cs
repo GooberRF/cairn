@@ -569,7 +569,8 @@ public sealed partial class RfaWorkspace : ObservableObject
         || path.EndsWith(".gltf", StringComparison.OrdinalIgnoreCase)
         || path.EndsWith(".glb", StringComparison.OrdinalIgnoreCase)
         || path.EndsWith(".v3c", StringComparison.OrdinalIgnoreCase)
-        || path.EndsWith(".v3m", StringComparison.OrdinalIgnoreCase);
+        || path.EndsWith(".v3m", StringComparison.OrdinalIgnoreCase)
+        || Formats.Legacy.LegacyMeshSupport.IsLegacyName(path);
 
     private void OpenDocuments()
     {
@@ -772,6 +773,7 @@ public sealed partial class RfaWorkspace : ObservableObject
     {
         if (name.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase))
             return new ClipDocumentViewModel(this, RfaReader.Read(bytes, name), name, path, origin);
+        if (IsLegacyMesh(bytes, name)) return CreateLegacyDocument(bytes, name, path, origin);
         return new MeshDocumentViewModel(this, V3dReader.Read(bytes, name), name, path, origin);
     }
 
@@ -866,7 +868,7 @@ public sealed partial class RfaWorkspace : ObservableObject
         // A folder is always given: with none the Windows dialog falls back to the last folder it saw,
         // which is often the game directory the stock file came from.
         string? folder = document.Folder;
-        if (folder is null || (Settings.GameDirectory is { } game && SamePath(folder, game))) folder = DefaultOutputFolder();
+        if (folder is null || IsGameDirectory(folder)) folder = DefaultOutputFolder();
         string? chosen = Dialogs.SaveDocument(folder, document.DisplayName, document.Extension);
         if (chosen is null)
         {

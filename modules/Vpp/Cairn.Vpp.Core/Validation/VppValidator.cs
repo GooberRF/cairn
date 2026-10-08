@@ -103,17 +103,21 @@ public static class VppValidator
 
     private static readonly char[] WindowsInvalid = ['<', '>', '"', '|', '?', '*'];
 
-    /// <summary>Checks names, sizes and limits (and the package's own path). Does not read the disk.</summary>
+    /// <summary>
+    /// Checks names, sizes and limits (and the package's own path). Reads the disk only for entries whose names repeat,
+    /// to tell identical copies (harmless) from different ones.
+    /// </summary>
     public static IReadOnlyList<VppProblem> Validate(VppPackage package)
     {
         ArgumentNullException.ThrowIfNull(package);
         var problems = new List<VppProblem>();
         var seen = new Dictionary<string, string>(VppNames.Comparer);
+        var identical = IdenticalDuplicates(package);
         long offset = VppArchive.BlockSize + VppPackage.AlignUp((long)package.Items.Length * VppArchive.EntryBytes);
         bool reportedStart = false;
         foreach (var item in package.Items)
         {
-            CheckEntry(package, item, seen, problems);
+            CheckEntry(package, item, seen, identical, problems);
             if (!reportedStart && item.Size > 0 && offset >= MaxEntryStart)
             {
                 problems.Add(new("VPP008", VppSeverity.Error,
@@ -142,7 +146,49 @@ public static class VppValidator
         return problems;
     }
 
-    private static void CheckEntry(VppPackage package, VppItem item, Dictionary<string, string> seen, List<VppProblem> problems)
+    /// <summary>Largest duplicate entry whose copies are compared byte for byte.</summary>
+    private const int MaxCompareBytes = 16 << 20;
+
+    /// <summary>
+    /// Names that appear more than once with the same bytes every time (stock ui.vpp lists Icon_ClimbRegion.tga twice,
+    /// identically): whichever copy the game takes, it gets the same file.
+    /// </summary>
+    private static HashSet<string> IdenticalDuplicates(VppPackage package)
+    {
+        var result = new HashSet<string>(VppNames.Comparer);
+        foreach (var group in package.Items.Where(i => !string.IsNullOrWhiteSpace(i.Name)).GroupBy(i => i.Name, VppNames.Comparer).Where(g => g.Count() > 1))
+        {
+            var items = group.ToList();
+            if (items.Any(i => i.Size != items[0].Size || i.Size > MaxCompareBytes)) continue;
+            try
+            {
+                byte[] first = HashOf(items[0].Source);
+                if (items.Skip(1).All(i => HashOf(i.Source).AsSpan().SequenceEqual(first))) result.Add(group.Key);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Content hashes of entry sources, kept as long as the source object lives. Sources never change their data (an
+    /// edit makes a new one), so the duplicates check reads each copy once instead of on every validation (it runs on
+    /// the UI thread after every edit).
+    /// </summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<VppSource, byte[]> Hashes = new();
+
+    private static byte[] HashOf(VppSource source)
+    {
+        if (Hashes.TryGetValue(source, out var hash)) return hash;
+        hash = System.Security.Cryptography.SHA256.HashData(source.ReadAll());
+        Hashes.AddOrUpdate(source, hash);
+        return hash;
+    }
+
+    /// <summary>For tests: whether a source's content hash is cached.</summary>
+    internal static bool IsHashCached(VppSource source) => Hashes.TryGetValue(source, out _);
+
+    private static void CheckEntry(VppPackage package, VppItem item, Dictionary<string, string> seen, HashSet<string> identical, List<VppProblem> problems)
     {
         string name = item.Name;
         if (string.IsNullOrWhiteSpace(name))
@@ -170,7 +216,11 @@ public static class VppValidator
         {
             problems.Add(new("VPP027", VppSeverity.Warning, $"'{name}' is {name.Length} characters long; the game keeps texture, sound and font names in 31 characters, so a longer name is cut off and the file will not be found (or loads wrong). Rename it to 31 characters or fewer.", name));
         }
-        if (seen.TryGetValue(name, out string? first))
+        if (seen.TryGetValue(name, out string? first) && identical.Contains(name))
+        {
+            problems.Add(new("VPP005", VppSeverity.Info, $"'{name}' appears more than once with identical contents (the game ignores case: '{first}'); whichever copy the game uses, it gets the same file.", name));
+        }
+        else if (first is not null)
         {
             problems.Add(new("VPP005", VppSeverity.Error, $"'{name}' appears more than once (the game ignores case: '{first}'); only the last one would be used.", name));
         }
@@ -201,7 +251,9 @@ public static class VppValidator
             var type = VppFileTypes.Find(name);
             if (type is null || !type.GameLoads)
             {
-                problems.Add(new("VPP009", VppSeverity.Warning, $"'{name}': the game does not load {ext} files.", name));
+                problems.Add(new("VPP009", VppSeverity.Warning, Ps2.Ps2Packfiles.IsPs2Name(name)
+                    ? $"'{name}' is from the PlayStation 2 version: the PC game does not load {ext} files." + (Ps2.Ps2Packfiles.IsPeg(name) ? " Select it and use Convert to .tga... (right-click, or the Packfile menu) to turn its textures into .tga files." : string.Empty)
+                    : $"'{name}': the game does not load {ext} files.", name));
             }
             if (ext == ".rfa" && name.IndexOf('.') < name.Length - 4)
             {

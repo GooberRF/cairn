@@ -39,7 +39,8 @@ public static class V3dWriter
                 case V3dCollisionSphere c:
                     CheckName(c.Name, V3dCollisionSphere.NameSize, $"collision sphere (section {i})");
                     w.WriteInt32(V3dSectionType.CollisionSphere);
-                    w.WriteInt32(V3dCollisionSphere.Size + Len(c.Extra));
+                    w.WriteInt32(c.ShortSizeField is { } shortSize && shortSize < V3dCollisionSphere.Size && Len(c.Extra) == 0
+                        ? shortSize : V3dCollisionSphere.Size + Len(c.Extra));
                     w.WriteFixedString(c.Name);
                     w.WriteInt32(c.BoneIndex);
                     w.WriteVector3(c.Position);
@@ -49,7 +50,10 @@ public static class V3dWriter
                 case V3dBoneSection b:
                     if (b.Bones.IsDefault) throw new ArgumentException($"Section {i} has no bone array.", nameof(file));
                     w.WriteInt32(V3dSectionType.Bones);
-                    w.WriteInt32(4 + b.Bones.Length * V3dBone.Size + Len(b.Extra));
+                    // a short size field read from a file is kept while it is still short of the bones (readers then
+                    // read the bones by count, as the game does); otherwise the true size
+                    w.WriteInt32(b.ShortSizeField is { } shortBones && shortBones < 4 + b.Bones.Length * V3dBone.Size && Len(b.Extra) == 0
+                        ? shortBones : 4 + b.Bones.Length * V3dBone.Size + Len(b.Extra));
                     w.WriteInt32(b.Bones.Length);
                     foreach (var bone in b.Bones)
                     {

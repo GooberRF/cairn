@@ -53,7 +53,9 @@ public sealed class AssociationRow : ObservableObject
         _ => $"No program is registered for {Extension} files",
     };
 
-    public string CheckTip => $"Open {Extension} files with this copy of Cairn";
+    public string CheckTip => AssociationsModel.IsGeneralFormat(Extension)
+        ? $"Open {Extension} files with this copy of Cairn (a general format: Select all leaves it unticked)"
+        : $"Open {Extension} files with this copy of Cairn";
 
     public string ChooseTip => $"Open Windows' chooser to pick the default program for {Extension} files";
 
@@ -91,7 +93,11 @@ public sealed class AssociationsModel : ObservableObject
     private static readonly HashSet<string> GeneralFormats = new(StringComparer.OrdinalIgnoreCase)
     {
         ".gltf", ".glb", ".obj", ".fbx", ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".dds", ".wav", ".ogg", ".mp3", ".txt",
+        ".aif", ".aiff", ".aifc",
     };
+
+    /// <summary>True for a general format other programs usually own (.wav, .ogg...): listed when a kind opens it, but "Select all" leaves it.</summary>
+    public static bool IsGeneralFormat(string extension) => GeneralFormats.Contains(extension);
 
     private readonly IAssociationStore _store;
     private readonly IDialogService _dialogs;
@@ -109,7 +115,8 @@ public sealed class AssociationsModel : ObservableObject
         if (store.ExecutablePath is { } exe) _registry = new AssociationRegistry(store, [.. Rows.Select(r => r.Kind)], exe);
         else _problem = "Cairn could not work out where it is running from, so it cannot register file types.";
 
-        SelectAllCommand = new RelayCommand(() => { foreach (var row in Rows) row.OpenWithCairn = true; }, () => IsAvailable);
+        // general formats (.wav, .ogg) are left as they are: they usually belong to a media player
+        SelectAllCommand = new RelayCommand(() => { foreach (var row in Rows) if (!IsGeneralFormat(row.Extension)) row.OpenWithCairn = true; }, () => IsAvailable);
         SelectNoneCommand = new RelayCommand(() => { foreach (var row in Rows) row.OpenWithCairn = false; }, () => IsAvailable);
         ChooseDefaultCommand = new RelayCommand(p => { if (p is AssociationRow row) ChooseDefault(row); }, _ => IsAvailable);
         RemoveOldAppsCommand = new RelayCommand(RemoveOldApps, () => IsAvailable && _hasOldApps);

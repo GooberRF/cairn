@@ -220,6 +220,25 @@ public static class GameDirectoryLocator
     }
 
     /// <summary>
+    /// True when <paramref name="folder"/> is <paramref name="gameDirectory"/> or inside it (no output defaults to writing
+    /// there: a loose file in the game's folders changes what the game loads). False when either is unset.
+    /// </summary>
+    public static bool IsInGameDirectory(string? folder, string? gameDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(folder) || string.IsNullOrWhiteSpace(gameDirectory)) return false;
+        try
+        {
+            string f = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+            string g = Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameDirectory));
+            return f.Equals(g, StringComparison.OrdinalIgnoreCase) || f.StartsWith(g + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Turns whatever a registry value holds into the directories worth testing. The value may be
     /// quoted, padded, full of environment variables, and may name either the game executable or
     /// the folder it lives in — launchers have written all of those. A path that is a directory is

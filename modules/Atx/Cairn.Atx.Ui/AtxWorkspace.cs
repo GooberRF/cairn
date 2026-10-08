@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Threading;
 using Cairn.Atx.Ui.Services;
 using Cairn.Atx.Ui.ViewModels;
+using Cairn.Formats.Imaging;
 using Cairn.Ui.Modules;
 
 namespace Cairn.Atx.Ui;
@@ -234,6 +235,42 @@ public sealed class AtxWorkspace : ObservableObject
         if (generated is null) return;
         RememberImportFolder(generated);
         Shell.OpenFile(generated);
+    }
+
+    /// <summary>
+    /// The import for bytes already in memory (another module's "Convert to ATX..."): the dialog, or with
+    /// <paramref name="interactive"/> false the defaults written into <paramref name="outputFolder"/>; the generated .atx
+    /// opens in a tab. Returns its path, or null when cancelled or failed (reported).
+    /// </summary>
+    public async Task<string?> ConvertVbmAsync(VbmImportSource source, byte[] bytes, bool interactive, string? outputFolder)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(bytes);
+        CommitPendingEdits();
+        VbmInfo info;
+        try { info = VbmCodec.ReadInfo(bytes, source.Name); }
+        catch (ImageDecodeException ex)
+        {
+            Dialogs.ShowError("That VBM could not be converted.", ex.Message);
+            return null;
+        }
+        string? generated;
+        if (interactive)
+        {
+            generated = Dialogs.ShowVbmImport(this, source, bytes, info);
+        }
+        else
+        {
+            using var model = new VbmImportViewModel(this, source, bytes, info);
+            if (outputFolder is not null) model.OutputFolder = outputFolder;
+            model.Pause();
+            await model.RunImportAsync().ConfigureAwait(true);
+            generated = model.ImportedPath;
+        }
+        if (generated is null) return null;
+        if (interactive) RememberImportFolder(generated);
+        Shell.OpenFile(generated);
+        return generated;
     }
 
     private string? ImportBrowseFolder()

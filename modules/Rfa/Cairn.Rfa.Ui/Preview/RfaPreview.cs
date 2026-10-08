@@ -98,7 +98,10 @@ public sealed class RfaPreview : Grid, IDisposable
         object parsed;
         try
         {
-            parsed = await Task.Run<object>(() => IsClip ? RfaReader.Read(bytes, fileName) : V3dReader.Read(bytes, fileName), ct);
+            // Exporter (.v3d/.vcm) and PS2 (.rfm/.rfc) meshes show as the mesh converting them makes.
+            parsed = await Task.Run<object>(() => IsClip ? RfaReader.Read(bytes, fileName)
+                : Formats.Legacy.LegacyMeshSupport.Identify(bytes, fileName) is not null ? Formats.Legacy.LegacyMeshSupport.ReadCompiled(bytes, fileName).Compiled
+                : V3dReader.Read(bytes, fileName), ct);
         }
         catch (OperationCanceledException) { _meshLoaded.TrySetResult(); return; }
         catch (Exception ex) when (ex is not OutOfMemoryException)

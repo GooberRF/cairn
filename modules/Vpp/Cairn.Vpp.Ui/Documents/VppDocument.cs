@@ -29,6 +29,8 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
     private VppOperation? _operation;
     private string? _notice;
     private VppWorkFolder? _work;
+    private Cairn.Vpp.Ps2.PegConversionResult? _pegSource;
+    private bool _ps2Dismissed;
 
     public VppDocument(VppModule module, VppPackage package, string displayName, string? path, string? originText = null)
         : base(module.Host, module.Kind, package, displayName, path, originText)
@@ -76,6 +78,21 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
     public bool IsBusy => _operation is not null;
     /// <summary>A dismissible message shown above the list (lost recovery entries, a name the game will not load, ...).</summary>
     public string? Notice { get => _notice; set => Set(ref _notice, value); }
+
+    /// <summary>
+    /// For a document opened from a PEG texture pack (PlayStation 2): what the conversion gave (the banner and the
+    /// summary after the first save say so). Null for packfiles, and again once the document was saved as a packfile.
+    /// </summary>
+    public Cairn.Vpp.Ps2.PegConversionResult? PegSource { get => _pegSource; internal set => Set(ref _pegSource, value); }
+
+    /// <summary>True when the packfile holds entries only the PlayStation 2 version uses (.peg, .rfm, .rfc, .vse, .vmu).</summary>
+    public bool IsPs2Packfile { get; private set; }
+
+    /// <summary>The .peg entries in the packfile ("Convert to .tga..." converts the selected ones).</summary>
+    public int PegEntryCount { get; private set; }
+
+    /// <summary>True after the PlayStation 2 banner's Dismiss (for this session).</summary>
+    public bool Ps2BannerDismissed { get => _ps2Dismissed; set => Set(ref _ps2Dismissed, value); }
     /// <summary>The work copies (created on first use).</summary>
     public VppWorkFolder Work
     {
@@ -149,8 +166,12 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
             if (item.OriginalIndex >= 0) kept++;
         }
         PendingChanges = changed + Math.Max(0, p.OriginalCount - kept);
+        IsPs2Packfile = Cairn.Vpp.Ps2.Ps2Packfiles.IsPs2(p);
+        PegEntryCount = p.Items.Count(i => Cairn.Vpp.Ps2.Ps2Packfiles.IsPeg(i.Name));
         Problems = problems;
         Raise(nameof(PendingChanges));
+        Raise(nameof(IsPs2Packfile));
+        Raise(nameof(PegEntryCount));
         RebuildStatus();
     }
 
@@ -277,8 +298,31 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
         MarkSaved(path);
         WatchDisk();
         Refresh();
+        if (PegSource is { } peg)
+        {
+            // From now on this is a plain PC packfile; say once what the texture pack became.
+            PegSource = null;
+            Shell.Dialogs.Choose($"Saved {Path.GetFileName(path)}", PegSaveSummary(peg, Path.GetFileName(path)), ["OK"], 0);
+        }
         if (Path.GetFileName(path).Length > VppValidator.MaxPackfileNameLength)
             Notice = $"\"{Path.GetFileName(path)}\" has {Path.GetFileName(path).Length} characters: the game only loads packfiles whose file name has at most {VppValidator.MaxPackfileNameLength}. Use File > Save As to choose a shorter name.";
+    }
+
+    /// <summary>The summary shown after a converted PEG texture pack was first saved as a packfile: what went in, what was left out.</summary>
+    internal static string PegSaveSummary(Cairn.Vpp.Ps2.PegConversionResult peg, string packfileName)
+    {
+        var text = new System.Text.StringBuilder();
+        text.Append($"{peg.SourceName} was saved as the PC packfile {packfileName}: {peg.ConvertedTextures:N0} texture{(peg.ConvertedTextures == 1 ? "" : "s")} as 32-bit .tga files");
+        if (peg.AnimatedTextures > 0)
+            text.Append($" ({peg.AnimatedTextures:N0} animated: numbered .tga frames plus an .atx animated texture, Alpine Faction {Cairn.Vpp.Ps2.PegConverter.AtxAlpineSince} or later)");
+        text.Append('.');
+        if (peg.Skipped.Count > 0)
+        {
+            text.Append($"\n\nNot converted ({peg.Skipped.Count:N0}):");
+            foreach (var s in peg.Skipped.Take(14)) text.Append($"\n• {s.Name}: {s.Reason}");
+            if (peg.Skipped.Count > 14) text.Append($"\n... and {peg.Skipped.Count - 14:N0} more");
+        }
+        return text.ToString();
     }
 
     /// <summary>In-memory data above the inline cap is kept in side files beside the recovery store's manifests.</summary>

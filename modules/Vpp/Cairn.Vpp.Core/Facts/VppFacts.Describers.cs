@@ -6,6 +6,7 @@ using Cairn.Atx.Parsing;
 using Cairn.Atx.Schema;
 using Cairn.Formats;
 using Cairn.Formats.Imaging;
+using Cairn.Rfa.Formats.Legacy;
 using Cairn.Rfa.Formats.Rfa;
 using Cairn.Rfa.Formats.V3d;
 using Cairn.Vfx.Formats;
@@ -117,9 +118,29 @@ public static partial class VppFacts
         }
     }
 
+    /// <summary>A PlayStation 2 sound (.vse/.vmu): rate, channels, duration, loop and the header's fields.</summary>
+    private static void DescribePs2Sound(VppFactInput input, VppFactSheetBuilder sheet)
+    {
+        var sound = Ps2Sound.Decode(input.ReadAll(), input.Name);
+        sheet.Add("Codec", sound.Codec);
+        sheet.Add("Sample rate", $"{sound.SampleRate:N0} Hz");
+        sheet.Add("Channels", sound.Channels switch { 1 => "1 (mono)", 2 => "2 (stereo)", _ => sound.Channels.ToString(CultureInfo.CurrentCulture) });
+        sheet.Add("Duration", FormatDuration(sound.Duration));
+        sheet.Add("Loop", sound.Loop is { } loop ? loop.IsWhole(sound.FrameCount) ? "the whole sound" : $"samples {loop.Start:N0} to {loop.End:N0}" : "none");
+        foreach (var (label, value) in sound.Details.Where(d => d.Label is "Header" or "SPU pitch" or "Envelope (ADSR)" or "Flags"))
+            sheet.Add(label, value);
+        foreach (var problem in sound.Problems.Where(p => p.Severity != SoundSeverity.Info)) sheet.Warn(problem.Message);
+    }
+
     private static void DescribeMesh(VppFactInput input, VppFactSheetBuilder sheet)
     {
-        var mesh = V3dProbe.Probe(input.ReadAll(), input.Name);
+        byte[] bytes = input.ReadAll();
+        if (LegacyMeshSupport.Identify(bytes, input.Name) is not null)
+        {
+            DescribeLegacyMesh(input, bytes, sheet);
+            return;
+        }
+        var mesh = V3dProbe.Probe(bytes, input.Name);
         sheet.Add("Kind", mesh.Kind == V3dKind.Character ? "Character mesh" : "Static mesh");
         sheet.Add("Submeshes", mesh.SubmeshCount);
         if (mesh.SubmeshCount > 0)
@@ -130,6 +151,29 @@ public static partial class VppFacts
         sheet.Add("Bones", mesh.BoneCount);
         if (mesh.Kind == V3dKind.Character) sheet.Add("Collision spheres", mesh.CollisionSphereCount);
         if (!mesh.StructureReadable) sheet.Warn("The mesh's section list could not be walked completely; counts cover only what was read.");
+    }
+
+    /// <summary>An exporter (.v3d/.vcm) or PS2 (.rfm/.rfc) mesh: what it holds and what converting it makes.</summary>
+    private static void DescribeLegacyMesh(VppFactInput input, byte[] bytes, VppFactSheetBuilder sheet)
+    {
+        if (!LegacyMeshSupport.TryRead(bytes, input.Name, out var legacy, out var error))
+        {
+            sheet.Add("Error", error?.Message ?? "The mesh cannot be read.").Warn(error?.Message ?? "The mesh cannot be read.");
+            return;
+        }
+        var d = legacy!.Description;
+        string format = LegacyMeshSupport.FormatName(legacy.SourceFormat);
+        sheet.Add("Kind", char.ToUpperInvariant(format[0]) + format[1..]);
+        sheet.Add("Submeshes", d.Submeshes.Length);
+        if (d.Submeshes.Length > 0)
+        {
+            sheet.Add("Submesh names", string.Join(", ", d.Submeshes.Take(8).Select(s => s.Name.Text)) + (d.Submeshes.Length > 8 ? ", ..." : ""));
+            sheet.Add("LODs", string.Join(", ", d.Submeshes.Take(8).Select(s => s.Lods.Length)));
+        }
+        sheet.Add("Triangles", d.Submeshes.Sum(s => s.Lods.IsDefaultOrEmpty ? 0 : s.Lods[0].Groups.Sum(g => g.Triangles.Length)));
+        sheet.Add("Bones", d.Bones.Length);
+        if (d.Kind == V3dKind.Character) sheet.Add("Collision spheres", d.CollisionSpheres.Length);
+        sheet.Add("Converts to", LegacyMeshSupport.TargetExtension(legacy) + (legacy.Notes.Length > 0 ? $" ({legacy.Notes.Length} notes in the report)" : " (no approximations)"));
     }
 
     private static void DescribeClip(VppFactInput input, VppFactSheetBuilder sheet)
@@ -259,6 +303,26 @@ public static partial class VppFacts
 
     private static void DescribeFont(VppFactInput input, VppFactSheetBuilder sheet)
     {
+        // The whole font through the fonts module's reader and checks; the header alone when it cannot be read.
+        var (vf, problems) = Cairn.Vf.Formats.VfReader.Inspect(input.ReadAll(), input.Name);
+        if (vf is not null)
+        {
+            sheet.Add("Version", vf.Version);
+            sheet.Add("Pixel format", Cairn.Vf.Model.VfFont.FormatName(vf.Format));
+            sheet.Add("Glyphs", vf.GlyphCount);
+            sheet.Add("First character", vf.FirstCharacter);
+            if (vf.GlyphCount > 0) sheet.Add("Characters", $"{Cairn.Vf.Formats.VfReader.Describe(vf.FirstCharacter)} to {Cairn.Vf.Formats.VfReader.Describe(vf.LastCharacter)}");
+            sheet.Add("Height", $"{vf.Height} px");
+            sheet.Add("Default spacing", $"{vf.DefaultSpacing} px");
+            sheet.Add("Widest glyph", $"{vf.MaxGlyphWidth} px");
+            sheet.Add("Kerning pairs", vf.Kerning.Length);
+            sheet.Add("Pixel data", FormatSize(Cairn.Vf.Rendering.VfAtlas.PixelDataSize(vf)));
+            var atlas = Cairn.Vf.Rendering.VfAtlas.Plan(vf);
+            sheet.Add("Texture", atlas.Fits ? $"{atlas.Size} x {atlas.Size}" : $"too big for {atlas.Size} x {atlas.Size}");
+            foreach (var p in problems.Where(p => p.Severity != Cairn.Vf.Model.VfSeverity.Information)) sheet.Warn(p.Message);
+            return;
+        }
+        foreach (var p in problems) sheet.Warn(p.Message);
         var font = ReadFontHeader(input.ReadHead(48), input.Name);
         sheet.Add("Version", font.Version);
         sheet.Add("Pixel format", font.Format);
@@ -404,5 +468,28 @@ public static partial class VppFacts
             return Cairn.Assets.AssetResolver.TextureExtensions.Select(e => stem + e).ToList();
         }
         return [bare];
+    }
+
+    /// <summary>The most textures a PEG's details list one by one.</summary>
+    private const int MaxListedTextures = 300;
+
+    /// <summary>A PEG texture pack (PlayStation 2): its version and counts, then one row per texture.</summary>
+    private static void DescribeTexturePack(VppFactInput input, VppFactSheetBuilder sheet)
+    {
+        var pack = PegCodec.Read(input.ReadAll(), input.Name);
+        sheet.Add("Format", $"PEG texture pack, version {pack.Version}");
+        sheet.Add("Textures", pack.Textures.Count);
+        int animated = pack.Textures.Count(t => t.IsAnimated && !t.IsMpeg2);
+        if (animated > 0) sheet.Add("Animated", animated);
+        if (pack.Mpeg2Count > 0) sheet.Add("MPEG-2 backgrounds", pack.Mpeg2Count);
+        int broken = pack.Textures.Count(t => t.Problem is not null);
+        if (broken > 0) sheet.Warn($"{N(broken)} texture(s) cannot be decoded.");
+        sheet.Add("PC game", "Not loaded: Convert to .tga... on the selected .peg entry (or opening the .peg in Cairn) turns the textures into .tga files");
+        foreach (var t in pack.Textures.Take(MaxListedTextures))
+        {
+            string value = t.Describe() + (t.Problem is { } p ? $"; cannot be decoded: {p}" : t.IsMpeg2 ? "; no alpha" : string.Empty);
+            sheet.Add("Textures: " + (t.Name.Length > 0 ? t.Name : $"#{t.Index}"), value);
+        }
+        if (pack.Textures.Count > MaxListedTextures) sheet.Add("Textures: ...", $"and {N(pack.Textures.Count - MaxListedTextures)} more");
     }
 }

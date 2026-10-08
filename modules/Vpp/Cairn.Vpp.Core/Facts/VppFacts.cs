@@ -114,9 +114,14 @@ public static partial class VppFacts
         Describers[".aiff"] = DescribeAudio;
         Describers[".aifc"] = DescribeAudio;
         Describers[".mp3"] = DescribeAudio;
+        Describers[".vse"] = DescribePs2Sound;
+        Describers[".vmu"] = DescribePs2Sound;
         Describers[".v3m"] = DescribeMesh;
         Describers[".v3c"] = DescribeMesh;
         Describers[".v3d"] = DescribeMesh;
+        Describers[".vcm"] = DescribeMesh;
+        Describers[".rfm"] = DescribeMesh;
+        Describers[".rfc"] = DescribeMesh;
         Describers[".rfa"] = DescribeClip;
         Describers[".mvf"] = DescribeMvf;
         Describers[".vfx"] = DescribeEffect;
@@ -125,6 +130,7 @@ public static partial class VppFacts
         Describers[".vf"] = DescribeFont;
         Describers[".rfg"] = DescribeGroup;
         Describers[".rfl"] = DescribeLevel;
+        Describers[".peg"] = DescribeTexturePack;
     }
 
     /// <summary>Installs (or replaces) the describer for an extension such as ".rfl".</summary>
@@ -143,6 +149,9 @@ public static partial class VppFacts
     {
         ArgumentNullException.ThrowIfNull(item);
         var sheet = Describe(item.Name, item.Source.Open, item.Size, context ?? VppFactsContext.None);
+        // an entry a PEG conversion made says where it came from
+        if (item.Source is MemorySource memory && Ps2.PegConverter.NoteFor(memory.Bytes) is { } note)
+            sheet = sheet with { Rows = sheet.Rows.Add(new VppFactRow("Converted", note)) };
         return sheet;
     }
 
@@ -219,6 +228,7 @@ public static partial class VppFacts
             if (b[0] == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G') return ".png";
             if (b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF) return ".jpg";
             if (b[..4].SequenceEqual("VMVF"u8)) return ".rfa";
+            if (b[..4].SequenceEqual("GEKV"u8)) return ".peg";
         }
         if (b.Length >= 12 && b[..4].SequenceEqual("RIFF"u8) && b.Slice(8, 4).SequenceEqual("WAVE"u8)) return ".wav";
         if (b.Length >= 12 && b[..4].SequenceEqual("FORM"u8) && (b.Slice(8, 4).SequenceEqual("AIFF"u8) || b.Slice(8, 4).SequenceEqual("AIFC"u8))) return ".aif";
@@ -232,6 +242,7 @@ public static partial class VppFacts
     {
         _ when actual == named => true,
         (".v3m", ".v3d") or (".v3m", ".v3c") or (".v3c", ".v3d") => true,
+        (".v3c", ".vcm") => true, // the exporter's name for a character mesh (the PlayStation 2 packfiles hold them)
         (".rfa", ".mvf") => true,
         (".jpg", ".jpeg") => true,
         (".aif", ".aiff" or ".aifc") => true,

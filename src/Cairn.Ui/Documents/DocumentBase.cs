@@ -55,6 +55,11 @@ public interface IDocument : INotifyPropertyChanged, IDisposable
     /// </summary>
     bool? ChooseSaveAsInstead() => false;
     /// <summary>
+    /// False when the document holds nothing that can be written (e.g. a file that could not be read and opened empty,
+    /// with the reason in Problems): the shell then disables Save and Save As for it. Raise PropertyChanged when it changes.
+    /// </summary>
+    bool CanSave => true;
+    /// <summary>
     /// Atomic write; updates <see cref="FilePath"/> and the saved point. Throws on failure. A save the user cancelled
     /// (a long save with a Cancel button) throws <see cref="OperationCanceledException"/> with the file on disk
     /// unchanged: the shell then ends the save quietly (status message, no error dialog, document stays dirty).

@@ -71,6 +71,19 @@ public sealed class ImageData
         return data;
     }
 
+    /// <summary>
+    /// Image data from frames decoded elsewhere (for example a texture of a PlayStation 2 texture pack): played at
+    /// <paramref name="fps"/> when there are several, with <paramref name="container"/> shown beside the size.
+    /// </summary>
+    public static ImageData FromFrames(string name, IReadOnlyList<BgraImage> frames, int fps, string container)
+    {
+        ArgumentNullException.ThrowIfNull(frames);
+        if (frames.Count == 0) throw new ArgumentException("At least one frame is needed.", nameof(frames));
+        var data = new ImageData(name, [], frames, fps, 1, container);
+        data.HasAlpha = frames.Any(HasTransparency);
+        return data;
+    }
+
     private static bool HasTransparency(BgraImage image)
     {
         var p = image.Pixels;

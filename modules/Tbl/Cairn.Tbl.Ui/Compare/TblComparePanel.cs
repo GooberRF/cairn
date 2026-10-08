@@ -3,7 +3,6 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Markup;
 using Cairn.Assets;
 using Cairn.Tbl.Compare;
 using Cairn.Tbl.Model;
@@ -47,22 +46,6 @@ public sealed class TblCompareRow
 /// </summary>
 public sealed class TblComparePanel : DockPanel
 {
-    private const string ListXaml = """
-        <ListView xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
-          <ListView.View>
-            <GridView>
-              <GridViewColumn Header="" Width="28" DisplayMemberBinding="{Binding Glyph}" />
-              <GridViewColumn Header="Change" Width="70" DisplayMemberBinding="{Binding Kind}" />
-              <GridViewColumn Header="Section" Width="140" DisplayMemberBinding="{Binding Section}" />
-              <GridViewColumn Header="Entry" Width="170" DisplayMemberBinding="{Binding EntryText}" />
-              <GridViewColumn Header="Field" Width="150" DisplayMemberBinding="{Binding Field}" />
-              <GridViewColumn Header="Stock" Width="200" DisplayMemberBinding="{Binding Stock}" />
-              <GridViewColumn Header="This table" Width="200" DisplayMemberBinding="{Binding Modded}" />
-            </GridView>
-          </ListView.View>
-        </ListView>
-        """;
-
     // Stock tables by file name: the game's packfiles do not change while Cairn runs (a new game folder clears it).
     private static readonly ConcurrentDictionary<string, (string Text, AssetLocation Location)?> StockCache = new(StringComparer.OrdinalIgnoreCase);
     private static string? _cacheGameDirectory;
@@ -71,7 +54,8 @@ public sealed class TblComparePanel : DockPanel
     private readonly TextBlock _header = new() { Margin = new Thickness(8, 4, 8, 4), TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     private readonly CheckBox _onlyChanges = new() { Content = "Only changes", IsChecked = true, Margin = new Thickness(8, 4, 4, 4), VerticalAlignment = VerticalAlignment.Center };
     private readonly Button _refresh = new() { Content = "Compare again", Margin = new Thickness(4, 2, 8, 2), Padding = new Thickness(8, 1, 8, 1) };
-    private readonly ListView _list;
+    // A GridList, not a plain ListView: the Fluent theme's ListView style drops a GridView's header and columns.
+    private readonly Cairn.Ui.Controls.GridList _list = new();
     private readonly TblSnippetView _stockView = new();
     private readonly TextBlock _stockHeader = new() { Margin = new Thickness(6, 4, 6, 2), TextWrapping = TextWrapping.Wrap };
     private readonly DockPanel _stockPanel = new();
@@ -103,9 +87,13 @@ public sealed class TblComparePanel : DockPanel
         SetDock(bar, Dock.Top);
         Children.Add(bar);
 
-        _list = (ListView)XamlReader.Parse(ListXaml);
-        _list.BorderThickness = new Thickness(0);
-        _list.SetResourceReference(BackgroundProperty, "App.PaneBackground");
+        _list.Column("", 28, nameof(TblCompareRow.Glyph));
+        _list.Column("Change", 70, nameof(TblCompareRow.Kind));
+        _list.Column("Section", 140, nameof(TblCompareRow.Section));
+        _list.Column("Entry", 170, nameof(TblCompareRow.EntryText));
+        _list.Column("Field", 150, nameof(TblCompareRow.Field));
+        _list.Column("Stock", 200, nameof(TblCompareRow.Stock));
+        _list.Column("This table", 200, nameof(TblCompareRow.Modded));
         VirtualizingPanel.SetIsVirtualizing(_list, true);
         AutomationProperties.SetName(_list, "Changes");
         _list.ToolTip = "Click a change to go to it (a removed entry shows its stock text)";
@@ -138,6 +126,8 @@ public sealed class TblComparePanel : DockPanel
     public TblComparison? Comparison { get; private set; }
     /// <summary>The rows shown.</summary>
     public IReadOnlyList<TblCompareRow> Rows => _list.Items.Cast<TblCompareRow>().ToList();
+    /// <summary>The list (self-tests check its columns).</summary>
+    internal ListView List => _list;
     /// <summary>The header line.</summary>
     public string Header => _header.Text;
     /// <summary>"Only changes".</summary>

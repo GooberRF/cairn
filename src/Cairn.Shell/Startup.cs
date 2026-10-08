@@ -73,6 +73,15 @@ public static class ModuleCatalog
 #if CAIRN_MODULE_TBL
         modules.Add(new Cairn.Tbl.Ui.TblModule());
 #endif
+#if CAIRN_MODULE_VF
+        modules.Add(new Cairn.Vf.Ui.VfModule());
+#endif
+#if CAIRN_MODULE_VBM
+        modules.Add(new Cairn.Vbm.Ui.VbmModule());
+#endif
+#if CAIRN_MODULE_SND
+        modules.Add(new Cairn.Snd.Ui.SndModule());
+#endif
         if (includeProbe) { modules.Add(new Probe.ProbeModule()); modules.Add(new Probe.ProbeTwoModule()); }
         return modules;
     }

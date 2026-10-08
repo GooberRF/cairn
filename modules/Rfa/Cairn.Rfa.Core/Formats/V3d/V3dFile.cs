@@ -386,6 +386,12 @@ public sealed record V3dCollisionSphere(FixedString Name, int BoneIndex, Vector3
 
     /// <inheritdoc />
     public override int Type => V3dSectionType.CollisionSphere;
+
+    /// <summary>
+    /// The section size field as stored when it is smaller than the 44 bytes the sphere occupies (a mod tool wrote 40;
+    /// the game reads the 44-byte record whatever the field says), kept so the file round-trips; null: the size written.
+    /// </summary>
+    public int? ShortSizeField { get; init; }
 }
 
 /// <summary>
@@ -415,6 +421,12 @@ public sealed record V3dBoneSection(ImmutableArray<V3dBone> Bones, ImmutableArra
 
     /// <inheritdoc />
     public override int Type => V3dSectionType.Bones;
+
+    /// <summary>
+    /// The section size field as stored when it is smaller than the bone array (a mod tool counted 44 bytes a bone; the
+    /// game reads 56-byte bones whatever the field says), kept so the file round-trips; null: the size written.
+    /// </summary>
+    public int? ShortSizeField { get; init; }
 }
 
 /// <summary>A DUMB section (3ds max group data, removed by ccrunch; none in stock files). Kept raw.</summary>

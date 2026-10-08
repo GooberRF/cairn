@@ -294,6 +294,117 @@ public interface IWorkCopyProvider
 }
 
 /// <summary>
+/// Optional: implemented by a module class that turns a file of another type into its own documents, for example the
+/// animated textures module making frame images plus an .atx out of a .vbm. Another module offers the conversion (a
+/// "Convert to ATX..." command) by finding a converter through <see cref="IShellContext.Modules"/>, so neither module
+/// references the other.
+/// </summary>
+public interface IAssetConverter
+{
+    /// <summary>True when this module converts files named like <paramref name="sourceName"/> to <paramref name="targetExtension"/> (".atx"). Cheap; no I/O.</summary>
+    bool CanConvert(string sourceName, string targetExtension);
+
+    /// <summary>
+    /// Converts <paramref name="request"/> (interactive requests show the module's own dialog) and opens the result in a
+    /// tab. UI thread. Returns the path of the main file written, or null when the user cancelled or it failed (the
+    /// converter has told the user why).
+    /// </summary>
+    Task<string?> ConvertAsync(AssetConversionRequest request);
+}
+
+/// <summary>What <see cref="IAssetConverter.ConvertAsync"/> converts.</summary>
+/// <param name="FileName">The source's file name (no path), which the outputs are named after.</param>
+/// <param name="Bytes">The source's contents as they are now (unsaved edits included).</param>
+/// <param name="TargetExtension">What to make (".atx").</param>
+public sealed record AssetConversionRequest(string FileName, byte[] Bytes, string TargetExtension)
+{
+    /// <summary>The loose file the bytes belong to (its folder is the default output folder), or null.</summary>
+    public string? FilePath { get; init; }
+    /// <summary>The packfile the source is an entry of, or null.</summary>
+    public string? ArchivePath { get; init; }
+    /// <summary>False to convert without a dialog, with the defaults and <see cref="OutputFolder"/> (self-tests, batch use).</summary>
+    public bool Interactive { get; init; } = true;
+    /// <summary>Where the outputs go; null lets the converter choose (the dialog's default folder).</summary>
+    public string? OutputFolder { get; init; }
+}
+
+/// <summary>
+/// Optional: implemented by a module class that converts several entries of an archive at once, for example the sounds
+/// module's "Convert sounds..." (PS2 sounds to WAV). The packfile module offers it in its menus for the selected entries
+/// and hands over its own progress bar and an undoable "add these files" step, so neither module references the other.
+/// </summary>
+public interface IArchiveBatchConverter
+{
+    /// <summary>Menu text with an access key ("Convert _sounds...").</summary>
+    string CommandText { get; }
+    /// <summary>The menu item's tool tip.</summary>
+    string CommandToolTip { get; }
+    /// <summary>True when entries named like <paramref name="entryName"/> are converted. Cheap; no I/O.</summary>
+    bool CanConvert(string entryName);
+    /// <summary>
+    /// Shows the module's dialog (unless <see cref="ArchiveBatchRequest.Interactive"/> is false), converts, and either
+    /// writes the results to disk or adds them to the archive through <see cref="ArchiveBatchRequest.AddFiles"/>. UI
+    /// thread. Returns a one-line summary, or null when cancelled.
+    /// </summary>
+    Task<string?> ConvertAsync(ArchiveBatchRequest request);
+}
+
+/// <summary>One archive entry for <see cref="IArchiveBatchConverter"/>.</summary>
+/// <param name="Name">The entry's name.</param>
+/// <param name="Size">Its size in bytes.</param>
+/// <param name="Read">Reads its contents (any thread).</param>
+public sealed record ArchiveBatchEntry(string Name, long Size, Func<byte[]> Read);
+
+/// <summary>What <see cref="IArchiveBatchConverter.ConvertAsync"/> converts and the archive's services.</summary>
+/// <param name="ArchiveName">The archive's file name ("maps.vpp").</param>
+/// <param name="ArchiveFolder">The folder the archive is in, or null when it was never saved.</param>
+/// <param name="Entries">The entries to convert.</param>
+public sealed record ArchiveBatchRequest(string ArchiveName, string? ArchiveFolder, IReadOnlyList<ArchiveBatchEntry> Entries)
+{
+    /// <summary>
+    /// Runs work with the archive's progress bar and Cancel: the work reports (fraction, item) and honours the token.
+    /// Returns false when cancelled. Null: the converter runs the work itself.
+    /// </summary>
+    public Func<string, Func<IProgress<(double Fraction, string Item)>, CancellationToken, Task>, Task<bool>>? RunAsync { get; init; }
+    /// <summary>
+    /// Adds files to the archive as ONE undo step with the given label; an existing entry of the same name is replaced
+    /// when the flag is true, else the file gets a free name. Returns the names used. Null when the archive takes no files.
+    /// </summary>
+    public Func<string, IReadOnlyList<(string Name, byte[] Bytes)>, bool, IReadOnlyList<string>>? AddFiles { get; init; }
+    /// <summary>False to convert without a dialog, with the module's defaults (self-tests).</summary>
+    public bool Interactive { get; init; } = true;
+    /// <summary>Module-specific options that replace the dialog's choices when not interactive, or null for the defaults.</summary>
+    public object? Options { get; init; }
+    /// <summary>
+    /// Every entry of the archive, selected or not (a converter reads a companion entry from it, or checks which names
+    /// are taken). Empty when the archive does not say.
+    /// </summary>
+    public IReadOnlyList<ArchiveBatchEntry> AllEntries { get; init; } = [];
+}
+
+/// <summary>
+/// Optional: implemented by a module class that opens archive entries from work copies (the packfile module), so another
+/// module can add files it made from such an entry (a converted sound) to the archive the entry came from, undoably.
+/// </summary>
+public interface IArchiveEntryTarget
+{
+    /// <summary>The archive's file name ("maps.vpp") when <paramref name="path"/> is a work copy of an entry of an open archive, else null. UI thread.</summary>
+    string? ArchiveOf(string path);
+    /// <summary>
+    /// Adds <paramref name="files"/> to the archive the work copy at <paramref name="path"/> came from, as one undo step
+    /// labelled <paramref name="undoLabel"/> (an existing entry of the same name is replaced when
+    /// <paramref name="replace"/>, else the file gets a free name). Returns the names used, or null (after telling the
+    /// user) when it could not. UI thread.
+    /// </summary>
+    IReadOnlyList<string>? AddFiles(string path, string undoLabel, IReadOnlyList<(string Name, byte[] Bytes)> files, bool replace);
+    /// <summary>
+    /// The entry names of the archive the work copy at <paramref name="path"/> came from (to ask before replacing one),
+    /// or null when unknown. UI thread.
+    /// </summary>
+    IReadOnlyList<string>? EntryNamesOf(string path) => null;
+}
+
+/// <summary>
 /// Optional: implemented by a module class (the <see cref="IModule"/> itself) to give other modules a
 /// read-only preview of an asset, for example the packfile module's preview pane. Callers find
 /// providers through <see cref="IShellContext.Modules"/>.

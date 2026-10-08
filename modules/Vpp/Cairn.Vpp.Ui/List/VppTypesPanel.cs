@@ -22,6 +22,7 @@ public sealed class VppTypesPanel : DockPanel
     private readonly ItemsControl _options;
     private readonly TextBlock _summary = new() { Margin = new Thickness(0, 0, 0, 6), TextWrapping = TextWrapping.Wrap };
     private readonly Button _all;
+    private VppTypeOption[] _bound = [];
 
     private VppTypesPanel(VppDocument doc)
     {
@@ -116,11 +117,14 @@ public sealed class VppTypesPanel : DockPanel
     {
         var list = _doc.List;
         // TypeOptions is one list whose option objects are replaced on every snapshot change, so the check boxes are
-        // re-bound whenever the shown objects are not the current ones (binding to stale options filters nothing).
-        if (!_options.Items.Cast<object>().SequenceEqual(list.TypeOptions, ReferenceEqualityComparer.Instance))
+        // re-bound whenever the shown objects are not the current ones (binding to stale options filters nothing). The
+        // list is changed in place without notifications, so it is compared with a copy of what was bound, not with
+        // the items control's view of that same list.
+        if (!_bound.SequenceEqual(list.TypeOptions, ReferenceEqualityComparer.Instance))
         {
             _options.ItemsSource = null;
             _options.ItemsSource = list.TypeOptions;
+            _bound = [.. list.TypeOptions];
         }
         UpdateProblems();
         bool typeFiltered = list.TypeOptions.Any(o => !o.IsCategory && o.IsChecked);

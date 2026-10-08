@@ -13,7 +13,9 @@ public abstract partial class DocumentViewModel
     private bool _errorSaveConfirmed;
 
     /// <summary>The shell's document kind (<c>rfa.clip</c> or <c>rfa.mesh</c>).</summary>
-    IDocumentKind IDocument.Kind => Kind == DocumentKind.Clip ? RfaModule.ClipKind : RfaModule.MeshKind;
+    IDocumentKind IDocument.Kind => Kind == DocumentKind.Clip ? RfaModule.ClipKind
+        : this is MeshDocumentViewModel { IsLegacy: true } m ? (m.Kind == DocumentKind.CharacterMesh ? RfaModule.LegacyCharacterSaveKind : RfaModule.LegacyStaticSaveKind)
+        : RfaModule.MeshKind;
 
     string? IDocument.TabToolTip => TabToolTip;
 
@@ -34,9 +36,19 @@ public abstract partial class DocumentViewModel
         return true;
     }
 
+    /// <summary>False when <see cref="RefuseSave"/> refuses every path (the shell then disables Save and Save As).</summary>
+    bool IDocument.CanSave => RefuseSave(null) is null;
+
+    /// <summary>
+    /// Why the document cannot be written to <paramref name="path"/> (null: any path), or null when it can. A legacy
+    /// mesh tab that could not be read has nothing to write; one that was read is never written over its own source.
+    /// </summary>
+    protected virtual string? RefuseSave(string? path) => null;
+
     /// <summary>Writes the document atomically to <paramref name="path"/> and makes that its saved state.</summary>
     public void SaveTo(string path)
     {
+        if (RefuseSave(path) is { } refusal) throw new InvalidOperationException(refusal);
         byte[] bytes = Serialize();
         SuspendFileWatch(true);
         try

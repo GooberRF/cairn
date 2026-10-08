@@ -3,18 +3,19 @@
 ## 1.0.0
 
 First release of Cairn. It combines ATX Workbench 1.1.0 and RFA Workbench 1.0.1 in one application and adds
-modules for effect meshes (`.vfx`), packfiles (`.vpp`) and tables (`.tbl`). Cairn targets Alpine Faction 1.0 to
-1.5: its checks follow Alpine Faction, and nothing is reported merely because it needs Alpine Faction. Everything the two apps did, Cairn
-does; the notes below list what is new and what works differently if you are coming from them.
+modules for effect meshes (`.vfx`), packfiles (`.vpp`), tables (`.tbl`), fonts (`.vf`), Volition bitmaps
+(`.vbm`) and sounds (`.wav`, `.ogg`, `.aif` and the PS2 `.vse` and `.vmu`). Cairn targets Alpine Faction 1.0 to 1.5: its checks follow Alpine Faction, and nothing is reported merely
+because it needs Alpine Faction. Everything the two apps did, Cairn does; the notes below list what is new and what
+works differently if you are coming from them.
 
 **Suite**
 
-- Added **tabs for every document type** (main window): animated textures, clips, meshes, effects, packfiles and
-  tables open side by side, and the menus, panes and status bar follow the tab in front.
+- Added **tabs for every document type** (main window): animated textures, clips, meshes, effects, packfiles,
+  tables, fonts, bitmaps and sounds open side by side, and the menus, panes and status bar follow the tab in front.
 - Added **one File menu for all modules** (File): **New** has one entry per document type, **Import** and
   **Export** collect every module's importers and exporters, and **Open…** accepts every supported type.
-- Changed **module menus** (menu bar): **Frames**, **Clip**, **Mesh**, **Effect**, **Packfile** and **Table**
-  appear only while a document of their type is in front.
+- Changed **module menus** (menu bar): **Frames**, **Clip**, **Mesh**, **Effect**, **Packfile**, **Table**,
+  **Font**, **Bitmap** and **Sound** appear only while a document of their type is in front.
 - Changed **settings** (Tools › Settings…): one dialog with a **General** page (theme, game folder, search
   folders) shared by every module, then one page per module. Settings live in `%APPDATA%\Cairn`; recovery copies,
   caches and the crash log in `%LOCALAPPDATA%\Cairn`.
@@ -45,13 +46,15 @@ does; the notes below list what is new and what works differently if you are com
 - Changed the **Recent list** (start page, File › Open Recent): a file opened from inside a packfile with **Open in
   Cairn** is listed as "packfile › file" and reopens from the packfile, instead of as a temporary work copy whose
   link broke once the copy was cleaned up. Such temporary paths left by earlier builds are no longer listed.
+- Changed **Save As and export dialogs** (every module): they never start in the game directory or a folder inside
+  it, not even for a file opened from there; they start in the last folder saved to outside it, or in Documents.
 
 **Animated textures (ATX)**
 
 - Changed **Frames menu** (menu bar): adding frames, sequences, locating files, reordering and **Bulk Frame
   Timing…** (**Ctrl+T**) are in the new **Frames** menu, shown with an animated texture in front.
 - Changed **Import VBM** (File › Import): **Import VBM...** (**Ctrl+Shift+I**) and **Import VBM from VPP...** moved
-  under File › Import.
+  under File › Import. Opening a `.vbm` now opens it in a bitmap tab, whose **Convert to ATX…** runs the same import.
 - Changed **new animated texture** (File › New › Animated texture…).
 - Changed **frame clipboard, find and comment commands** (Edit menu): **Cut Frames**, **Copy Frames**, **Paste
   Frames**, **Find...**, **Find and Replace...** and **Toggle Comment** appear in the Edit menu with an animated
@@ -65,6 +68,20 @@ does; the notes below list what is new and what works differently if you are com
 - Changed **library** (left pane): the clip and mesh library is the **Animations** tab of the left pane.
 - Changed **settings** (Tools › Settings…): theme, game folder and search folders are on the shared **General**
   page; library, viewport and time display options are on the **Animations and meshes** page.
+- Added **exporter and PS2 meshes** (open, packfile preview and Info column): `.v3d` and `.vcm` (the 3ds Max
+  exporter's static and character meshes) and `.rfm` and `.rfc` (Red Faction's PlayStation 2 meshes) open
+  read-only in 3D, characters with their skeleton, with a banner and **Convert…**. They are recognised by content,
+  so an exporter mesh named `.v3m` opens as one. Red Faction II's `.rfm`/`.rfc` open with the reason in Problems.
+- Added **Convert to .v3m/.v3c** (the banner, File › Export, and the packfile's **Convert meshes…** for a
+  selection): next to the source, into a folder, or into the packfile as new entries in one undo step, with a report
+  of what was approximated. Exporter meshes convert the way the game's mesh compiler did (the PS2 demo's `.v3d`
+  files convert to the same geometry and size as the `.v3m` it compiled from them); a PS2 mesh converts from its
+  same-named `.v3d`/`.vcm` when that is beside it (anywhere in its packfile). Next to the source is never the game
+  directory; Save As never writes over the file the tab was read from, and is off for a file that could not be read.
+- Added **V3C027** (mesh Problems): a mesh with no submeshes.
+- Changed **mesh reading** (every `.v3m`/`.v3c`): collision sphere and bone sections whose size field is smaller
+  than their records (written by a mod tool; the game reads the records by their layout) are read as the game reads
+  them and saved back unchanged, so such mod meshes, which would not open before, now do.
 
 **Effects (VFX)**
 
@@ -91,7 +108,9 @@ does; the notes below list what is new and what works differently if you are com
 **Packfiles (VPP)**
 
 - Added **packfile documents** (File › Open, File › New › Packfile…): open any `.vpp` at once (only its list of
-  entries is read), with a file list you can filter by name or wildcard, filter by type and sort by column.
+  entries is read), with a file list you can filter by name or wildcard, filter by type and sort by column. Type
+  the first letters of a name to select and scroll to it. An **Autoplay sounds** toggle on the main toolbar plays a
+  sound as soon as it is selected.
 - Added the **Info column** (packfile file list): one short line per file, read from its header in the background,
   such as `Regicide by --ReWiReD-- (Tuesday, August 06, 2002 at 01:30:23)` for a level, `256x256, 24-bit, RLE
   compressed` for a Targa image, `512x512, DXT1, 10 mipmaps`, `22,050 Hz, 16-bit mono, 1.2 s` or
@@ -111,10 +130,37 @@ does; the notes below list what is new and what works differently if you are com
 - Added **safe saving** (File › Save): a new file is written beside the old one, checked, then swapped in, with
   progress and cancel; the file on disk is untouched until then. Optional `.bak` copy (Settings › Packfiles).
 - Added **problems** (status bar): live checks against the game's limits (names, case-insensitive duplicates,
-  entry counts, 2 GB, packfile name length, types the game does not load); errors block saving.
+  entry counts, 2 GB, packfile name length, types the game does not load); errors block saving. A name listed twice
+  with identical contents (as in the stock `ui.vpp`) is only a note, so the stock packfile can be saved.
 - Added **Packfiles settings page** (Tools › Settings…): `.bak` copies, confirm before removing, work copy folder;
   and a **Packfiles: format and limits** help topic.
 - Added **table previews** (preview pane): a `.tbl` entry shows highlighted and foldable, with **Open in Cairn**.
+- Added **PlayStation 2 packfiles** (bar above the list; **Convert to .tga...** in the context menu of `.peg` entries
+  and the Packfile menu): a packfile from the PS2 version says so, its PS2-only types have names (**PS2 texture
+  pack**, **PS2 static mesh**, **PS2 character mesh**, **PS2 sound effect**, **PS2 music**), and the selected `.peg`
+  entries convert to `.tga` files the PC game loads, one or several at a time, each conversion one undoable change;
+  saving then writes a PC packfile. A dialog lists the selected packs' textures with a tick each, what each becomes
+  (an animation's `.atx`, the menu frames' `.atx`) and what happens to names the packfile already has, with **Treat
+  black as transparent** and **Keep the .peg entries**. Textures of one name are compared, whether in packs
+  converted together or already in the packfile from an earlier conversion: identical copies are converted once,
+  and when they differ the largest is kept (a larger one replaces the entry, an animation with its frames) and the
+  summary lists each conflict; long animation names that shorten alike get distinct frame names instead of being
+  dropped. A replaced animation's old frames stay when another `.atx` still names them (frame or alpha mask, read
+  with the animated texture parser), and the summary says which frames were removed and which kept.
+- Added **PEG texture packs** (File › Open, Recent, file associations, Open in Cairn): a `.peg` opens in a packfile
+  tab of its textures converted to 32-bit `.tga` (animations as numbered frames plus an `.atx`), with a bar saying
+  that saving writes a PC packfile (`.vpp`); the `.peg` is never written. `.peg` entries preview their textures
+  (animations play) and show their contents in the Info column and the details.
+- Added **PS2 MPEG-2 backgrounds**: the full-screen pictures PEG texture packs store as MPEG-2 (menu backgrounds,
+  legal screen, Extras pages, multiplayer previews, HUD portraits) are decoded by Cairn's own MPEG-2 intra-picture
+  decoder and convert to 24-bit `.tga` (no alpha) like the other textures, in previews, conversions and PNG
+  extracts. The main menu's 150 numbered frames (`plan-0001` to `plan-0150`) also get `interface-bg-mm.atx`, looping
+  them at 30 frames a second (the PS2 rate is not known). **Settings › Packfiles › Decode PS2 MPEG-2 backgrounds**
+  (on by default) switches decoding off; a background that cannot be decoded is listed with the reason. **Treat
+  black as transparent** (off by default; threshold 0 to 64, 25 as the PS2 game uses; optional soft edge) keys out
+  black as the PS2 can and makes the backgrounds 32-bit `.tga` with alpha, in previews, conversions and PNG extracts.
+- Added **Extract as PNG...** (Packfile menu): the selected images, and every texture of selected `.peg` entries,
+  as PNG files.
 
 **Tables (TBL)**
 
@@ -145,3 +191,106 @@ does; the notes below list what is new and what works differently if you are com
   **Ctrl+/**).
 - Added **Tables settings page** (Tools › Settings…): which problems to report, completion while typing, word wrap;
   and a **Table syntax** help topic.
+
+**Fonts (VF)**
+
+- Added **font tabs** (File › Open…, or Open in Cairn on a `.vf` in a packfile): every glyph in a zoomable grid with
+  its character, on a dark, checkered or light backdrop; the arrow keys move the selection. Reads all font
+  versions and pixel formats (4-bit monochrome, 8-bit indexed with its palette, RGBA 4444).
+- Added **sample text drawn as the game draws it** (font tab): your own text or every character, with the font's
+  spacing and kerning, zoomed 1× to 8× with sharp pixels, and the size the game measures for it.
+- Added **glyph and font inspector** (font tab, right): character, code, width, spacing, pixel offset, kerning
+  pairs, user data; version, format, height, character range, kerning pair count, the texture the game builds and
+  the palette of indexed fonts.
+- Added **font checks** (Problems panel): damaged or unsupported files, glyphs out of range, kerning pairs the game
+  never applies, fonts too big for the game's font texture ("Font too big!"), and more.
+- Added **font previews in packfiles** (preview pane): a summary, the sample text and every character; the details
+  pane lists the character range, default spacing, widest glyph and texture size.
+- **Save As** writes a font back byte for byte; a **Fonts (.vf)** help topic.
+- Added **font editing with undo** (font tab, Font menu): width, spacing, user data, height and default spacing in the
+  inspector; a pencil and eraser on the enlarged glyph; kerning pairs added, changed and removed in the inspector
+  (kept sorted as the game needs, with a warning for pairs the game never applies); add or remove characters;
+  convert the pixel format. Checks re-run after every edit, and saving a font with errors asks first.
+- Added **Replace Glyph from Image** and **Paste Glyph Image** (Font menu, Ctrl+R, Ctrl+Shift+V): a picture file or
+  the clipboard becomes the selected glyph, scaled or kept at its size, with coverage from transparency or
+  brightness and an optional threshold, previewed before it is applied.
+- Added **image sheets** (Font menu, File › Export and Import, Ctrl+Shift+E, Ctrl+Shift+I): a PNG of every glyph in a
+  grid plus a JSON file of the metrics; edit either and import it back. An unchanged sheet gives back the same font
+  bytes.
+- Fixed the font tab's zoom boxes cutting "×" in half.
+- Added a check for **kerning the game applies without a pair** (VF046, also in the glyph's kerning list): the game's
+  lookup can run into the next character's pairs, so adding a pair may move other text.
+- Fixed damaged fonts: sizes no font can have (a huge height, glyph tables claiming far more pixels than the file
+  holds) are reported instead of using gigabytes of memory; a negative glyph width is reported and read as 0; text too
+  wide to draw shows a note instead of an empty tab; a single row of glyphs taller than the texture is reported as
+  overrunning it (VF061), not as "Font too big!"; an edit that fails on a damaged font is reported, never a crash.
+- Fixed image sheets: exporting asks before replacing an existing `.json` (or `.png`); a hand-edited sidecar with
+  empty entries or impossible layout numbers is reported instead of crashing the import.
+- Fixed the **Problems** panel of fonts, bitmaps and effects showing each problem as one line of raw text instead of
+  columns, and its "No problems found" text overlapping the column headings (an empty list now shows only the text).
+
+**Volition bitmaps (VBM)**
+
+- Added **bitmap tabs** (File › Open…, or Open in Cairn on a `.vbm` in a packfile): the animation large, playing at
+  the file's frame rate, with play and pause (**Space**), frame steps (**,** and **.**), zoom, an alpha view, a
+  checkerboard toggle and a mip level picker; a strip of every frame with its number; size, pixel format, version,
+  frames, length, mip levels and file size beside it.
+- Added **bitmap editing** (Bitmap menu, frame strip): frame rate, **Replace Frame…** (**Ctrl+R**) and **Add
+  Frames…** (**Insert**) from TGA, PNG, JPG, DDS or VBM files, resized after a prompt and converted to the bitmap's
+  pixel format with its mip levels rebuilt; duplicate, remove, move and reverse frames; change the pixel format or
+  the number of mip levels. Each one undo step; Save and Save As as for every document. An unchanged bitmap saves
+  byte for byte (checked against every stock `.vbm`).
+- Added **New VBM from images** (File › New › Volition bitmap, start page): pick images in playing order, then
+  the size, pixel format (suggested from their transparency), frame rate and mip levels.
+- Added **Export Frames** (Bitmap menu, File › Export, toolbar, **Ctrl+Shift+E**): all or the selected frames as
+  TGA or PNG, named `name_00`, `name_01`… as Import VBM names them.
+- Added **Convert to ATX…** (Bitmap menu, toolbar, File › Export): the Import VBM window for the bitmap as it is in
+  the tab; the new `.atx` opens. A bitmap from a packfile offers your last import folder, not a temporary one.
+- Added **bitmap checks** (Problems panel): files cut short (the complete frames are kept), extra bytes, impossible
+  mip counts, more than the 255 frames the game plays, an animation without a frame rate, sizes that are not powers
+  of two, and more; a **Volition bitmaps** help topic and a `.vbm` file association.
+- Added **drag and drop in the frame strip**: drag the selected frames to reorder them (one undo step per drop; from
+  another bitmap's strip they are copied in), and drop TGA, PNG, JPG, DDS, BMP or VBM files to add them as frames
+  where they land.
+- Added **copy and paste of frames** (**Ctrl+C** / **Ctrl+V**, Bitmap and Edit menus, the strip's right-click menu):
+  within a bitmap or between bitmap tabs (exact bytes when the layouts match), and **paste a picture** from the
+  clipboard or copied image files as new frames. Pasting still works from Cairn's own copy when the Windows clipboard
+  is busy.
+- Added a **play mark** in the frame strip: the frame on show has an accent outline and a play mark, apart from the
+  selection.
+- Added **Resize to the frame size** for images of another size: nearest, bilinear or high-quality filter; stretch,
+  keep aspect with transparent padding, or crop the centre; with a preview of the frame in the bitmap's pixel format.
+  The choice is remembered.
+- Added **Smooth** / **Pixels** to the bitmap view bar (until chosen: pixels above 100% zoom, smooth otherwise, as in
+  the animated textures preview).
+- Added **Settings › Volition bitmaps**: the frame rate, pixel format and mipmaps New VBM starts with, and the resize
+  filter and fit (and whether to ask). BMP files can now be used for frames.
+- Fixed an unreadable bitmap staying read-only after the file was fixed and reloaded; a frame rate spin no longer
+  rebuilds the frame strip and re-checks the bitmap at every step.
+
+**Sounds**
+
+- Added **sound tabs** (File › Open…, or Open in Cairn on a sound in a packfile) for the PlayStation 2 version's
+  `.vse` sound effects and `.vmu` music and for `.wav`, `.ogg` and `.aif` files: read-only, with a waveform per
+  channel (time ruler, zoom with the mouse wheel, scrolling, play head, loop region), play and pause (**Space**),
+  stop, seamless loop (**L**) at the sound's own loop points, and volume.
+- Added **PS2 sound decoding**: PS ADPCM with all five filters, loop flags and the console's handling of
+  out-of-range frames; both `.vse` header layouts (the older one's silent padding dropped); `.vmu` stereo in 16 KB
+  blocks. Every one of about 3,300 PS2 sounds decodes. Damaged files open with what can be decoded and a
+  **Problems** list (SND codes). Ogg Vorbis files decode to exactly the length their last page records.
+- Added **sound details**: format, codec, sample rate (with the rate the console really plays), channels, bit depth,
+  duration, loop points and their source, size, every PS2 header field and what is special about the format.
+- Added **Convert…** (Sound menu, **Ctrl+Shift+E**) and **Convert sounds…** (Packfile menu and the list's right-click
+  menu, for a selection): 16-bit WAV with the loop in a `smpl` chunk, or Ogg Vorbis made with the Xiph.Org reference
+  encoder (libvorbis 1.3.7) at a quality from q-1 to q10 (default q5) with the loop as `LOOPSTART`/`LOOPLENGTH`
+  comments; into the packfile as new entries (one undo step), next to the source (never the game directory) or into a
+  folder; a report of what the conversion approximates. A conversion never takes its source's place: a format the
+  sound is in already is not offered, an output is never named like its source (`master (converted).wav`), a taken
+  name gets a free name (one sound) or is left out (a batch), and Replace, never remembered, asks first. A batch lists
+  sounds that would give one name (`x.wav` + `x.aif`) and damaged files, and goes on. Save As on a sound tab writes
+  a WAV. PS2 sounds are never written.
+- Added **PS2 sounds in packfiles**: an Info line such as `22,050 Hz mono, 1.4 s, PS ADPCM`, details (codec, pitch,
+  envelope, flags), and playback with a waveform in the preview. Every sound preview now has **Open in Cairn**.
+- Added **Settings › Sounds** (format, Ogg quality, where converted files go, loop points), a **Sounds** help topic,
+  and file associations for `.vse`, `.vmu`, `.wav`, `.ogg` and `.aif` (Select all leaves the general `.wav`,
+  `.ogg` and `.aif` unticked).

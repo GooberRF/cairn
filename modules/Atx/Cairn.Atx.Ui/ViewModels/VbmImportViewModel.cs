@@ -50,7 +50,7 @@ public sealed record VbmImportSource(string Name, string? FilePath, string? Arch
 
     /// <summary>Where the dialog says this came from.</summary>
     public string OriginText => FilePath
-        ?? (ArchivePath is null ? "an archive" : $"{Path.GetFileName(ArchivePath)} — {ArchivePath}");
+        ?? (ArchivePath is null ? "an unsaved bitmap" : $"{Path.GetFileName(ArchivePath)} — {ArchivePath}");
 
     /// <summary>The .vbm's own folder, or null when it has none because it lives in an archive.</summary>
     public string? OwnFolder
@@ -518,6 +518,9 @@ public sealed class VbmImportViewModel : ObservableObject, IDisposable
 
     /// <summary>Raised when the dialog should close itself.</summary>
     public event EventHandler? RequestClose;
+
+    /// <summary>Runs the import as the Import button does and completes when it has finished (no dialog needed).</summary>
+    internal Task RunImportAsync() => ImportAsync();
 
     private async Task ImportAsync()
     {

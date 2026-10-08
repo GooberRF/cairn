@@ -31,6 +31,7 @@ namespace Cairn.Rfa.Linting;
 /// V3C024  Warning   Collision sphere radius zero or negative                 -
 /// V3C025  Warning   LOD distances not increasing                             -
 /// V3C026  Warning   File name longer than 59 characters                      file name
+/// V3C027  Warning   No submeshes (nothing to draw)                           -
 /// </code>
 /// </summary>
 public static class MeshRules
@@ -79,6 +80,8 @@ public static class MeshRules
     public const string LodDistances = "V3C025";
     /// <summary>V3C026.</summary>
     public const string FileNameTooLong = "V3C026";
+    /// <summary>V3C027.</summary>
+    public const string NoSubmeshes = "V3C027";
 
     /// <summary>Most detail levels a mesh may have (VifLodMesh holds 3).</summary>
     public const int MaxLods = 3;
@@ -121,6 +124,7 @@ public static class MeshRules
         new(SphereRadius, DiagnosticSeverity.Warning, "Collision sphere without size", RuleContext.None),
         new(LodDistances, DiagnosticSeverity.Warning, "LOD distances out of order", RuleContext.None),
         new(FileNameTooLong, DiagnosticSeverity.Warning, "File name too long", RuleContext.FileName),
+        new(NoSubmeshes, DiagnosticSeverity.Warning, "No submeshes", RuleContext.None),
     ];
 
     /// <summary>The policy of one rule, or null for an unknown code.</summary>

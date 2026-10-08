@@ -59,6 +59,31 @@ public static class SystemClipboard
         return ok;
     }
 
+    /// <summary>Puts <paramref name="data"/> on the clipboard (several formats at once; kept after the app exits).</summary>
+    /// <returns>True when it landed on the system clipboard.</returns>
+    public static bool TrySetData(IDataObject data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        return Run("clipboard write", () =>
+        {
+            Clipboard.SetDataObject(data, true);
+            return true;
+        }, out bool _);
+    }
+
+    /// <summary>
+    /// Reads the clipboard through <paramref name="read"/>, which gets the clipboard's data object (null when it is empty)
+    /// and runs inside the same retries, so a format read that fails because the clipboard is busy is tried again.
+    /// </summary>
+    /// <returns>False when the clipboard could not be read at all (<paramref name="value"/> is then the default).</returns>
+    public static bool TryRead<T>(Func<IDataObject?, T?> read, out T? value)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        bool ok = Run("clipboard read", () => read(Clipboard.GetDataObject()), out T? result);
+        value = ok ? result : default;
+        return ok;
+    }
+
     /// <summary>True when <paramref name="ex"/> is the "someone else has the clipboard open" failure.</summary>
     public static bool IsCantOpen(Exception ex) => ex is COMException { HResult: ClipboardCantOpen } || ex.HResult == ClipboardCantOpen;
 

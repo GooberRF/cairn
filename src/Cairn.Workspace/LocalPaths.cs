@@ -33,6 +33,15 @@ public static class LocalPaths
     /// <summary>REDUX's research folder (its <c>anim</c>, <c>dev</c> and <c>br</c> samples).</summary>
     public const string ReduxResearchVariable = "CAIRN_REDUX_RESEARCH";
 
+    /// <summary>A folder of PlayStation 2 game files (its <c>.vpp</c> packfiles and loose <c>.peg</c> texture packs), only ever read.</summary>
+    public const string Ps2DirectoryVariable = "CAIRN_PS2_DIR";
+
+    /// <summary>A folder of PlayStation 2 / exporter sound and mesh files (<c>.vse</c>, <c>.vmu</c>, <c>.vcm</c>, <c>.rfc</c>, <c>.rfm</c>), only ever read.</summary>
+    public const string MeshesStuffDirectoryVariable = "CAIRN_MESHES_STUFF_DIR";
+
+    /// <summary>A Red Faction II install or extract (its <c>.rfm</c> / <c>.rfc</c> are used only to test that they are refused), only ever read.</summary>
+    public const string Rf2DirectoryVariable = "CAIRN_RF2_DIR";
+
     /// <summary>The optional local file in the research folder.</summary>
     public const string FileName = "local-paths.json";
 
@@ -63,6 +72,15 @@ public static class LocalPaths
 
     /// <summary>REDUX's research folder (<c>CAIRN_REDUX_RESEARCH</c> / <c>reduxResearch</c>), or null.</summary>
     public static string? ReduxResearch { get; } = Resolve(ReduxResearchVariable, "reduxResearch");
+
+    /// <summary>A folder of PlayStation 2 game files (<c>CAIRN_PS2_DIR</c> / <c>ps2Directory</c>), or null. Tests only read it.</summary>
+    public static string? Ps2Directory { get; } = Resolve(Ps2DirectoryVariable, "ps2Directory");
+
+    /// <summary>A folder of PlayStation 2 / exporter sound and mesh files (<c>CAIRN_MESHES_STUFF_DIR</c> / <c>meshesStuffDirectory</c>), or null. Tests only read it.</summary>
+    public static string? MeshesStuffDirectory { get; } = Resolve(MeshesStuffDirectoryVariable, "meshesStuffDirectory");
+
+    /// <summary>A Red Faction II folder (<c>CAIRN_RF2_DIR</c> / <c>rf2Directory</c>), or null. Tests only read it.</summary>
+    public static string? Rf2Directory { get; } = Resolve(Rf2DirectoryVariable, "rf2Directory");
 
     /// <summary>A corpus file's full path, or null when the corpus or the file is absent.</summary>
     public static string? CorpusFile(string name)

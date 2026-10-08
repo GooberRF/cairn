@@ -41,11 +41,13 @@ public static class AudioDecoding
         if (b.Length >= 12 && b[..4].SequenceEqual("RIFF"u8) && b.Slice(8, 4).SequenceEqual("WAVE"u8)) return FromWav(bytes, name);
         if (b.Length >= 4 && b[..4].SequenceEqual("OggS"u8)) return new AudioPlayback(FromOgg(bytes, name), ".wav");
         if (b.Length >= 12 && b[..4].SequenceEqual("FORM"u8)) return new AudioPlayback(FromAiff(bytes, name), ".wav");
+        // PlayStation 2 sounds have no magic: by name, before the MP3 sniff (a header byte can look like a frame sync)
+        if (Ps2Sound.IsPs2SoundName(name)) return new AudioPlayback(SoundWriter.ToWav(Ps2Sound.Decode(bytes, name)), ".wav");
         if (b.Length >= 3 && (b[..3].SequenceEqual("ID3"u8) || (b[0] == 0xFF && (b[1] & 0xE0) == 0xE0)))
         {
             return new AudioPlayback(bytes, ".mp3");
         }
-        throw new AssetFormatException($"'{name}' does not contain WAVE, Ogg Vorbis, AIFF or MP3 audio.");
+        throw new AssetFormatException($"'{name}' does not contain WAVE, Ogg Vorbis, AIFF, MP3 or PS2 (.vse, .vmu) audio.");
     }
 
     private static byte[] ReadAll(Stream stream, string name)
@@ -104,12 +106,43 @@ public static class AudioDecoding
                 pcm.Write(shorts, 0, read * 2);
                 if (pcm.Length > MaxOutputBytes) throw new AssetFormatException($"'{name}' is too long to decode for preview.");
             }
-            return Wav16(pcm.ToArray(), channels, reader.SampleRate);
+            // NVorbis 0.10.5 sometimes leaves up to a short block of padding after the end; the last page's granule
+            // position is the exact length (as libvorbis, ffmpeg and oggdec read it)
+            long bytesOut = pcm.Length;
+            if (FinalGranule(bytes) is { } frames && frames * channels * 2 < bytesOut && bytesOut - frames * channels * 2 <= 8192L * channels * 2)
+                bytesOut = frames * channels * 2;
+            return Wav16(pcm.GetBuffer().AsSpan(0, (int)bytesOut).ToArray(), channels, reader.SampleRate);
         }
         catch (Exception ex) when (ex is not (AssetFormatException or OutOfMemoryException))
         {
             throw new AssetFormatException($"'{name}' is not a readable Ogg Vorbis stream: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// The granule position (sample frames) of the last page of a single-stream Ogg file, or null when the pages do not
+    /// read cleanly, the file holds more than one stream, or no page carries a position.
+    /// </summary>
+    public static long? FinalGranule(ReadOnlySpan<byte> ogg)
+    {
+        long? last = null;
+        uint? serial = null;
+        int at = 0;
+        while (at + 27 <= ogg.Length)
+        {
+            if (!ogg.Slice(at, 4).SequenceEqual("OggS"u8) || ogg[at + 4] != 0) return null;
+            uint pageSerial = BinaryPrimitives.ReadUInt32LittleEndian(ogg[(at + 14)..]);
+            if (serial is { } s && s != pageSerial) return null;
+            serial = pageSerial;
+            long granule = BinaryPrimitives.ReadInt64LittleEndian(ogg[(at + 6)..]);
+            int segments = ogg[at + 26];
+            if (at + 27 + segments > ogg.Length) return null;
+            int body = 0;
+            for (int i = 0; i < segments; i++) body += ogg[at + 27 + i];
+            if (granule >= 0) last = granule;
+            at += 27 + segments + body;
+        }
+        return at == ogg.Length ? last : null;
     }
 
     private static byte[] FromAiff(byte[] bytes, string name)

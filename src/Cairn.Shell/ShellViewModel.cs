@@ -43,9 +43,9 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
         NewCommand = new RelayCommand(p => { if (p is IDocumentKind k && k.CreateNew() is { } d) AddDocument(d); });
         OpenCommand = new RelayCommand(Open);
         OpenRecentCommand = new RelayCommand(p => { if (p is string item && !OpenRecent(item)) { _recent.Remove(item); SaveRecent(); } });
-        SaveCommand = new RelayCommand(() => { if (_active != null) Save(_active); }, () => _active != null);
-        SaveAsCommand = new RelayCommand(() => { if (_active != null) SaveAs(_active); }, () => _active != null);
-        SaveAllCommand = new RelayCommand(() => { foreach (var d in Documents.Where(d => d.IsDirty).ToList()) if (!Save(d)) break; }, () => Documents.Any(d => d.IsDirty));
+        SaveCommand = new RelayCommand(() => { if (_active != null) Save(_active); }, () => _active is { CanSave: true });
+        SaveAsCommand = new RelayCommand(() => { if (_active != null) SaveAs(_active); }, () => _active is { CanSave: true });
+        SaveAllCommand = new RelayCommand(() => { foreach (var d in Documents.Where(d => d.IsDirty && d.CanSave).ToList()) if (!Save(d)) break; }, () => Documents.Any(d => d.IsDirty && d.CanSave));
         CloseTabCommand = new RelayCommand(p => { if ((p as IDocument ?? _active) is { } d) Close(d); }, _ => _active != null);
         CloseAllCommand = new RelayCommand(() => CloseAll(), () => Documents.Count > 0);
         ReopenClosedCommand = new RelayCommand(ReopenClosed, () => _closed.Count > 0);
@@ -210,7 +210,7 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
 
     public bool Save(IDocument document)
     {
-        if (document.FilePath is null || document.IsReadOnly) return SaveAs(document);
+        if (document.FilePath is null || document.IsReadOnly || !document.CanSave) return SaveAs(document);
         return document.ChooseSaveAsInstead() switch
         {
             null => false,
@@ -222,8 +222,14 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
     public bool SaveAs(IDocument document)
     {
         document.CommitPendingEdits();
+        if (!document.CanSave)
+        {
+            ShowStatus($"{document.DisplayName} cannot be saved: Problems says why.");
+            return false;
+        }
         var ext = document.Kind.Extensions.FirstOrDefault() ?? string.Empty;
-        var folder = document.FilePath is { } p ? Path.GetDirectoryName(p) : Settings.LastSaveFolder;
+        // Never the game directory, not even for a read-only tab opened from it (Save As then writes a converted copy).
+        var folder = DialogService.SafeSaveFolder(document.FilePath is { } p ? Path.GetDirectoryName(p) : Settings.LastSaveFolder, Settings);
         var suggested = Path.GetFileNameWithoutExtension(document.DisplayName.TrimEnd('*', ' '));
         var path = Dialogs.SaveDocument(folder, suggested + ext, ext, document.Kind.FileFilter);
         if (path is null) return false;
@@ -234,7 +240,8 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
             return false;
         }
         if (!SaveTo(document, path)) return false;
-        Settings.LastSaveFolder = Path.GetDirectoryName(path);
+        if (!GameDirectoryLocator.IsInGameDirectory(Path.GetDirectoryName(path), Settings.GameDirectory))
+            Settings.LastSaveFolder = Path.GetDirectoryName(path);
         return true;
     }
 

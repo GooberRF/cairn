@@ -3,10 +3,11 @@ using System.Collections.Immutable;
 using System.Numerics;
 using Cairn.Formats;
 using Cairn.Rfa.Formats.V3d;
+using Xunit.Abstractions;
 
 namespace Cairn.Rfa.Tests;
 
-public class V3dFormatTests
+public class V3dFormatTests(ITestOutputHelper output)
 {
     private static FixedString Name(string text, int length) => FixedString.FromText(text, length);
 
@@ -117,6 +118,78 @@ public class V3dFormatTests
         mesh = mesh with { Sections = sections.ToImmutable(), EndSizeField = 4, TrailingBytes = [1, 2, 3, 4] };
         var read = V3dReader.Read(V3dWriter.Write(mesh), "x.v3c");
         ModelAssert.Equal(mesh, read);
+    }
+
+    [Fact]
+    public void ShortSphereAndBoneSizeFieldsAreReadAsTheGameReadsThem()
+    {
+        // A mod tool wrote 40 as a CSPH section's size and counted 44 bytes a bone; the records are the usual 44-byte
+        // sphere and 56-byte bones (the next section follows them), and the game loads such meshes.
+        var mesh = SampleCharacter();
+        var sections = mesh.Sections.ToBuilder();
+        sections[1] = ((V3dCollisionSphere)sections[1]) with { ShortSizeField = 40 };
+        sections[2] = ((V3dBoneSection)sections[2]) with { ShortSizeField = 4 + 3 * 44 };
+        mesh = mesh with { Sections = sections.ToImmutable() };
+        byte[] bytes = V3dWriter.Write(mesh);
+        int sphereAt = IndexOf(bytes, V3dSectionType.CollisionSphere), boneAt = IndexOf(bytes, V3dSectionType.Bones);
+        Assert.Equal(40, BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(sphereAt + 4)));
+        Assert.Equal(136, BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(boneAt + 4)));
+
+        var read = V3dReader.Read(bytes, "mod.v3c");
+        ModelAssert.Equal(mesh, read);
+        Assert.Equal(bytes, V3dWriter.Write(read)); // byte for byte, short fields included
+        var sphere = read.CollisionSpheres.Single();
+        Assert.Equal(("head", 0.3f, 40), (sphere.Name.Text, sphere.Radius, sphere.ShortSizeField));
+        Assert.Equal(["pelvis", "spine", "root"], read.Bones.Select(b => b.Name.Text));
+        var probe = V3dProbe.Probe(bytes, "mod.v3c");
+        Assert.Equal(["pelvis", "spine", "root"], probe.BoneNames.ToArray());
+        Assert.True(probe.StructureReadable && probe.CollisionSphereCount == 1);
+
+        // a stock-sized file is unchanged by any of this, and a sphere that is not all there is still refused
+        var stock = V3dWriter.Write(SampleCharacter());
+        Assert.Null(V3dReader.Read(stock, "stock.v3c").CollisionSpheres.Single().ShortSizeField);
+        Assert.Equal(stock, V3dWriter.Write(V3dReader.Read(stock, "stock.v3c")));
+        // fewer bones than the short field was written for: the true size is written
+        var fewer = read with { Sections = read.Sections.SetItem(2, ((V3dBoneSection)read.Sections[2]) with { Bones = [read.Bones[2]] }) };
+        var fewerBytes = V3dWriter.Write(fewer);
+        Assert.Equal(60, BinaryPrimitives.ReadInt32LittleEndian(fewerBytes.AsSpan(IndexOf(fewerBytes, V3dSectionType.Bones) + 4)));
+        var cut = bytes[..(sphereAt + 8 + 30)];
+        Assert.Contains("collision sphere", Assert.Throws<AssetFormatException>(() => V3dReader.Read(cut, "cut.v3c")).Message);
+    }
+
+    private static int IndexOf(byte[] bytes, int sectionType)
+    {
+        Span<byte> tag = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(tag, sectionType);
+        return bytes.AsSpan().IndexOf(tag);
+    }
+
+    [Fact]
+    public void RealMods_ShortSizeFieldsReadAndEveryReadableMeshRoundTrips()
+    {
+        if (LocalPaths.GameDirectory is not { } game || !Directory.Exists(game)) return;
+        int read = 0, shortFields = 0;
+        var failures = new List<string>();
+        foreach (var vpp in Directory.EnumerateFiles(game, "*.vpp", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+        {
+            Cairn.Formats.Vpp.VppArchive archive;
+            try { archive = Cairn.Formats.Vpp.VppArchive.Open(vpp); }
+            catch (Exception ex) when (ex is AssetFormatException or IOException or InvalidDataException) { continue; }
+            foreach (var e in archive.Entries.Where(e => e.Name.EndsWith(".v3m", StringComparison.OrdinalIgnoreCase) || e.Name.EndsWith(".v3c", StringComparison.OrdinalIgnoreCase)))
+            {
+                byte[] bytes = archive.ReadEntry(e);
+                V3dFile mesh;
+                try { mesh = V3dReader.Read(bytes, e.Name); }
+                catch (AssetFormatException ex) { failures.Add($"{Path.GetFileName(vpp)}/{e.Name}: {ex.Message}"); continue; }
+                read++;
+                if (mesh.CollisionSpheres.Any(s => s.ShortSizeField is not null) || mesh.Sections.OfType<V3dBoneSection>().Any(b => b.ShortSizeField is not null)) shortFields++;
+                Assert.True(bytes.AsSpan().SequenceEqual(V3dWriter.Write(mesh)), $"{vpp}/{e.Name} round-trips");
+            }
+        }
+        // Nothing is refused for a short sphere or bone size field any more (other damage still is).
+        Assert.DoesNotContain(failures, f => f.Contains("collision sphere section", StringComparison.Ordinal) || f.Contains("bone section declares", StringComparison.Ordinal));
+        output.WriteLine($"{read} meshes read and round-tripped, {shortFields} with short size fields; not readable: {failures.Count}");
+        foreach (var f in failures.Take(10)) output.WriteLine("  " + f);
     }
 
     [Fact]

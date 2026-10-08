@@ -34,10 +34,15 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
     private int _clipRequest;
     private CancellationTokenSource? _lintCts;
 
-    public MeshDocumentViewModel(RfaWorkspace shell, V3dFile mesh, string displayName, string? filePath, AssetLocation? archiveOrigin)
+    public MeshDocumentViewModel(RfaWorkspace shell, V3dFile mesh, string displayName, string? filePath, AssetLocation? archiveOrigin,
+        LegacyMeshSource? legacy = null)
         : base(shell, mesh, displayName, filePath, archiveOrigin)
     {
-        _isStatic = mesh.Kind == V3dKind.StaticMesh || displayName.EndsWith(".v3m", StringComparison.OrdinalIgnoreCase);
+        _legacy = legacy;
+        ConvertLegacyCommand = new RelayCommand(() => Shell.Legacy.ConvertDocument(this), () => _legacy?.Mesh is not null);
+        _isStatic = legacy is not null
+            ? mesh.Kind == V3dKind.StaticMesh
+            : mesh.Kind == V3dKind.StaticMesh || displayName.EndsWith(".v3m", StringComparison.OrdinalIgnoreCase);
         Structure = new MeshStructureViewModel(this);
         InspectorTabs.Add(new InspectorTab("structure", "Structure", Structure, "Submeshes, LODs, batches, materials, bones, spheres and prop points"));
         SelectedInspectorTab = InspectorTabs[0];
@@ -67,8 +72,87 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
 
     public override string Extension => _isStatic ? ".v3m" : ".v3c";
 
-    /// <summary>Static meshes open read-only (DESIGN.md section 5).</summary>
-    public override bool IsReadOnly => _isStatic;
+    /// <summary>Static meshes open read-only, and so do the formats Cairn only reads and converts.</summary>
+    public override bool IsReadOnly => _isStatic || _legacy is not null;
+
+    // ── Exporter and PS2 meshes (.v3d, .vcm, .rfm, .rfc) ─────────────────────
+
+    private LegacyMeshSource? _legacy;
+
+    /// <summary>The exporter or PS2 file this tab shows (as the mesh converting it makes), or null for a .v3m/.v3c.</summary>
+    public LegacyMeshSource? Legacy => _legacy;
+
+    /// <summary>True for a .v3d, .vcm, .rfm or .rfc tab (until it is saved as .v3m/.v3c).</summary>
+    public bool IsLegacy => _legacy is not null;
+
+    /// <summary>Opens the Convert window for this mesh.</summary>
+    public RelayCommand ConvertLegacyCommand { get; }
+
+    public override bool ShowsReadOnlyBanner => IsReadOnly && _legacy is null;
+
+    public override string? ConvertBannerText => _legacy switch
+    {
+        null => null,
+        { Mesh: null } l => $"{l.FormatTitle} could not be read: {l.Error} Problems lists the details.",
+        { } l => $"{l.FormatTitle} is read-only in Cairn. Convert to {Extension} to use it in the PC game.",
+    };
+
+    public override System.Windows.Input.ICommand? ConvertCommand => _legacy is null ? null : ConvertLegacyCommand;
+
+    /// <summary>A save writes the converted mesh: from then on the tab is that .v3m/.v3c.</summary>
+    public override void MarkSaved(string path)
+    {
+        bool wasLegacy = _legacy is not null;
+        _legacy = null;
+        base.MarkSaved(path);
+        if (wasLegacy)
+        {
+            RaiseAll(nameof(IsReadOnly), nameof(ShowsReadOnlyBanner), nameof(ConvertBannerText), nameof(ConvertCommand), nameof(IsLegacy), nameof(Legacy), nameof(TabToolTip));
+            Relint();
+            Shell.OnDocumentStatusChanged(this);
+        }
+    }
+
+    /// <summary>
+    /// A legacy file that could not be read has nothing to save (an empty mesh is not a conversion); one that was read
+    /// is saved as a new .v3m/.v3c, never over the file it was read from.
+    /// </summary>
+    protected override string? RefuseSave(string? path)
+    {
+        if (_legacy is not { } l) return null;
+        if (l.Mesh is null) return $"{DisplayName} could not be read, so there is nothing to save: {l.Error}";
+        if (path is not null && FilePath is { } source
+            && string.Equals(Path.GetFullPath(path), Path.GetFullPath(source), StringComparison.OrdinalIgnoreCase))
+            return $"Saving would replace {Path.GetFileName(source)}, the {l.FormatTitle} this tab was read from. Save the converted mesh under another name.";
+        return null;
+    }
+
+    /// <summary>A legacy tab is captured (closed-tab reopen, session) as the file it shows, so it reopens as that file.</summary>
+    public override Func<byte[]> CaptureSerializer()
+    {
+        if (_legacy is not { } l) return base.CaptureSerializer();
+        byte[] bytes = l.Bytes;
+        return () => bytes;
+    }
+
+    protected override bool MatchesSaved(byte[] bytes) =>
+        _legacy is { } legacy ? legacy.Bytes.AsSpan().SequenceEqual(bytes) : base.MatchesSaved(bytes);
+
+    /// <summary>The Problems rows of a legacy mesh: why it could not be read, or what converting it approximates.</summary>
+    private IEnumerable<Diagnostic> LegacyDiagnostics()
+    {
+        if (_legacy is not { } l) yield break;
+        if (l.Mesh is null)
+        {
+            yield return new Diagnostic(LegacyMeshSource.UnreadableCode, DiagnosticSeverity.Error, $"{DisplayName} could not be read: {l.Error}",
+                "Cairn reads the exporter meshes (.v3d, .vcm) and Red Faction's PlayStation 2 meshes (.rfm, .rfc). Red Faction II's meshes and damaged files cannot be converted, and the tab cannot be saved: there is no mesh to write.",
+                DiagnosticLocation.Document);
+            yield break;
+        }
+        foreach (string note in l.Mesh.Notes)
+            yield return new Diagnostic(LegacyMeshSource.NoteCode, DiagnosticSeverity.Info, note,
+                "Converting the mesh does this; the converted file is what the game would load.", DiagnosticLocation.Document);
+    }
 
     public override bool HasTransport => HasSkeleton;
 
@@ -113,7 +197,14 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         LoadPreviewClip(clip, play);
     }
 
-    protected override V3dFile Parse(byte[] bytes, string name) => V3dReader.Read(bytes, name);
+    protected override V3dFile Parse(byte[] bytes, string name)
+    {
+        if (_legacy is null) return V3dReader.Read(bytes, name);
+        // A legacy file changed on disk: read it again (a file that no longer reads keeps the tab as it was).
+        var (mesh, compiled) = Formats.Legacy.LegacyMeshSupport.ReadCompiled(bytes, name);
+        _legacy = _legacy with { Bytes = bytes, Mesh = mesh, Error = null };
+        return compiled;
+    }
 
     protected override byte[] Write(V3dFile snapshot) => V3dWriter.Write(snapshot);
 
@@ -430,11 +521,18 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
     {
         var mesh = Current;
         _lintCts?.Cancel();
-        SetDiagnostics(MeshLinter.Analyze(mesh, new MeshLintContext { FileName = DisplayName }));
+        var legacy = LegacyDiagnostics().ToList();
+        if (_legacy is { Mesh: null })
+        {
+            // Nothing was read: the reason is the only problem.
+            SetDiagnostics(legacy);
+            return;
+        }
+        SetDiagnostics([.. legacy, .. MeshLinter.Analyze(mesh, new MeshLintContext { FileName = LintName })]);
         var cts = new CancellationTokenSource();
         _lintCts = cts;
         var resolver = Resolver;
-        string name = DisplayName;
+        string name = LintName;
         var busy = BusyTracker.Begin("mesh lint");
         var indexed = Shell.Assets.ArchivesIndexed;
         _ = Task.Run(async () =>
@@ -449,10 +547,13 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
             {
                 busy.Dispose();
                 if (task.IsCompletedSuccessfully && !cts.IsCancellationRequested && ReferenceEquals(mesh, Current))
-                    SetDiagnostics(task.Result);
+                    SetDiagnostics([.. legacy, .. task.Result]);
             }));
         }, TaskScheduler.Default);
     }
+
+    /// <summary>The name the linter checks: a legacy mesh is checked as the .v3m/.v3c converting it makes.</summary>
+    private string LintName => _legacy is null ? DisplayName : Path.ChangeExtension(DisplayName, Extension);
 
     public override bool CanApplyQuickFix(QuickFix fix) => fix.Kind switch
     {

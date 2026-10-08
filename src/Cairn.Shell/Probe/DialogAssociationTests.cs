@@ -160,7 +160,7 @@ public static class DialogAssociationTests
         ctx.Check(settings.Pages.FirstOrDefault() is AssociationsPage { Title: AssociationsModel.PageTitle }, "the File associations page comes first, right after General");
         settings.Associations.Load();
         settings.Associations.Model.SelectAllCommand.Execute(null);
-        ctx.Check(settings.Associations.Model.Rows.All(r => r.OpenWithCairn), "Select all ticks every row");
+        ctx.Check(settings.Associations.Model.Rows.All(r => r.OpenWithCairn || AssociationsModel.IsGeneralFormat(r.Extension)), "Select all ticks every row but the general formats (.wav, .ogg)");
         settings.Associations.Model.SelectNoneCommand.Execute(null);
         ctx.Check(settings.Associations.Model.Rows.All(r => !r.OpenWithCairn), "Select none unticks every row");
         settings.Revert();

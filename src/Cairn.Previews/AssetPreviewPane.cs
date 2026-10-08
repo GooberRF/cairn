@@ -24,7 +24,7 @@ public class AssetPreviewPane : UserControl, IDisposable
     private const string EmptyMessage = "Select a file to preview it.";
 
     private static readonly HashSet<string> ImageTypes = new(StringComparer.OrdinalIgnoreCase) { ".tga", ".dds", ".png", ".jpg", ".jpeg", ".vbm" };
-    private static readonly HashSet<string> AudioTypes = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".ogg", ".aif", ".aiff", ".aifc", ".mp3" };
+    private static readonly HashSet<string> AudioTypes = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".ogg", ".aif", ".aiff", ".aifc", ".mp3", ".vse", ".vmu" };
     private static readonly HashSet<string> TextTypes = new(StringComparer.OrdinalIgnoreCase) { ".tbl", ".txt", ".log", ".ini", ".gltf", ".cfg", ".xml", ".json", ".htm", ".html" };
 
     private readonly IShellContext? _shell;
@@ -48,6 +48,12 @@ public class AssetPreviewPane : UserControl, IDisposable
 
     /// <summary>The name the background work is reported under (<see cref="BusyTracker"/>).</summary>
     public string BusyLabel { get; set; } = "asset preview";
+
+    /// <summary>
+    /// When this returns true, a sound starts playing as soon as its preview is shown (the packfile view's
+    /// autoplay toggle); null or false waits for Play.
+    /// </summary>
+    public Func<bool>? AutoPlayAudio { get; set; }
 
     /// <summary>What is shown now.</summary>
     public AssetPreviewKind Kind { get; private set; }
@@ -288,7 +294,11 @@ public class AssetPreviewPane : UserControl, IDisposable
                 ShowElement(AssetPreviewKind.Image, WithOpenInCairn(source, new ImagePreview((ImageData)prepared.Data!)));
                 return;
             case AssetPreviewKind.Audio:
-                ShowElement(AssetPreviewKind.Audio, new AudioPreview((AudioData)prepared.Data!, source.FileName));
+                // "Open in Cairn" when a module opens the type (the sounds module)
+                var audio = new AudioPreview((AudioData)prepared.Data!, source.FileName,
+                    FindKind(source.Name) is null ? null : () => _ = OpenPlainInCairnAsync(source));
+                ShowElement(AssetPreviewKind.Audio, audio);
+                if (AutoPlayAudio?.Invoke() == true) audio.Play();
                 return;
             case AssetPreviewKind.Text:
                 ShowElement(AssetPreviewKind.Text, WithOpenInCairn(source, new TextPreview((TextData)prepared.Data!)));

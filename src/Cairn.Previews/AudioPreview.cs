@@ -45,6 +45,13 @@ public sealed class AudioData : IDisposable
         TimeSpan? duration = null;
         string format = "MP3";
         if (playback.Extension == ".wav") (peaks, duration, format) = Waveform(playback.Bytes);
+        if (Ps2Sound.IsPs2SoundName(name) && playback.Extension == ".wav")
+        {
+            // say what the console's file holds, not the PCM it was decoded to
+            var info = Ps2Sound.Probe(bytes, name);
+            format = string.Format(CultureInfo.CurrentCulture, "{0:N0} Hz, {1}, PS ADPCM{2}", info.SampleRate, info.Channels == 1 ? "mono" : "stereo",
+                info.Note?.Contains("loops", StringComparison.Ordinal) == true ? ", loops" : string.Empty);
+        }
         ct.ThrowIfCancellationRequested();
 
         Directory.CreateDirectory(TempFolder);
@@ -225,7 +232,10 @@ public sealed class AudioPreview : UserControl, IDisposable
     private bool _dragging;
     private bool _updating;
 
-    public AudioPreview(AudioData data, string name)
+    /// <param name="data">The decoded sound.</param>
+    /// <param name="name">The file name (the title line).</param>
+    /// <param name="openInCairn">"Open in Cairn" (a button on the toolbar), or null when no module opens the type.</param>
+    public AudioPreview(AudioData data, string name, Action? openInCairn = null)
     {
         _data = data;
         _wave = new WaveformView(data.Peaks);
@@ -238,7 +248,13 @@ public sealed class AudioPreview : UserControl, IDisposable
         _volume = new Slider { Minimum = 0, Maximum = 1, Value = Volume, Width = 90, VerticalAlignment = VerticalAlignment.Center, ToolTip = "Volume" };
         AutomationProperties.SetName(_volume, "Volume");
         _volume.ValueChanged += (_, e) => { Volume = e.NewValue; _player.Volume = e.NewValue; };
-        var bar = PreviewUi.Toolbar(_play, stop, PreviewUi.Divider(), _time, PreviewUi.Divider(), PreviewUi.Secondary("Volume"), _volume, _status);
+        var tools = new List<UIElement> { _play, stop, PreviewUi.Divider(), _time, PreviewUi.Divider(), PreviewUi.Secondary("Volume"), _volume, _status };
+        if (openInCairn is not null)
+        {
+            OpenInCairnButton = PreviewUi.Button("Open in Cairn", "Open " + name + " in a Cairn tab", (_, _) => { Pause(); openInCairn(); });
+            tools.InsertRange(0, [OpenInCairnButton, PreviewUi.Divider()]);
+        }
+        var bar = PreviewUi.Toolbar([.. tools]);
 
         _position = new Slider { Minimum = 0, Maximum = 1, Margin = new Thickness(8, 6, 8, 2), ToolTip = "Play position", IsMoveToPointEnabled = true };
         AutomationProperties.SetName(_position, "Play position");
@@ -282,6 +298,10 @@ public sealed class AudioPreview : UserControl, IDisposable
     }
 
     public bool IsPlaying => _playing;
+    /// <summary>The "Open in Cairn" button, or null when no module opens the type.</summary>
+    public Button? OpenInCairnButton { get; }
+    /// <summary>The format line ("22,050 Hz, mono, PS ADPCM").</summary>
+    public string FormatText => _data.Format;
     /// <summary>The player's position now.</summary>
     public TimeSpan PlayerPosition => _disposed ? TimeSpan.Zero : _player.Position;
     public TimeSpan? Duration => _player.NaturalDuration.HasTimeSpan ? _player.NaturalDuration.TimeSpan : _data.Duration;

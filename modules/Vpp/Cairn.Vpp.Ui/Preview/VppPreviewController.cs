@@ -42,13 +42,22 @@ public sealed class VppPreviewController : IDisposable
         _pending = (primary, selection, package, problems);
         _debounce.Stop();
         if (immediate) Flush();
-        else _debounce.Start();
+        else
+        {
+            // pending work while the delay runs (captures and self-tests wait for it, as for the load that follows)
+            _busy ??= Cairn.Ui.Services.BusyTracker.Begin("vpp preview (waiting)");
+            _debounce.Start();
+        }
     }
+
+    private IDisposable? _busy;
 
     /// <summary>Loads the waiting selection now.</summary>
     public void Flush()
     {
         _debounce.Stop();
+        _busy?.Dispose();
+        _busy = null;
         if (_pending is not { } p || _disposed) return;
         _pending = null;
         Preview.Show(p.Primary, p.Selection, p.Package);
@@ -70,6 +79,8 @@ public sealed class VppPreviewController : IDisposable
         if (_disposed) return;
         _disposed = true;
         _debounce.Stop();
+        _busy?.Dispose();
+        _busy = null;
         _debounce.Tick -= OnDebounce;
         _pending = null;
         Preview.Dispose();

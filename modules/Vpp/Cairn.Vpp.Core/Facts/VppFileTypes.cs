@@ -65,7 +65,7 @@ public static class VppFileTypes
         new(".mp3", "MP3 audio", VppFileCategory.Audio, false, No),
         new(".v3m", "Static mesh", VppFileCategory.Mesh, true, Stock),
         new(".v3c", "Character mesh", VppFileCategory.Mesh, true, Stock),
-        new(".v3d", "Mesh (V3D)", VppFileCategory.Mesh, false, No),
+        new(".v3d", "Static mesh (exporter)", VppFileCategory.Mesh, true, No),
         new(".gltf", "glTF model", VppFileCategory.Mesh, true, No),
         new(".glb", "glTF binary model", VppFileCategory.Mesh, true, No),
         new(".rfa", "Animation clip", VppFileCategory.Animation, true, Stock),
@@ -78,6 +78,15 @@ public static class VppFileTypes
         new(".log", "Log", VppFileCategory.Text, false, No),
         new(".ini", "Settings text", VppFileCategory.Text, false, No),
         new(".vf", "Bitmap font", VppFileCategory.Font, false, Stock),
+        // The PlayStation 2 version's own types (its packfiles have the PC layout); the PC game loads none of them.
+        new(".peg", "PS2 texture pack", VppFileCategory.Image, true, No),
+        new(".rfm", "PS2 static mesh", VppFileCategory.Mesh, true, No),
+        new(".rfc", "PS2 character mesh", VppFileCategory.Mesh, true, No),
+        new(".vcm", "Character mesh (exporter)", VppFileCategory.Mesh, true, No),
+        new(".vse", "PS2 sound effect", VppFileCategory.Audio, true, No),
+        new(".vmu", "PS2 music", VppFileCategory.Audio, true, No),
+        new(".arr", "PS2 texture arrangement list", VppFileCategory.Text, false, No),
+        new(".ver", "Version text", VppFileCategory.Text, false, No),
     }.ToDictionary(t => t.Extension, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Every registered type.</summary>

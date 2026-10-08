@@ -131,6 +131,13 @@ public static class PackfileIntegrationSelfTests
         var missing = expected.Where(e => !rows.Contains(e)).ToList();
         ctx.Check(missing.Count == 0, $"File associations lists every kind's extension ({expected.Count}: {string.Join(" ", expected)}){(missing.Count > 0 ? "; missing " + string.Join(" ", missing) : "")}");
         ctx.Check(model.Rows.Any(r => r.Extension == ".vpp" && r.Group == "Packfiles"), "... including .vpp, under Packfiles");
+        ctx.Check(model.Rows.Any(r => r.Extension == ".peg" && r.Group == "Packfiles"), "... and .peg (PS2 texture packs open in the packfile view)");
+        // Each extension sits under the module whose kind opens it (.vbm under Volition bitmaps, not ATX's VBM importer).
+        var owner = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var m in shell.Modules)
+            foreach (var e in m.DocumentKinds.SelectMany(k => k.Extensions)) owner.TryAdd(e, m.DisplayName);
+        var misplaced = model.Rows.Where(r => owner.TryGetValue(r.Extension, out var g) && g != r.Group).Select(r => $"{r.Extension} under {r.Group}").ToList();
+        ctx.Check(misplaced.Count == 0, $"... each under the module that opens it{(misplaced.Count > 0 ? ": " + string.Join(", ", misplaced) : "")}");
         ctx.Check(store.Writes == 0, "... and loading the page writes nothing");
 
         var settings = new Dialogs.SettingsViewModel(shell, store);

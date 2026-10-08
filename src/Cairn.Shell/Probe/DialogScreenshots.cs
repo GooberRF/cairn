@@ -17,7 +17,9 @@ public static class DialogScreenshots
     [ScreenshotDialog("help")]
     public static Window Help(ScreenshotContext ctx)
     {
-        var window = HelpWindow.Show((ShellViewModel)ctx.Shell, HelpWindow.ShortcutsId);
+        // --help-topic <id>: that module topic instead of the shortcut table.
+        var topic = ctx.Options.TryGetValue("help-topic", out var id) && !string.IsNullOrWhiteSpace(id) ? id : HelpWindow.ShortcutsId;
+        var window = HelpWindow.Show((ShellViewModel)ctx.Shell, topic);
         window.Owner ??= ctx.MainWindow;
         return window;
     }

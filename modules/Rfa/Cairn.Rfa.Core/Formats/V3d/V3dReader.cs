@@ -25,6 +25,8 @@ public static class V3dReader
     public static V3dFile Read(byte[] data, string name)
     {
         ArgumentNullException.ThrowIfNull(data);
+        if (Legacy.ExporterMeshReader.IsExporterLayout(data))
+            throw new AssetFormatException($"'{name}' is an uncompiled exporter mesh (the .v3d/.vcm layout), not a compiled .v3m/.v3c; convert it to use it.");
         var r = new BinaryCursor(data, name);
         var header = ReadHeader(r);
 
@@ -84,21 +86,54 @@ public static class V3dReader
         return [.. r.ReadBytes(size, what)];
     }
 
+    /// <summary>
+    /// The bytes a CSPH or BONE section at the cursor occupies: its size field, or, when that is smaller than the
+    /// record (some mod tools wrote 40 for a sphere and 44 a bone), the record's own size, which is what the game
+    /// reads (it reads these records by their layout, not by the size field). Null when the bytes for that are missing.
+    /// </summary>
+    internal static int? EffectiveRecordSize(BinaryCursor r, int type, int size)
+    {
+        int needed;
+        if (type == V3dSectionType.CollisionSphere) needed = V3dCollisionSphere.Size;
+        else if (type == V3dSectionType.Bones)
+        {
+            if (r.Remaining < 4) return null;
+            int count = BitConverter.ToInt32(r.Data, r.Position);
+            if (count < 0 || 4L + (long)count * V3dBone.Size > r.Remaining) return null;
+            needed = 4 + count * V3dBone.Size;
+        }
+        else return size;
+        if (size >= needed) return size;
+        return needed <= r.Remaining ? needed : null;
+    }
+
     private static V3dCollisionSphere ReadSphere(BinaryCursor r, int size)
     {
+        int? shortSize = null;
         if (size < V3dCollisionSphere.Size)
-            throw r.Fail($"a collision sphere section is {size} bytes, smaller than the {V3dCollisionSphere.Size} it needs.");
+        {
+            if (EffectiveRecordSize(r, V3dSectionType.CollisionSphere, size) is not { } whole)
+                throw r.Fail($"a collision sphere section is {size} bytes, smaller than the {V3dCollisionSphere.Size} it needs.");
+            shortSize = size;
+            size = whole;
+        }
         r.Need(size, "collision sphere section");
         var name = r.ReadFixedString(V3dCollisionSphere.NameSize);
         int bone = r.ReadInt32();
         var pos = r.ReadVector3();
         float radius = r.ReadSingle();
         var extra = r.ReadBytes(size - V3dCollisionSphere.Size);
-        return new V3dCollisionSphere(name, bone, pos, radius, [.. extra]);
+        return new V3dCollisionSphere(name, bone, pos, radius, [.. extra]) { ShortSizeField = shortSize };
     }
 
     private static V3dBoneSection ReadBones(BinaryCursor r, int size)
     {
+        int? shortSize = null;
+        if (EffectiveRecordSize(r, V3dSectionType.Bones, size) is { } whole && whole > size)
+        {
+            shortSize = size;
+            size = whole;
+        }
         if (size < 4) throw r.Fail($"the bone section is {size} bytes, too small for its count.");
         r.Need(size, "bone section");
         int count = r.ReadInt32("bone count");
@@ -114,7 +149,7 @@ public static class V3dReader
             bones[i] = new V3dBone(name, rot, pos, parent);
         }
         var extra = r.ReadBytes(size - 4 - count * V3dBone.Size);
-        return new V3dBoneSection([.. bones], [.. extra]);
+        return new V3dBoneSection([.. bones], [.. extra]) { ShortSizeField = shortSize };
     }
 
     private static V3dSubmesh ReadSubmesh(BinaryCursor r, int sizeField, int index)

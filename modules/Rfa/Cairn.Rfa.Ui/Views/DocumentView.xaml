@@ -81,12 +81,26 @@
 
         <Border Padding="12,6" Margin="0,0,0,6" CornerRadius="4" BorderThickness="1"
                 Background="{DynamicResource Banner.InfoBackground}" BorderBrush="{DynamicResource Banner.InfoBorder}"
-                Visibility="{Binding IsReadOnly, Converter={StaticResource Truthy}}"
+                Visibility="{Binding ShowsReadOnlyBanner, Converter={StaticResource Truthy}}"
                 AutomationProperties.Name="Read-only document">
           <DockPanel>
             <TextBlock DockPanel.Dock="Left" Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"
                        Margin="0,0,10,0" Foreground="{DynamicResource Severity.Info}" />
             <TextBlock Style="{StaticResource BannerText}" Text="Static meshes (.v3m) open read-only: view them, check their structure and problems, or Save As a copy." />
+          </DockPanel>
+        </Border>
+
+        <Border x:Name="ConvertBanner" Padding="12,6" Margin="0,0,0,6" CornerRadius="4" BorderThickness="1"
+                Background="{DynamicResource Banner.InfoBackground}" BorderBrush="{DynamicResource Banner.InfoBorder}"
+                Visibility="{Binding ConvertBannerText, Converter={StaticResource Truthy}}"
+                AutomationProperties.Name="Read-only mesh format">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"
+                       Margin="0,0,10,0" Foreground="{DynamicResource Severity.Info}" />
+            <Button DockPanel.Dock="Right" Content="Convert…" Padding="10,3" Margin="12,0,0,0" Command="{Binding ConvertCommand}"
+                    ToolTip="Convert this mesh to the PC format (.v3m or .v3c): next to it, into a folder or into its packfile, with a report of what was approximated"
+                    AutomationProperties.Name="Convert to the PC format" />
+            <TextBlock Style="{StaticResource BannerText}" Text="{Binding ConvertBannerText}" />
           </DockPanel>
         </Border>
       </StackPanel>

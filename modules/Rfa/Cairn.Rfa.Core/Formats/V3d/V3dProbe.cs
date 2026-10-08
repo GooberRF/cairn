@@ -30,6 +30,12 @@ public sealed record V3dProbeResult(
 
     /// <summary>Triangles of each submesh's first (most detailed) LOD, from its batch headers, in order.</summary>
     public ImmutableArray<int> TriangleCounts { get; init; } = [];
+
+    /// <summary>
+    /// "v3d" or "vcm" when the file is an uncompiled exporter mesh (the same header as a compiled one), whatever
+    /// its name; null for a compiled .v3m/.v3c. The facts above then describe what converting it would make.
+    /// </summary>
+    public string? ExporterFormat { get; init; }
 }
 
 /// <summary>
@@ -51,6 +57,7 @@ public static class V3dProbe
     public static V3dProbeResult Probe(byte[] data, string name)
     {
         ArgumentNullException.ThrowIfNull(data);
+        if (Legacy.ExporterMeshReader.IsExporterLayout(data)) return ProbeExporter(data, name);
         var r = new BinaryCursor(data, name);
         var header = V3dReader.ReadHeader(r);
 
@@ -76,6 +83,8 @@ public static class V3dProbe
                     triangles.Add(tris);
                     continue;
                 }
+                // spheres and bones occupy their whole record even when the size field says less (as the game reads them)
+                if (V3dReader.EffectiveRecordSize(r, type, size) is { } whole) size = whole;
                 if (size < 0) throw r.Fail("a section has a negative size.");
                 int bodyStart = r.Position;
                 r.Need(size, "section");
@@ -94,6 +103,26 @@ public static class V3dProbe
             return new V3dProbeResult(header.Kind, [.. submeshes], [.. lodCounts], boneNames, boneParents, spheres, false) { TriangleCounts = [.. triangles] };
         }
         return new V3dProbeResult(header.Kind, [.. submeshes], [.. lodCounts], boneNames, boneParents, spheres, true) { TriangleCounts = [.. triangles] };
+    }
+
+    /// <summary>An exporter mesh (.v3d/.vcm layout): the facts of the mesh converting it makes.</summary>
+    private static V3dProbeResult ProbeExporter(byte[] data, string name)
+    {
+        var file = Legacy.ExporterMeshReader.Read(data, name);
+        string format = file.Kind == V3dKind.Character ? "vcm" : "v3d";
+        var d = Legacy.ExporterMeshConverter.Convert(file, name, format).Description;
+        var bones = d.Bones;
+        return new V3dProbeResult(d.Kind,
+            [.. d.Submeshes.Select(s => s.Name.Text)],
+            [.. d.Submeshes.Select(s => s.Lods.Length)],
+            [.. bones.Select(b => b.Name.Text)],
+            [.. bones.Select(b => b.ParentIndex)],
+            d.CollisionSpheres.Length,
+            true)
+        {
+            TriangleCounts = [.. d.Submeshes.Select(s => s.Lods.IsDefaultOrEmpty ? 0 : s.Lods[0].Groups.Sum(g => g.Triangles.Length))],
+            ExporterFormat = format,
+        };
     }
 
     private static (ImmutableArray<string>, ImmutableArray<int>) ReadBones(BinaryCursor r, int size)

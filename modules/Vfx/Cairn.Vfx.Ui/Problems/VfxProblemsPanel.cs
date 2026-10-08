@@ -22,7 +22,7 @@ public sealed class VfxProblemsPanel : DockPanel
     private static readonly ConditionalWeakTable<VfxDocument, VfxProblemsPanel> Panels = new();
     private readonly IShellContext _shell;
     private readonly VfxDocument _doc;
-    private readonly ListView _list = new();
+    private readonly Cairn.Ui.Controls.GridList _list = new();
     private readonly TextBlock _empty = new() { Text = "No problems found in this effect", Margin = new Thickness(12, 10, 12, 0), FontStyle = FontStyles.Italic, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
     private readonly TextBlock _counts = new() { Margin = new Thickness(6, 3, 6, 3) };
     private readonly Button _fix = new() { Content = "_Fix", Margin = new Thickness(4, 2, 4, 2), MinWidth = 60, IsEnabled = false, ToolTip = "Apply the first quick fix of the selected problem (undoable)" };
@@ -33,6 +33,12 @@ public sealed class VfxProblemsPanel : DockPanel
 
     /// <summary>Current diagnostics (for self-tests).</summary>
     public IReadOnlyList<VfxDiagnostic> Diagnostics { get; private set; } = [];
+
+    /// <summary>The list (for self-tests that check the columns render).</summary>
+    internal ListView List => _list;
+
+    /// <summary>The Fix button (for self-tests).</summary>
+    internal Button FixButton => _fix;
     public event EventHandler? Updated;
 
     private VfxProblemsPanel(IShellContext shell, VfxDocument doc)
@@ -41,12 +47,13 @@ public sealed class VfxProblemsPanel : DockPanel
         _counts.SetResourceReference(TextBlock.ForegroundProperty, "App.SecondaryText");
         AutomationProperties.SetName(_list, "Problems");
         AutomationProperties.SetName(_fix, "Fix");
-        var view = new GridView();
-        view.Columns.Add(new GridViewColumn { Header = "", Width = 28, DisplayMemberBinding = new System.Windows.Data.Binding("Icon") });
-        view.Columns.Add(new GridViewColumn { Header = "Code", Width = 70, DisplayMemberBinding = new System.Windows.Data.Binding("Code") });
-        view.Columns.Add(new GridViewColumn { Header = "Message", Width = 520, DisplayMemberBinding = new System.Windows.Data.Binding("Message") });
-        view.Columns.Add(new GridViewColumn { Header = "Location", Width = 220, DisplayMemberBinding = new System.Windows.Data.Binding("Location") });
-        _list.View = view;
+        // the themed push button shows "_Fix" as Fix with an access key (as the other code-built buttons do)
+        _fix.SetResourceReference(StyleProperty, "PushButton");
+        _fix.Padding = new Thickness(10, 2, 10, 2);
+        _list.Column("", 28, "Icon");
+        _list.Column("Code", 70, "Code");
+        _list.Column("Message", 520, "Message");
+        _list.Column("Location", 220, "Location");
         _list.MouseDoubleClick += (_, _) => Go();
         _list.KeyDown += (_, e) => { if (e.Key == Key.Enter) { Go(); e.Handled = true; } };
         _list.SelectionChanged += (_, _) => _fix.IsEnabled = Selected?.Diagnostic.QuickFixes.Count > 0;

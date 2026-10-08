@@ -112,6 +112,15 @@ public abstract partial class DocumentViewModel : ObservableObject, IDisposable,
     /// <summary>True when nothing may be edited (a .v3m).</summary>
     public virtual bool IsReadOnly => false;
 
+    /// <summary>True while the static mesh read-only banner shows (a .v3m; legacy meshes have their own banner).</summary>
+    public virtual bool ShowsReadOnlyBanner => IsReadOnly;
+
+    /// <summary>The convert banner's text for a mesh Cairn only reads and converts (.v3d, .vcm, .rfm, .rfc), else null.</summary>
+    public virtual string? ConvertBannerText => null;
+
+    /// <summary>The convert banner's Convert button, or null.</summary>
+    public virtual System.Windows.Input.ICommand? ConvertCommand => null;
+
     /// <summary>The tab caption: name, a star when dirty.</summary>
     public string TabHeader => DisplayName + (IsDirty ? " *" : string.Empty);
 

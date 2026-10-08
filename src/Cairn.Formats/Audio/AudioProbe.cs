@@ -257,6 +257,8 @@ public static class AudioProbe
                 if (body + 8 > b.Length) throw new AssetFormatException($"'{name}' has a truncated SSND chunk.");
                 uint offset = BinaryPrimitives.ReadUInt32BigEndian(b[body..]);
                 dataOffset = body + 8L + offset;
+                if (dataOffset > b.Length)
+                    throw new AssetFormatException($"'{name}' is damaged: its SSND chunk puts the sound data at offset {offset:N0}, past the end of the file.");
                 dataLength = Math.Max(0, Math.Min((long)size - 8 - offset, b.Length - dataOffset));
             }
             long next = body + (long)size + (size & 1);

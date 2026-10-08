@@ -56,6 +56,12 @@ public static class MeshLinter
                 "Re-export the mesh with a current exporter (or let Cairn rebuild it from glTF).", at));
         }
         int submeshes = mesh.Submeshes.Count(), spheres = mesh.CollisionSpheres.Count();
+        if (submeshes == 0)
+        {
+            results.Add(Make(MeshRules.NoSubmeshes,
+                "The mesh has no submeshes: it holds no geometry, so the game draws nothing for it.",
+                "Re-export the mesh from its source scene (or rebuild it through glTF import).", at));
+        }
         if (mesh.Header.SubmeshCount != submeshes || mesh.Header.CollisionSphereCount != spheres)
         {
             results.Add(Make(MeshRules.HeaderCounts,

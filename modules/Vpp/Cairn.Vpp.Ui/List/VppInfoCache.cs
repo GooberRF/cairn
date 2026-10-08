@@ -132,7 +132,7 @@ public sealed class VppInfoCache(Dispatcher dispatcher) : IDisposable
     private VppInfoLine Compute(VppItem item, SharedArchives archives)
     {
         Func<Stream> open = item.Source is ArchiveSource archive ? () => archives.Open(archive) : item.Source.Open;
-        return VppInfo.Summarize(item.Name, open, item.Size, Zone);
+        return VppInfo.WithOrigin(VppInfo.Summarize(item.Name, open, item.Size, Zone), item.Source);
     }
 
     /// <param name="batch">Rows and their lines.</param>

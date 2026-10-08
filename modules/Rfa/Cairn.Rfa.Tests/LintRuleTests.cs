@@ -477,4 +477,14 @@ public class LintRuleTests
         Fires(MeshRules.FileNameTooLong, LintMesh(Mesh(), new MeshLintContext { FileName = new string('m', 60) + ".v3c" }));
         Quiet(MeshRules.FileNameTooLong, LintMesh(Mesh(), new MeshLintContext { FileName = "m.v3c" }));
     }
+
+    [Fact]
+    public void V3c027NoSubmeshes()
+    {
+        // what an unreadable legacy mesh's tab would have written: a header and nothing else
+        var empty = new V3dFile { Header = new V3dHeader(V3dHeader.StaticSignature, V3dHeader.CurrentVersion, 0, 0, 0, 0, 0, 0, 0, 0) };
+        Fires(MeshRules.NoSubmeshes, LintMesh(empty));
+        Fires(MeshRules.NoSubmeshes, LintMesh(V3dReader.Read(V3dWriter.Write(empty), "empty.v3m")));
+        Quiet(MeshRules.NoSubmeshes, LintMesh(Mesh()));
+    }
 }

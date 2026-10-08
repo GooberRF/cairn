@@ -1,0 +1,28 @@
+; Exports of cairn-vorbis.dll: the libvorbis/libvorbisenc/libogg functions Cairn's Ogg Vorbis writer calls
+; (src/Cairn.Formats/Audio/OggVorbisWriter.cs). Built by build.ps1.
+LIBRARY cairn-vorbis
+EXPORTS
+    vorbis_version_string
+    vorbis_info_init
+    vorbis_info_clear
+    vorbis_encode_init_vbr
+    vorbis_comment_init
+    vorbis_comment_add_tag
+    vorbis_comment_clear
+    vorbis_analysis_init
+    vorbis_analysis_headerout
+    vorbis_analysis_buffer
+    vorbis_analysis_wrote
+    vorbis_analysis_blockout
+    vorbis_analysis
+    vorbis_bitrate_addblock
+    vorbis_bitrate_flushpacket
+    vorbis_block_init
+    vorbis_block_clear
+    vorbis_dsp_clear
+    ogg_stream_init
+    ogg_stream_clear
+    ogg_stream_packetin
+    ogg_stream_pageout
+    ogg_stream_flush
+    ogg_page_eos

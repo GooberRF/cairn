@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Markup;
 using Cairn.Tbl.Index;
 using Cairn.Tbl.Model;
 using Cairn.Tbl.Schema;
@@ -39,23 +38,9 @@ public sealed class TblUsageRow(TblReference reference) : INotifyPropertyChanged
 /// </summary>
 public sealed class TblUsagesPanel : DockPanel
 {
-    private const string ListXaml = """
-        <ListView xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
-          <ListView.View>
-            <GridView>
-              <GridViewColumn Header="Table" Width="130" DisplayMemberBinding="{Binding Table}" />
-              <GridViewColumn Header="Entry" Width="170" DisplayMemberBinding="{Binding Entry}" />
-              <GridViewColumn Header="Line" Width="56" DisplayMemberBinding="{Binding Line}" />
-              <GridViewColumn Header="Field" Width="130" DisplayMemberBinding="{Binding Field}" />
-              <GridViewColumn Header="Text" Width="420" DisplayMemberBinding="{Binding Snippet}" />
-              <GridViewColumn Header="Location" Width="140" DisplayMemberBinding="{Binding Location}" />
-            </GridView>
-          </ListView.View>
-        </ListView>
-        """;
-
     private readonly TextBlock _header = new() { Margin = new Thickness(8, 4, 8, 4), TextWrapping = TextWrapping.Wrap };
-    private readonly ListView _list;
+    // A GridList, not a plain ListView: the Fluent theme's ListView style drops a GridView's header and columns.
+    private readonly Cairn.Ui.Controls.GridList _list = new();
     private CancellationTokenSource? _cts;
 
     public TblUsagesPanel()
@@ -64,9 +49,12 @@ public sealed class TblUsagesPanel : DockPanel
         _header.SetResourceReference(TextBlock.ForegroundProperty, "App.SecondaryText");
         SetDock(_header, Dock.Top);
         Children.Add(_header);
-        _list = (ListView)XamlReader.Parse(ListXaml);
-        _list.BorderThickness = new Thickness(0);
-        _list.SetResourceReference(BackgroundProperty, "App.PaneBackground");
+        _list.Column("Table", 130, nameof(TblUsageRow.Table));
+        _list.Column("Entry", 170, nameof(TblUsageRow.Entry));
+        _list.Column("Line", 56, nameof(TblUsageRow.Line));
+        _list.Column("Field", 130, nameof(TblUsageRow.Field));
+        _list.Column("Text", 420, nameof(TblUsageRow.Snippet));
+        _list.Column("Location", 140, nameof(TblUsageRow.Location));
         VirtualizingPanel.SetIsVirtualizing(_list, true);
         AutomationProperties.SetName(_list, "Usages list");
         _list.ToolTip = "Click a usage to open its table at that line";
@@ -81,6 +69,8 @@ public sealed class TblUsagesPanel : DockPanel
 
     /// <summary>The rows shown.</summary>
     public IReadOnlyList<TblUsageRow> Rows { get; private set; } = [];
+    /// <summary>The list (self-tests check its columns).</summary>
+    internal ListView List => _list;
     /// <summary>The header line.</summary>
     public string Header => _header.Text;
     /// <summary>Completes when entries and snippets are filled in (tests).</summary>

@@ -309,7 +309,8 @@ internal static class VppPreviewSelfTests
             await SettleAsync();
             int colours = SavePng(area, path);
             ctx.Log($"  {name}: {items[0].Name} -> {area.Preview.Kind}, {area.Details.Rows.Count} detail rows, {area.Details.Warnings.Count} warnings, {colours} colours");
-            if (area.Preview.View is ImagePreview { } image && name.Contains("animated", StringComparison.Ordinal))
+            // an image a module opens (a .vbm) sits under an "Open in Cairn" bar
+            if (((area.Preview.View as ModulePreviewHost)?.Inner ?? area.Preview.View) is ImagePreview { } image && name.Contains("animated", StringComparison.Ordinal))
             {
                 int first = image.Frame;
                 var watch = Stopwatch.StartNew();

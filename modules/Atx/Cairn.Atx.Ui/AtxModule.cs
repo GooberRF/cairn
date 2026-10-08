@@ -11,8 +11,27 @@ using Cairn.Ui.Modules;
 namespace Cairn.Atx.Ui;
 
 /// <summary>The animated textures module hosted by the Cairn shell.</summary>
-public sealed class AtxModule : ModuleBase, IAssetPreviewProvider
+public sealed class AtxModule : ModuleBase, IAssetPreviewProvider, IAssetConverter
 {
+    /// <inheritdoc/>
+    public bool CanConvert(string sourceName, string targetExtension) =>
+        sourceName.EndsWith(".vbm", StringComparison.OrdinalIgnoreCase) && string.Equals(targetExtension, ".atx", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A .vbm (another module's "Convert to ATX..."): the Import VBM dialog over the given bytes. An entry of a packfile
+    /// has no folder of its own, so the dialog offers the last import folder rather than a temporary one.
+    /// </summary>
+    public System.Threading.Tasks.Task<string?> ConvertAsync(AssetConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (Workspace is not { } ws || !CanConvert(request.FileName, request.TargetExtension))
+            return System.Threading.Tasks.Task.FromResult<string?>(null);
+        var source = request.ArchivePath is { } archive ? VbmImportSource.FromArchive(archive, request.FileName)
+            : request.FilePath is { } path ? VbmImportSource.FromFile(path)
+            : new VbmImportSource(request.FileName, null, null);
+        return ws.ConvertVbmAsync(source, request.Bytes, request.Interactive, request.OutputFolder);
+    }
+
     /// <inheritdoc/>
     public bool CanPreview(string fileName) => fileName.EndsWith(".atx", StringComparison.OrdinalIgnoreCase);
 

@@ -25,13 +25,16 @@
     shell with only some modules; ModuleCatalog.cs registers whatever the CAIRN_MODULE_* defines say.
   -->
   <PropertyGroup>
-    <CairnModules Condition="'$(CairnModules)' == ''">Atx;Rfa;Vfx;Vpp;Tbl</CairnModules>
+    <CairnModules Condition="'$(CairnModules)' == ''">Atx;Rfa;Vfx;Vpp;Tbl;Vf;Vbm;Snd</CairnModules>
     <_CairnModules>;$(CairnModules);</_CairnModules>
     <DefineConstants Condition="$(_CairnModules.Contains(';Atx;'))">$(DefineConstants);CAIRN_MODULE_ATX</DefineConstants>
     <DefineConstants Condition="$(_CairnModules.Contains(';Rfa;'))">$(DefineConstants);CAIRN_MODULE_RFA</DefineConstants>
     <DefineConstants Condition="$(_CairnModules.Contains(';Vfx;'))">$(DefineConstants);CAIRN_MODULE_VFX</DefineConstants>
     <DefineConstants Condition="$(_CairnModules.Contains(';Vpp;'))">$(DefineConstants);CAIRN_MODULE_VPP</DefineConstants>
     <DefineConstants Condition="$(_CairnModules.Contains(';Tbl;'))">$(DefineConstants);CAIRN_MODULE_TBL</DefineConstants>
+    <DefineConstants Condition="$(_CairnModules.Contains(';Vf;'))">$(DefineConstants);CAIRN_MODULE_VF</DefineConstants>
+    <DefineConstants Condition="$(_CairnModules.Contains(';Vbm;'))">$(DefineConstants);CAIRN_MODULE_VBM</DefineConstants>
+    <DefineConstants Condition="$(_CairnModules.Contains(';Snd;'))">$(DefineConstants);CAIRN_MODULE_SND</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -46,6 +49,9 @@
     <ProjectReference Include="..\..\modules\Vfx\Cairn.Vfx.Ui\Cairn.Vfx.Ui.csproj" Condition="$(_CairnModules.Contains(';Vfx;'))" />
     <ProjectReference Include="..\..\modules\Vpp\Cairn.Vpp.Ui\Cairn.Vpp.Ui.csproj" Condition="$(_CairnModules.Contains(';Vpp;'))" />
     <ProjectReference Include="..\..\modules\Tbl\Cairn.Tbl.Ui\Cairn.Tbl.Ui.csproj" Condition="$(_CairnModules.Contains(';Tbl;'))" />
+    <ProjectReference Include="..\..\modules\Vf\Cairn.Vf.Ui\Cairn.Vf.Ui.csproj" Condition="$(_CairnModules.Contains(';Vf;'))" />
+    <ProjectReference Include="..\..\modules\Vbm\Cairn.Vbm.Ui\Cairn.Vbm.Ui.csproj" Condition="$(_CairnModules.Contains(';Vbm;'))" />
+    <ProjectReference Include="..\..\modules\Snd\Cairn.Snd.Ui\Cairn.Snd.Ui.csproj" Condition="$(_CairnModules.Contains(';Snd;'))" />
   </ItemGroup>
 
   <ItemGroup>

@@ -200,6 +200,7 @@ internal static class TblPanelSelfTests
         ctx.Log($"  usages: {usages.Header} weapons: {string.Join(", ", weaponRows.Select(r => r.Entry).Distinct())}");
         ctx.Check(weaponRows.Any(r => r.Entry == "12mm handgun" && r.Field.StartsWith("$Ammo Type", StringComparison.Ordinal) && r.Snippet.Contains("12mm", StringComparison.Ordinal)),
             "find usages of '12mm' lists the 12mm handgun ($Ammo Type, with its line)");
+        await CheckColumnsAsync(ctx, usages.List, "usages list", 6);
         var use = weaponRows.FirstOrDefault(r => r.Entry == "12mm handgun");
         if (use is not null)
         {
@@ -233,6 +234,7 @@ internal static class TblPanelSelfTests
         var cmp = c2.Comparison;
         ctx.Log($"  edited copy: {c2.Header}");
         ctx.Check(cmp is { Added: 1, Removed: 1, Changed: 1 }, $"edits found: {cmp?.Added} added, {cmp?.Removed} removed, {cmp?.Changed} changed");
+        await CheckColumnsAsync(ctx, c2.List, "compare list", 7);
         var field = c2.Rows.FirstOrDefault(r => r.IsField && r.Entry == "12mm handgun" && r.Field.Contains("Ammo Type", StringComparison.Ordinal));
         ctx.Check(field is { Stock: "\"12mm\"" or "12mm", Modded: "\"shotgun\"" or "shotgun" }, $"field change: {field?.Field} {field?.Stock} -> {field?.Modded}");
         if (field?.ModdedSpan is { } span)
@@ -297,6 +299,34 @@ internal static class TblPanelSelfTests
         Save(ctx, dir, "tbl-definition-dark.png");
     }
 
+    /// <summary>
+    /// Screenshot runs: <c>--tbl-usages &lt;name&gt;</c> finds the usages of the first quoted <c>"name"</c> in the active
+    /// table; <c>--tbl-compare true</c> compares it with the stock table. Each brings its bottom panel forward.
+    /// </summary>
+    [ScreenshotStep(960)]
+    public static async Task ShowResultPanels(ScreenshotContext ctx)
+    {
+        if (ctx.Shell.ActiveDocument is not TblDocument doc || ctx.Shell.Modules.OfType<TblModule>().FirstOrDefault() is not { } module) return;
+        bool usages = ctx.Options.TryGetValue("tbl-usages", out var name) && !string.IsNullOrEmpty(name);
+        bool compare = ctx.Options.TryGetValue("tbl-compare", out var c) && c == "true";
+        if (!usages && !compare) return;
+        await ReadyAsync(doc);
+        if (usages)
+        {
+            await ctx.Shell.Assets.ArchivesIndexed;
+            await module.IndexReady;
+            int at = doc.Text.Text.IndexOf("\"" + name + "\"", StringComparison.OrdinalIgnoreCase);
+            module.FindUsages(doc, at < 0 ? 0 : at + 1);
+            await module.PanelsFor(doc).Usages.Pending;
+        }
+        if (compare)
+        {
+            module.CompareWithStock(doc);
+            await module.PanelsFor(doc).Compare.Pending;
+        }
+        await ctx.SettleAsync();
+    }
+
     // ── 5. Release on close ─────────────────────────────────────────────────────────────────────────────────────
 
     private static async Task ReleaseAsync(SelfTestContext ctx, TblModule module, string temp)
@@ -359,6 +389,16 @@ internal static class TblPanelSelfTests
         while (watch.Elapsed < TimeSpan.FromSeconds(15) && BusyTracker.Describe().Any(d => d.Contains("preview", StringComparison.OrdinalIgnoreCase) || d.Contains("details", StringComparison.OrdinalIgnoreCase) || d.StartsWith("texture", StringComparison.OrdinalIgnoreCase)))
             await Task.Delay(30);
         await IdleAsync();
+    }
+
+    /// <summary>A results list really draws a header row and rows of cells (the Fluent ListView style drops both).</summary>
+    private static async Task CheckColumnsAsync(SelfTestContext ctx, System.Windows.Controls.ListView list, string what, int columns)
+    {
+        await IdleAsync(4);
+        var (headers, rows, cells) = GridListCheck.Count(list);
+        if (headers != 1 || rows == 0) ctx.Log("  " + GridListCheck.Describe(list));
+        ctx.Check(headers == 1, $"{what}: a column header row ({headers})");
+        ctx.Check(rows > 0 && cells >= rows * columns, $"{what}: rows of {columns} cells ({rows} rows, {cells} cells)");
     }
 
     private static async Task IdleAsync(int times = 2)

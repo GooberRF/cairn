@@ -86,9 +86,15 @@ public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider
     /// <summary>The shell applies options before files open: keep them and apply them to the first effect that becomes active.</summary>
     public override void ApplyDiagnosticOptions(IReadOnlyDictionary<string, string> options)
     {
-        if (Active is { } doc) { ApplyOptions(doc, options); return; }
+        if (Active is { } doc) { ApplyOptions(doc, options); ShowProblemsOption(options); return; }
         _pendingOptions = options;
         Shell.ActiveDocumentChanged += OnFirstActive;
+    }
+
+    /// <summary><c>--vfx-problems</c>: bring the bottom Problems tab forward (captures of the list).</summary>
+    private void ShowProblemsOption(IReadOnlyDictionary<string, string> options)
+    {
+        if (options.ContainsKey("vfx-problems")) Shell.ShowPanel(Problems.VfxProblemsPanel.PanelId);
     }
 
     private void OnFirstActive(object? sender, EventArgs e)
@@ -97,6 +103,7 @@ public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider
         Shell.ActiveDocumentChanged -= OnFirstActive;
         _pendingOptions = null;
         ApplyOptions(doc, options);
+        ShowProblemsOption(options);
     }
 
     internal static void ApplyOptions(VfxDocument doc, IReadOnlyDictionary<string, string> options)

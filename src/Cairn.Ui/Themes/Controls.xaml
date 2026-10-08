@@ -715,6 +715,77 @@
   <Style TargetType="TreeViewItem" BasedOn="{StaticResource PaneTreeViewItem}" />
   <Style TargetType="ListBoxItem" BasedOn="{StaticResource PaneListBoxItem}" />
 
+  <!--
+    Column lists (Cairn.Ui.Controls.GridList). The Fluent theme's implicit ListView and ListViewItem styles have no
+    GridView support: a plain ListView with a GridView loses its header row and draws each row's ToString(). GridList
+    is a ListView subclass (so the Fluent ListView style, keyed by the exact type, does not apply and the GridView
+    template does) and gives its rows and headers these styles.
+  -->
+  <Style x:Key="GridListHeader" TargetType="GridViewColumnHeader">
+    <Setter Property="Foreground" Value="{DynamicResource App.SecondaryText}" />
+    <Setter Property="Background" Value="{DynamicResource App.ChromeBackground}" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="GridViewColumnHeader">
+          <Grid>
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource App.SubtleBorder}" BorderThickness="0,0,1,1" Padding="8,4,8,4">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="False" />
+            </Border>
+            <Thumb x:Name="PART_HeaderGripper" HorizontalAlignment="Right" Width="6" Margin="0,0,-3,0" Cursor="SizeWE">
+              <Thumb.Template>
+                <ControlTemplate TargetType="Thumb"><Border Background="Transparent" /></ControlTemplate>
+              </Thumb.Template>
+            </Thumb>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Role" Value="Padding">
+              <Setter TargetName="Bd" Property="BorderThickness" Value="0,0,0,1" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="GridListItem" TargetType="ListViewItem">
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListViewItem">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" Padding="0,2,0,2" SnapsToDevicePixels="True">
+            <GridViewRowPresenter VerticalAlignment="Center" Columns="{TemplateBinding GridView.ColumnCollection}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource App.Hover}" />
+            </Trigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsSelected" Value="True" />
+                <Condition Property="Selector.IsSelectionActive" Value="False" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource App.SelectionInactive}" />
+            </MultiTrigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsSelected" Value="True" />
+                <Condition Property="Selector.IsSelectionActive" Value="True" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource App.Selection}" />
+            </MultiTrigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource App.Accent}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- A row in a read-only facts list: a muted label column and a selectable value. -->
   <Style x:Key="FactLabel" TargetType="TextBlock">
     <Setter Property="FontSize" Value="12" />

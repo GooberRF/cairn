@@ -16,7 +16,8 @@ namespace Cairn.Vpp.Ui.Documents;
 public sealed class VppDocumentView : Grid
 {
     private readonly VppDocument _doc;
-    private readonly Border _diskBar, _missingBar, _noticeBar, _workBar, _operationBar;
+    private readonly Border _diskBar, _missingBar, _ps2Bar, _noticeBar, _workBar, _operationBar;
+    private readonly TextBlock _ps2Text = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _diskText;
     private const string DiskChangedText = "The packfile was changed on disk by another program. Its entries are read from that file, so reload it before saving.";
     private readonly TextBlock _noticeText = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
@@ -48,6 +49,10 @@ public sealed class VppDocumentView : Grid
             ("Keep mine", "Hide this message (saving stays blocked until the packfile is reloaded)", () => doc.KeepMineCommand.Execute(null)));
         _missingBar = Bar(true, new TextBlock { Text = "The packfile was deleted or renamed on disk. Use File > Save As to write it somewhere.", TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center },
             ("Dismiss", "Hide this message", () => doc.DismissMissingCommand.Execute(null)));
+        // PlayStation 2 content: a packfile from the PS2 version, or a .peg texture pack opened as a packfile
+        // (PEG texture packs convert per selection: select .peg entries, then Convert to .tga... in the context menu or Packfile menu)
+        _ps2Bar = Bar(false, _ps2Text, ("Dismiss", "Hide this message", () => doc.Ps2BannerDismissed = true));
+        AutomationProperties.SetName(_ps2Bar, "PlayStation 2 banner");
         _noticeBar = Bar(false, _noticeText, ("Dismiss", "Hide this message", () => doc.Notice = null));
         _workBar = Bar(false, _workText,
             ("Update packfile", "Replace the entries with the edited work copies (one undoable change)", () => doc.Commands.UpdateFromWorkCopies()),
@@ -62,7 +67,7 @@ public sealed class VppDocumentView : Grid
         opPanel.Children.Add(_progress);
         opPanel.Children.Add(_operationText);
         _operationBar = Bar(false, opPanel);
-        foreach (var b in new[] { _diskBar, _missingBar, _noticeBar, _workBar, _operationBar }) bars.Children.Add(b);
+        foreach (var b in new[] { _diskBar, _missingBar, _ps2Bar, _noticeBar, _workBar, _operationBar }) bars.Children.Add(b);
         Children.Add(bars);
 
         var body = new Grid();
@@ -122,6 +127,10 @@ public sealed class VppDocumentView : Grid
     public TextBox FilterBox => _filter;
     /// <summary>The work-copy bar (self-tests).</summary>
     public bool IsWorkBarVisible => _workBar.Visibility == Visibility.Visible;
+    /// <summary>The PlayStation 2 banner's text when it is shown, else null (self-tests).</summary>
+    public string? Ps2BannerText => _ps2Bar.Visibility == Visibility.Visible ? _ps2Text.Text : null;
+    /// <summary>The PlayStation 2 banner's buttons (self-tests: only Dismiss, conversion is per selected .peg entry).</summary>
+    public IReadOnlyList<string> Ps2BannerButtons => [.. ((DockPanel)_ps2Bar.Child).Children.OfType<Button>().Select(b => b.Content as string ?? string.Empty)];
 
     private FrameworkElement BuildToolbar()
     {
@@ -216,7 +225,8 @@ public sealed class VppDocumentView : Grid
     private void OnDocumentChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(VppDocument.HasExternalChange) or nameof(VppDocument.IsMissingOnDisk) or nameof(VppDocument.Notice)
-            or nameof(VppDocument.WorkChanges) or nameof(VppDocument.Operation) or nameof(VppDocument.IsBusy))
+            or nameof(VppDocument.WorkChanges) or nameof(VppDocument.Operation) or nameof(VppDocument.IsBusy)
+            or nameof(VppDocument.PegSource) or nameof(VppDocument.IsPs2Packfile) or nameof(VppDocument.PegEntryCount) or nameof(VppDocument.Ps2BannerDismissed))
             UpdateBars();
     }
 
@@ -228,6 +238,8 @@ public sealed class VppDocumentView : Grid
             ? "The packfile was saved, but the saved file could not be read back. Nothing is read from it until it is reloaded."
             : DiskChangedText;
         _missingBar.Visibility = Show(_doc.IsMissingOnDisk);
+        _ps2Text.Text = _doc.PegSource is { } peg ? Cairn.Vpp.Ps2.PegConverter.BannerFor(peg) : Cairn.Vpp.Ps2.Ps2Packfiles.BannerFor(_doc.PegEntryCount);
+        _ps2Bar.Visibility = Show(!_doc.Ps2BannerDismissed && (_doc.PegSource is not null || _doc.IsPs2Packfile));
         _noticeText.Text = _doc.Notice ?? string.Empty;
         _noticeBar.Visibility = Show(_doc.Notice is not null);
         var changes = _doc.WorkChanges;

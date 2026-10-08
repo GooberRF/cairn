@@ -55,7 +55,7 @@ public partial class App : Application
         foreach (var dictionary in _modules.SelectMany(m => m.Resources)) Resources.MergedDictionaries.Add(dictionary);
 
         var window = new MainWindow();
-        var dialogs = new ShellDialogs { Owner = window, CollectErrors = diagnostic ? [] : null };
+        var dialogs = new ShellDialogs { Owner = window, CollectErrors = diagnostic ? [] : null, SaveFolderSettings = _settings };
         var recovery = diagnostic ? new RecoveryStore(Path.Combine(Path.GetTempPath(), "Cairn-diagnostics", Guid.NewGuid().ToString("N"))) : new RecoveryStore();
         _shell = new ShellViewModel(window, _settings, theme, _modules, diagnostic, dialogs, recovery);
         // Before the modules initialise (diagnostic runs included): every module reads this one host.

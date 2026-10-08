@@ -15,7 +15,13 @@ public partial class MainWindow : Window
     private readonly List<(Control Item, Func<Cairn.Ui.Documents.IDocument?, bool> Visible)> _conditional = [];
     private MenuItem _recentMenu = null!;
 
-    public MainWindow() => InitializeComponent();
+    public MainWindow()
+    {
+        InitializeComponent();
+        // remember a dragged pane size at once, not only when the window closes
+        LeftSplitter.DragCompleted += (_, _) => { if (_shell is not null) SaveLayout(); };
+        BottomSplitter.DragCompleted += (_, _) => { if (_shell is not null) SaveLayout(); };
+    }
 
     public void Attach(ShellViewModel shell)
     {
@@ -252,8 +258,24 @@ public partial class MainWindow : Window
         tabs.SelectedItem = wanted.FirstOrDefault(t => (string)t.Tag == selected) ?? wanted.FirstOrDefault();
         var show = tabs.Items.Count > 0 && _shell.Settings.Panels.GetValueOrDefault(key, true);
         pane.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-        if (side == PanelSide.Left) { LeftColumn.Width = show ? new GridLength(LeftWidth()) : new GridLength(0); LeftColumn.MinWidth = show ? 160 : 0; LeftSplitter.Visibility = pane.Visibility; }
-        else { BottomRow.Height = show ? new GridLength(BottomHeight()) : new GridLength(0); BottomRow.MinHeight = show ? 80 : 0; BottomSplitter.Visibility = pane.Visibility; }
+        // A pane that stays open keeps the size it has (the user may have dragged it this session); only a pane that
+        // opens gets the remembered size.
+        if (side == PanelSide.Left)
+        {
+            bool wasShown = LeftColumn.ActualWidth > 0 && LeftColumn.Width.Value > 0;
+            if (!show) LeftColumn.Width = new GridLength(0);
+            else if (!wasShown) LeftColumn.Width = new GridLength(LeftWidth());
+            LeftColumn.MinWidth = show ? 160 : 0;
+            LeftSplitter.Visibility = pane.Visibility;
+        }
+        else
+        {
+            bool wasShown = BottomRow.ActualHeight > 0 && BottomRow.Height.Value > 0;
+            if (!show) BottomRow.Height = new GridLength(0);
+            else if (!wasShown) BottomRow.Height = new GridLength(BottomHeight());
+            BottomRow.MinHeight = show ? 80 : 0;
+            BottomSplitter.Visibility = pane.Visibility;
+        }
     }
 
     /// <summary>Default left pane width (RFA Workbench used 300, ATX Workbench 280).</summary>
@@ -407,8 +429,12 @@ public partial class MainWindow : Window
     private void SaveLayout()
     {
         var s = _shell.Settings;
-        if (LeftPane.Visibility == Visibility.Visible) s.Layout["leftWidth"] = LeftColumn.ActualWidth;
-        if (BottomPane.Visibility == Visibility.Visible) s.Layout["bottomHeight"] = BottomRow.ActualHeight;
+        // A minimised window squeezes the panes to their minimum sizes: keep the sizes saved before that.
+        if (WindowState != WindowState.Minimized)
+        {
+            if (LeftPane.Visibility == Visibility.Visible && LeftColumn.ActualWidth > 0) s.Layout["leftWidth"] = LeftColumn.ActualWidth;
+            if (BottomPane.Visibility == Visibility.Visible && BottomRow.ActualHeight > 0) s.Layout["bottomHeight"] = BottomRow.ActualHeight;
+        }
         // RestoreBounds holds the normal rectangle while maximised, so un-maximising next run lands where it was.
         if (WindowPlacementLogic.Capture(RestoreBounds, WindowState == WindowState.Maximized) is { } placement) s.Window = placement;
     }

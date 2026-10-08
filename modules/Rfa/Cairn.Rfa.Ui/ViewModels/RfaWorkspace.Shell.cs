@@ -80,7 +80,11 @@ public sealed partial class RfaWorkspace
         return new AssetLocation(entry, entry, AssetSourceKind.GameArchive, null, archive, null);
     }
 
-    /// <summary>A recovered document: the disk copy with the recovered work as one unsaved step on top.</summary>
+    /// <summary>
+    /// A recovered document: the disk copy with the recovered work as one unsaved step on top. A legacy mesh (a closed
+    /// tab opened from a packfile entry, captured as the file it showed) reopens as that read-only tab, unchanged.
+    /// </summary>
     internal DocumentViewModel RestoreForShell(RecoverySnapshot snapshot) =>
-        CreateRestoredDocument(snapshot.Data, snapshot.DisplayName, snapshot.OriginalPath, null, wasDirty: true);
+        CreateRestoredDocument(snapshot.Data, snapshot.DisplayName, snapshot.OriginalPath, null,
+            wasDirty: !IsLegacyMesh(snapshot.Data, snapshot.DisplayName));
 }

@@ -1,5 +1,7 @@
 using System.Windows;
+using Cairn.Assets;
 using Cairn.Ui.Controls;
+using Cairn.Workspace;
 using Microsoft.Win32;
 
 namespace Cairn.Ui.Services;
@@ -98,6 +100,32 @@ public class DialogService : IDialogService
     /// </summary>
     public Func<string, IReadOnlyList<string>, int>? NonInteractiveChoice { get; set; }
 
+    /// <summary>
+    /// The settings whose game directory no save or export dialog starts in (set by the shell). Null leaves the
+    /// folder a caller gives unchanged.
+    /// </summary>
+    public AppSettings? SaveFolderSettings { get; set; }
+
+    /// <summary>
+    /// Where a save or export dialog starts: <paramref name="preferred"/> when it exists and is not the game directory
+    /// or inside it (a loose file there changes what the game loads); otherwise the last folder saved to under the
+    /// same rule; otherwise the Documents folder. With no <paramref name="settings"/>, <paramref name="preferred"/>.
+    /// </summary>
+    public static string? SafeSaveFolder(string? preferred, AppSettings? settings)
+    {
+        if (settings is null) return preferred;
+        if (Usable(preferred, settings.GameDirectory)) return preferred;
+        if (Usable(settings.LastSaveFolder, settings.GameDirectory)) return settings.LastSaveFolder;
+        return Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+        static bool Usable(string? folder, string? game)
+        {
+            if (string.IsNullOrWhiteSpace(folder) || GameDirectoryLocator.IsInGameDirectory(folder, game)) return false;
+            try { return Directory.Exists(folder); }
+            catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException) { return false; }
+        }
+    }
+
     /// <summary>True (and the prompt logged) when no window may be shown: every prompt then takes a safe answer.</summary>
     protected bool Unattended(string what)
     {
@@ -132,7 +160,7 @@ public class DialogService : IDialogService
             FileName = suggestedName,
             OverwritePrompt = true,
         };
-        ApplyFolder(dialog, initialFolder);
+        ApplyFolder(dialog, SafeSaveFolder(initialFolder, SaveFolderSettings));
         using (ModalScope.Enter()) return dialog.ShowDialog(Owner) == true ? dialog.FileName : null;
     }
 
@@ -244,7 +272,7 @@ public class DialogService : IDialogService
             FileName = suggestedName,
             OverwritePrompt = true,
         };
-        ApplyFolder(dialog, initialFolder);
+        ApplyFolder(dialog, SafeSaveFolder(initialFolder, SaveFolderSettings));
         using (ModalScope.Enter()) return dialog.ShowDialog(Owner) == true ? dialog.FileName : null;
     }
 

@@ -276,7 +276,7 @@
                        AutomationProperties.Name="Read-only">
               <TextBlock DockPanel.Dock="Left" Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"
                          Foreground="{DynamicResource Severity.Info}" />
-              <TextBlock Text="Static meshes open read-only." Style="{StaticResource HintText}" />
+              <TextBlock Text="{Binding ReadOnlyText}" Style="{StaticResource HintText}" TextWrapping="Wrap" />
             </DockPanel>
 
             <ContentControl x:Name="EditorHost" Content="{Binding Editor}" Focusable="False" IsTabStop="False"

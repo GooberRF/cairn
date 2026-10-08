@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\Rfa\Cairn.Rfa.Core\Cairn.Rfa.Core.csproj" />
     <ProjectReference Include="..\..\Vfx\Cairn.Vfx.Core\Cairn.Vfx.Core.csproj" />
     <ProjectReference Include="..\..\Atx\Cairn.Atx.Core\Cairn.Atx.Core.csproj" />
+    <ProjectReference Include="..\..\Vf\Cairn.Vf.Core\Cairn.Vf.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

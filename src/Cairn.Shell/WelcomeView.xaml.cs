@@ -62,10 +62,13 @@ public partial class WelcomeView : UserControl
         NoModules.Visibility = modules.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var all = shell.Kinds.SelectMany(k => k.Extensions).Select(Normalize).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        DropHint.Text = all.Count == 0 ? "Drop files here to open them." : $"Drop {Join(all)} files here to open them.";
+        // The full list is too long for one line and wraps mid-extension, so it goes in the tooltip; the Modules
+        // section below names every type anyway.
+        DropHint.Text = "Drop files here to open them.";
+        DropHint.ToolTip = all.Count == 0 ? null : $"Cairn opens {Join(all)} files.";
         Summary.Text = modules.Count == 0
             ? "A workbench for Red Faction files. Modules add the file types it can open and edit."
-            : $"A workbench for Red Faction files: {Join([.. modules.Select(m => m.DisplayName)])}.";
+            : $"A workbench for Red Faction files: {Join([.. modules.Select(m => m.DisplayName)], "and")}.";
     }
 
     /// <summary>Re-reads the shell's recent files; called when they change and whenever the view becomes visible.</summary>
@@ -87,6 +90,7 @@ public partial class WelcomeView : UserControl
 
     private static string Extensions(IDocumentKind kind) => string.Join(", ", kind.Extensions.Select(Normalize));
 
-    private static string Join(IReadOnlyList<string> items) =>
-        items.Count <= 1 ? string.Join("", items) : string.Join(", ", items.Take(items.Count - 1)) + " or " + items[^1];
+    /// <summary>"a, b or c" (the drop hint), or with <paramref name="conjunction"/> "and" for the module list.</summary>
+    private static string Join(IReadOnlyList<string> items, string conjunction = "or") =>
+        items.Count <= 1 ? string.Join("", items) : string.Join(", ", items.Take(items.Count - 1)) + $" {conjunction} " + items[^1];
 }

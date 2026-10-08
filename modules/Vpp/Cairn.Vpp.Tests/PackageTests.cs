@@ -439,6 +439,54 @@ public sealed class PackageTests(ITestOutputHelper output)
         return VppSaver.Save(package, temp.File(name), null, CancellationToken.None, VppSaveOptions.Default).Path!;
     }
 
+    [Fact]
+    public void Validator_IdenticalDuplicateIsHarmless_DifferentDuplicateIsAnError()
+    {
+        // Stock ui.vpp lists Icon_ClimbRegion.tga twice with the same bytes; the game loads it fine and the packfile must stay savable.
+        byte[] icon = TestData.Bytes(300, 7);
+        VppItem Item(string name, byte[] bytes) => new(name, new MemorySource(bytes), VppItemState.Added);
+        var same = new VppPackage(null, [Item("Icon_ClimbRegion.tga", icon), Item("other.tga", TestData.Bytes(10, 1)), Item("icon_climbregion.tga", (byte[])icon.Clone())]);
+        var problem = Assert.Single(VppValidator.Validate(same), p => p.Code == "VPP005");
+        Assert.Equal(VppSeverity.Info, problem.Severity);
+        Assert.Contains("identical", problem.Message);
+        Assert.False(VppValidator.HasErrors(VppValidator.Validate(same)));
+
+        byte[] changed = (byte[])icon.Clone();
+        changed[100] ^= 1;
+        var different = new VppPackage(null, [Item("Icon_ClimbRegion.tga", icon), Item("icon_climbregion.tga", changed)]);
+        Assert.Equal(VppSeverity.Error, Assert.Single(VppValidator.Validate(different), p => p.Code == "VPP005").Severity);
+        var sized = new VppPackage(null, [Item("a.tga", icon), Item("A.tga", TestData.Bytes(301, 7))]);
+        Assert.Equal(VppSeverity.Error, Assert.Single(VppValidator.Validate(sized), p => p.Code == "VPP005").Severity);
+    }
+
+    [Fact]
+    public void Validator_DuplicateCopiesAreReadOncePerSource()
+    {
+        // review: every validation (after every edit, on the UI thread) read both copies of every duplicate again
+        string path = Path.Combine(Path.GetTempPath(), $"cairn-vpp005-{Environment.ProcessId}-{Guid.NewGuid():N}.bin");
+        byte[] data = TestData.Bytes(4000, 3);
+        File.WriteAllBytes(path, [.. data, .. data]);
+        try
+        {
+            var a = new ArchiveSource(path, 0, data.Length);
+            var b = new ArchiveSource(path, data.Length, data.Length);
+            var package = new VppPackage(null, [new VppItem("x.tga", a, VppItemState.Added), new VppItem("X.tga", b, VppItemState.Added)]);
+            Assert.Equal(VppSeverity.Info, Assert.Single(VppValidator.Validate(package), p => p.Code == "VPP005").Severity);
+            Assert.True(VppValidator.IsHashCached(a) && VppValidator.IsHashCached(b));
+            // the content is not read again: with the file gone, the cached answer still stands
+            File.Delete(path);
+            Assert.Equal(VppSeverity.Info, Assert.Single(VppValidator.Validate(package), p => p.Code == "VPP005").Severity);
+            // a new source (an edit) is read afresh
+            var c = new MemorySource(TestData.Bytes(4000, 4));
+            var edited = new VppPackage(null, [new VppItem("x.tga", a, VppItemState.Added), new VppItem("X.tga", c, VppItemState.Added)]);
+            Assert.Equal(VppSeverity.Error, Assert.Single(VppValidator.Validate(edited), p => p.Code == "VPP005").Severity);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static VppPackage Raw(params (string Name, int Length)[] entries) =>
         new(null, [.. entries.Select((e, i) => new VppItem(e.Name, new MemorySource(TestData.Bytes(e.Length, i)), VppItemState.Added))]);
 

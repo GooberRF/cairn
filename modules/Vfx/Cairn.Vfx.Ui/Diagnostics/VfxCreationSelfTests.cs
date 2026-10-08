@@ -95,6 +95,46 @@ public static class VfxCreationSelfTests
         ctx.Check(VfxLinter.Lint(doc.Current).Any(d => d.Code == VfxRules.SectionName), "quick fix is undoable");
     }
 
+    [SelfTest("vfx.problems-columns")]
+    public static async Task ProblemsColumns(SelfTestContext ctx)
+    {
+        var file = VfxCreation.Template("Additive flash");
+        file = VfxEdit.AddSection(file, VfxBuilder.Dummy("Twin"));
+        file = VfxEdit.AddSection(file, VfxBuilder.Dummy("Twin2"));
+        file = VfxEdit.Update<VfxDummy>(file, VfxEdit.FindByName(file, "Twin2"), d => d with { Name = "Twin" });
+        var doc = NewDoc(ctx, file);
+        ctx.Shell.AddDocument(doc);
+        try
+        {
+            var panel = VfxProblemsPanel.For(ctx.Shell, doc);
+            ctx.Check(ctx.Shell.ShowPanel(VfxProblemsPanel.PanelId), "the Problems tab is shown");
+            for (int i = 0; i < 100 && panel.List.Items.Count == 0; i++) await Task.Delay(30);
+            await ctx.SettleAsync();
+            var (headers, rows, cells) = GridListCheck.Count(panel.List);
+            ctx.Log(GridListCheck.Describe(panel.List));
+            ctx.Check(panel.List.Items.Count > 0, $"the tab lists {panel.List.Items.Count} problems");
+            ctx.Check(headers == 1, $"the list shows a column header row ({headers})");
+            ctx.Check(rows == panel.List.Items.Count && cells >= rows * 4, $"every problem is a row of cells ({rows} rows, {cells} cells)");
+            // "_Fix" is an access key, never shown as a literal underscore
+            var texts = new List<string>();
+            void Walk(System.Windows.DependencyObject node)
+            {
+                if (node is System.Windows.Controls.TextBlock t) texts.Add(t.Text);
+                else if (node is System.Windows.Controls.AccessText a) texts.Add(a.Text.Replace("_", "", StringComparison.Ordinal));
+                for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(node); i++) Walk(System.Windows.Media.VisualTreeHelper.GetChild(node, i));
+            }
+            panel.FixButton.ApplyTemplate();
+            panel.FixButton.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            Walk(panel.FixButton);
+            ctx.Check(texts.Any(t => t == "Fix") && texts.All(t => !t.Contains('_')), $"the Fix button reads \"{string.Join("|", texts.Where(t => t.Length > 0))}\"");
+        }
+        finally
+        {
+            ctx.Shell.Close(doc);
+            await ctx.SettleAsync();
+        }
+    }
+
     [SelfTest("VFX: effects library lists the stock effects")]
     public static void Library(SelfTestContext ctx)
     {

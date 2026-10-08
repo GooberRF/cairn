@@ -7,6 +7,7 @@ using Cairn.Formats.Audio;
 using Cairn.Formats.Imaging;
 using Cairn.Formats.Rfl;
 using Cairn.Formats.Tbl;
+using Cairn.Rfa.Formats.Legacy;
 using Cairn.Rfa.Formats.Rfa;
 using Cairn.Rfa.Formats.V3d;
 using Cairn.Vfx.Formats;
@@ -54,7 +55,23 @@ public static class VppInfo
     public static VppInfoLine Summarize(VppItem item, TimeZoneInfo? zone = null)
     {
         ArgumentNullException.ThrowIfNull(item);
-        return Summarize(item.Name, item.Source.Open, item.Size, zone);
+        return WithOrigin(Summarize(item.Name, item.Source.Open, item.Size, zone), item.Source);
+    }
+
+    /// <summary>
+    /// For entries a PEG conversion made, <paramref name="line"/> with where the data came from: an image's size, then
+    /// the PS2 format ("64x64, from PS2 8-bit indexed, 32-bit palette, 3 mips (level 0 kept)"; every converted image
+    /// is a 32-bit uncompressed .tga, so that part is left out); other lines get the note appended. The line itself
+    /// for any other entry.
+    /// </summary>
+    public static VppInfoLine WithOrigin(VppInfoLine line, VppSource source)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        if (source is not MemorySource memory || Ps2.PegConverter.NoteFor(memory.Bytes) is not { } note || line.IsUnreadable) return line;
+        int comma = line.Text.IndexOf(',', StringComparison.Ordinal);
+        string head = comma > 0 ? line.Text[..comma] : line.Text;
+        bool isSize = head.Length > 2 && head.Split('x') is [var w, var h] && w.All(char.IsAsciiDigit) && h.All(char.IsAsciiDigit) && w.Length > 0 && h.Length > 0;
+        return line with { Text = isSize ? $"{head}, {note}" : line.Text.Length == 0 ? note : $"{line.Text}; {note}" };
     }
 
     /// <summary>Summarises data under a name. Never throws.</summary>
@@ -99,7 +116,8 @@ public static class VppInfo
         ".aif" or ".aiff" or ".aifc" => Pcm(Aiff(input)),
         ".ogg" => Ogg(input),
         ".mp3" => Mp3(input),
-        ".v3m" or ".v3c" or ".v3d" => Mesh(input),
+        ".vse" or ".vmu" => Ps2Audio(input),
+        ".v3m" or ".v3c" or ".v3d" or ".vcm" or ".rfm" or ".rfc" => Mesh(input),
         ".rfa" => Clip(input),
         ".mvf" => "legacy motion file",
         ".vfx" => Effect(input),
@@ -109,8 +127,17 @@ public static class VppInfo
         ".vf" => Font(input),
         ".rfg" => Count(VppFacts.GroupCount(input.ReadHead(12), input.Name), "group"),
         ".rfl" => Level(input, zone),
+        ".peg" => TexturePack(input),
+        ".arr" or ".ver" => Count(LineCount(VppFacts.DecodeText(input.ReadAll(), out _)), "line"),
         _ => string.Empty,
     };
+
+    /// <summary>"PEG v6: 14 textures (2 animated, 3 MPEG-2 compressed)".</summary>
+    private static string TexturePack(VppFactInput input)
+    {
+        var pack = PegCodec.Read(input.ReadAll(), input.Name);
+        return $"PEG v{pack.Version.ToString(Inv)}: {pack.Summary}";
+    }
 
     /// <summary>
     /// Runs <paramref name="read"/> on the first <paramref name="headBytes"/>, then on the first 64 KB, then on the whole
@@ -234,6 +261,18 @@ public static class VppInfo
         return Compressed(info, bitrate: false);
     }
 
+    /// <summary>"22,050 Hz mono, 1.4 s, PS ADPCM" (", loops" for a looping sound).</summary>
+    private static string Ps2Audio(VppFactInput input)
+    {
+        var info = Ps2Sound.Probe(input.ReadAll(), input.Name);
+        string first = string.Join(" ", new[] { info.SampleRate is { } rate ? Hz(rate) : string.Empty, Channels(info.Channels) }.Where(p => p.Length > 0));
+        var parts = new List<string> { first };
+        if (info.Duration is { } d) parts.Add(Duration(d));
+        parts.Add(info.Codec);
+        if (info.Note?.Contains("loops", StringComparison.Ordinal) == true) parts.Add("loops");
+        return string.Join(", ", parts.Where(p => p.Length > 0));
+    }
+
     private static string Mp3(VppFactInput input) =>
         Compressed(AudioProbe.ProbeMp3(input.ReadHead(256 << 10), input.Size, input.Name), bitrate: true);
 
@@ -271,7 +310,17 @@ public static class VppInfo
 
     private static string Mesh(VppFactInput input)
     {
-        var mesh = V3dProbe.Probe(input.ReadAll(), input.Name);
+        byte[] bytes = input.ReadAll();
+        // Exporter (.v3d/.vcm) and PS2 (.rfm/.rfc) meshes, by content: what converting them would make.
+        if (LegacyMeshSupport.Identify(bytes, input.Name) is not null)
+        {
+            if (!LegacyMeshSupport.TryRead(bytes, input.Name, out var legacy, out var error))
+                throw new AssetFormatException(error?.Message ?? $"'{input.Name}' could not be read.");
+            // The Type column names the format; say it here only when the name says something else.
+            return string.Equals("." + legacy!.SourceFormat, VppNames.ExtensionOf(input.Name), StringComparison.OrdinalIgnoreCase)
+                ? LegacyMeshSupport.Summary(legacy) : LegacyMeshSupport.Describe(legacy);
+        }
+        var mesh = V3dProbe.Probe(bytes, input.Name);
         if (!mesh.StructureReadable && mesh.SubmeshCount == 0 && mesh.BoneCount == 0)
             throw new AssetFormatException($"'{input.Name}': the mesh's sections could not be read.");
         var parts = new List<string>

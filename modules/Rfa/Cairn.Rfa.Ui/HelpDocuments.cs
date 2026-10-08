@@ -112,6 +112,43 @@ public static class HelpDocuments
         }
     }
 
+    /// <summary>Help › Exporter and PS2 meshes: the four mesh formats Cairn reads and converts but never writes.</summary>
+    public static FlowDocument LegacyMeshes()
+    {
+        var document = NewDocument();
+        Add(document, Heading("Exporter and PS2 meshes (.v3d, .vcm, .rfm, .rfc)"));
+        Add(document, Body(
+            "Cairn reads four mesh formats the PC game does not load, shows them in 3D and converts them to .v3m or .v3c. "
+            + "It never writes them. .v3d is the 3ds Max exporter's static mesh (the source a .v3m was compiled from) and "
+            + ".vcm its character mesh, with skeleton, collision spheres, prop points and weights; .rfm and .rfc are the "
+            + "PlayStation 2 version's static and character meshes. A file is recognised by its contents, so an exporter "
+            + "mesh named .v3m still opens as one."));
+        Add(document, Heading2("The tab"));
+        Add(document, Body(
+            "The tab shows the mesh converting the file makes, read-only, with a banner and a Convert… button. A character "
+            + "mesh shows its skeleton and plays preview clips like a .v3c. Problems lists, as information (LEG100), what "
+            + "converting approximates; a file that cannot be read (a Red Faction II mesh, a damaged file) opens with the "
+            + "reason (LEG001), and Save and Save As are off."));
+        Add(document, Heading2("Converting"));
+        Add(document, Body(
+            "Convert… on the banner, or File › Export › Convert to .v3m/.v3c…, writes the converted mesh next to the source, "
+            + "into a folder, or into the packfile the mesh came from as a new entry (one undo step in the packfile's tab). "
+            + "Next to the source is off when that is the game directory. A taken name gets a free one unless Replace is "
+            + "ticked. Save As on the tab writes the converted mesh too, never over the file the tab was read from. In a "
+            + "packfile, select meshes and use Convert meshes… (right-click, or the Packfile menu) to convert them all as "
+            + "one undo step, with a report."));
+        Add(document, Heading2("What the conversion does"));
+        Add(document, Body(
+            "Exporter meshes convert the way the game's mesh compiler did: one smooth normal per position, each triangle's "
+            + "UVs moved by whole tiles into 0..1, corners whose UVs differ by less than 0.03 joined, materials naming the "
+            + "same texture drawn as one batch, LOD submeshes folded into the submesh that names them, bone names in lower "
+            + "case, a character's weights kept byte for byte. PS2 meshes lost their submesh names and welded vertices, and "
+            + "their weights are 1/16 steps; when the same-named .v3d or .vcm is beside a .rfm or .rfc (the same packfile or "
+            + "folder), Cairn converts that instead and says so. Material flag 0x8 (a texture with alpha) is not set; the "
+            + "engine does not read material flags."));
+        return document;
+    }
+
     /// <summary>Help › Keyboard Shortcuts, generated from the same table that binds the keys.</summary>
     public static FlowDocument KeyboardShortcuts()
     {

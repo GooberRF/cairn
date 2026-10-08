@@ -278,16 +278,19 @@ public static class DiagnosticsRunner
     /// <summary>
     /// <c>--popup &lt;header&gt;</c>: opens the main menu's top-level item with that header (access key ignored),
     /// <c>--popup &lt;header&gt;/&lt;sub&gt;</c> one of its submenus, or <c>--popup context</c> the first visible element's
-    /// context menu, and captures the popup.
+    /// context menu (<c>--popup context:&lt;automation name&gt;</c>: that element's), and captures the popup.
     /// </summary>
     private static async Task CapturePopupAsync(ScreenshotContext ctx, string what, string png)
     {
         static string Plain(object? header) => (header as string ?? string.Empty).Replace("_", string.Empty);
         FrameworkElement? target = null;
         Action close = () => { };
-        if (what.Equals("context", StringComparison.OrdinalIgnoreCase))
+        // "context:<automation name>" picks the element of that name (e.g. "context:Packfile entries")
+        string? contextOf = what.StartsWith("context:", StringComparison.OrdinalIgnoreCase) ? what["context:".Length..] : null;
+        if (what.Equals("context", StringComparison.OrdinalIgnoreCase) || contextOf is not null)
         {
-            if (Find<FrameworkElement>(ctx.MainWindow, e => e.IsVisible && e.ContextMenu is not null) is { ContextMenu: { } menu } owner)
+            if (Find<FrameworkElement>(ctx.MainWindow, e => e.IsVisible && e.ContextMenu is not null
+                && (contextOf is null || string.Equals(System.Windows.Automation.AutomationProperties.GetName(e), contextOf, StringComparison.OrdinalIgnoreCase))) is { ContextMenu: { } menu } owner)
             {
                 menu.PlacementTarget = owner;
                 menu.IsOpen = true;

@@ -27,6 +27,7 @@ public sealed partial class VppModule : ModuleBase
     public VppModule()
     {
         Kind = new VppKind(this);
+        PegKind = new PegKind(this);
         Settings = new VppSettings(() => _store);
         SettingsPages = [new VppSettingsPage(Settings)];
     }
@@ -39,7 +40,7 @@ public sealed partial class VppModule : ModuleBase
     public VppSettings Settings { get; }
     /// <summary>The shell (public for the module's documents and self-tests).</summary>
     public IShellContext Host => Shell;
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [Kind];
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [Kind, PegKind];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     public override IReadOnlyList<ToolbarContribution> ToolbarItems => _toolbar;
     public override IReadOnlyList<ShortcutInfo> Shortcuts => _shortcuts;
@@ -60,6 +61,8 @@ public sealed partial class VppModule : ModuleBase
         BuildToolbar();
         BuildShortcuts();
         InitializeConvert(); // VppModule.Convert.cs
+        InitializePs2(); // VppModule.Ps2.cs
+        InitializeBatchConverters(); // VppModule.Batch.cs
         if (!shell.IsDiagnosticRun) Task.Run(() => VppWorkRoot.RemoveStale(Settings.WorkRoot));
     }
 
@@ -118,7 +121,30 @@ public sealed partial class VppModule : ModuleBase
         }
         _toolbar.Add(new(100, Tool("", "Add files to the packfile", AsyncCmd(d => d.Commands.AddFilesAsync())), IsPackfile));
         _toolbar.Add(new(101, Tool("", "Extract the selected entries (Ctrl+E)", AsyncCmd(d => d.Commands.ExtractSelectedToAsync(), d => d.SelectedItems.Count > 0)), IsPackfile));
+
+        // Autoplay: a selected sound starts playing at once instead of waiting for Play
+        var autoPlay = new System.Windows.Controls.Primitives.ToggleButton
+        {
+            Content = "", // Volume
+            ToolTip = "Autoplay sounds: play a sound as soon as it is selected",
+            IsChecked = Settings.AutoPlaySounds,
+            FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"),
+        };
+        autoPlay.SetResourceReference(FrameworkElement.StyleProperty, "ToolToggle");
+        AutomationProperties.SetName(autoPlay, "Autoplay sounds");
+        autoPlay.Click += (_, _) =>
+        {
+            Settings.AutoPlaySounds = autoPlay.IsChecked == true;
+            // turning it on plays the sound already selected
+            if (Settings.AutoPlaySounds && Active?.View is VppDocumentView { PreviewHost.Content: Preview.VppPreviewPane { View: Cairn.Previews.AudioPreview { IsPlaying: false } audio } }) audio.Play();
+        };
+        AutoPlayToggle = autoPlay;
+        Preview.VppPreviewPane.AutoPlaySounds = () => Settings.AutoPlaySounds;
+        _toolbar.Add(new(102, autoPlay, IsPackfile));
     }
+
+    /// <summary>The toolbar's autoplay toggle (self-tests).</summary>
+    internal System.Windows.Controls.Primitives.ToggleButton? AutoPlayToggle { get; private set; }
 
     private void BuildShortcuts()
     {
@@ -172,7 +198,7 @@ public sealed partial class VppModule : ModuleBase
     /// </summary>
     internal bool InfoColumnEnabled { get; private set; } = true;
 
-    /// <summary>Diagnostic options: <c>--vpp-filter text</c>, <c>--vpp-select name[,name]</c>, <c>--vpp-sort name|type|size|state|info</c>, <c>--vpp-columns name=W[,type=W,...]</c>, <c>--vpp-problems long-names</c>, <c>--vpp-library [filter]</c>, <c>--vpp-library-collapse heading[,heading]</c>, <c>--vpp-info off</c>.</summary>
+    /// <summary>Diagnostic options: <c>--vpp-filter text</c>, <c>--vpp-select name[,name]</c>, <c>--vpp-convert-pegs all|name[,name]</c>, <c>--vpp-mpeg2-black threshold[,soft]</c>, <c>--vpp-sort name|type|size|state|info</c>, <c>--vpp-columns name=W[,type=W,...]</c>, <c>--vpp-problems long-names</c>, <c>--vpp-library [filter]</c>, <c>--vpp-library-collapse heading[,heading]</c>, <c>--vpp-info off</c>.</summary>
     public override void ApplyDiagnosticOptions(IReadOnlyDictionary<string, string> options)
     {
         if (options.TryGetValue("vpp-info", out var infoOption) && infoOption.Equals("off", StringComparison.OrdinalIgnoreCase)) InfoColumnEnabled = false;
@@ -181,6 +207,15 @@ public sealed partial class VppModule : ModuleBase
         // --vpp-library-collapse heading[,heading]: collapse those folder headings of the Packfiles tab
         if (options.TryGetValue("vpp-library-collapse", out var collapse))
             Library.Collapse(collapse.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        // --vpp-mpeg2-black threshold[,soft]: "Treat black as transparent" on for this run (a diagnostic run's settings
+        // are never saved), before --vpp-select shows a preview
+        if (options.TryGetValue("vpp-mpeg2-black", out var black))
+        {
+            var parts = black.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Settings.Mpeg2BlackTransparent = true;
+            if (parts.Length > 0 && int.TryParse(parts[0], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var threshold)) Settings.Mpeg2BlackThreshold = threshold;
+            Settings.Mpeg2SoftEdge = parts.Contains("soft", StringComparer.OrdinalIgnoreCase);
+        }
         if (Active is not { } doc) return;
         if (options.TryGetValue("vpp-filter", out var filter) && doc.View is VppDocumentView view) view.FilterBox.Text = filter;
         if (options.TryGetValue("vpp-sort", out var sort) && Enum.TryParse<List.VppListSort>(sort, true, out var s)) doc.List.SortBy(s, false);
@@ -192,6 +227,19 @@ public sealed partial class VppModule : ModuleBase
                 if (part.Split('=', 2) is [var key, var value] && double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var width))
                     widths[key.Trim()] = width;
             columnsView.FileList.SetColumnWidths(widths);
+        }
+        // --vpp-convert-pegs all|name[,name]: "Convert to .tga..." on those .peg entries of the active packfile (every
+        // texture, black as the settings say, no dialog), selecting the --vpp-select names after it
+        if (options.TryGetValue("vpp-convert-pegs", out var pegList))
+        {
+            string? after = options.TryGetValue("vpp-select", out var afterNames) ? afterNames : null;
+            var names = pegList is "true" or "all" ? null : pegList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            doc.Commands.Fire(async () =>
+            {
+                await ConvertPegTexturesAsync(doc, AllTextures(doc, names), showSkipped: false);
+                if (after is not null) doc.SelectNames(after.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            });
+            return;
         }
         if (options.TryGetValue("vpp-select", out var select)) doc.SelectNames(select.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         if (options.TryGetValue("vpp-problems", out var problems) && problems.Equals("long-names", StringComparison.OrdinalIgnoreCase))
