@@ -864,7 +864,7 @@ public sealed partial class RfaWorkspace : ObservableObject
         if (Host is not null) return Host.SaveAs(document);
         CommitPendingEdits();
         // A document from inside a .vpp has no folder of its own: offer the last folder written to,
-        // and never the game directory (writing loose files there changes what the game loads).
+        // and never the game directory (it holds the game's own files).
         // A folder is always given: with none the Windows dialog falls back to the last folder it saw,
         // which is often the game directory the stock file came from.
         string? folder = document.Folder;

@@ -524,7 +524,7 @@ public sealed class GltfExportViewModel : ObservableObject
         if (!(full.EndsWith(".gltf", StringComparison.OrdinalIgnoreCase) || full.EndsWith(".glb", StringComparison.OrdinalIgnoreCase)))
             return "The output file must end in .gltf or .glb.";
         if (Shell.IsGameDirectory(folder))
-            return "That is the game folder: a loose file there changes what the game loads. Choose another folder.";
+            return "That is the game folder, which holds the game's own files. Choose another folder.";
         return null;
     }
 

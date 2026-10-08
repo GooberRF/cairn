@@ -221,7 +221,7 @@ public static class GameDirectoryLocator
 
     /// <summary>
     /// True when <paramref name="folder"/> is <paramref name="gameDirectory"/> or inside it (no output defaults to writing
-    /// there: a loose file in the game's folders changes what the game loads). False when either is unset.
+    /// there: the game folder holds the game's own files). False when either is unset.
     /// </summary>
     public static bool IsInGameDirectory(string? folder, string? gameDirectory)
     {

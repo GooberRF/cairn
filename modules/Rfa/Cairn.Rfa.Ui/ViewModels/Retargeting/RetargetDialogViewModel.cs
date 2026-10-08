@@ -183,7 +183,7 @@ public sealed class RetargetDialogViewModel : ObservableObject, IDisposable
 
     /// <summary>A warning when the folder is the game directory, or null.</summary>
     public string? OutputFolderProblem => _shell.IsGameDirectory(_outputFolder)
-        ? "That is the game directory: a loose file there changes what the game loads. Pick another folder."
+        ? "That is the game directory, which holds the game's own files. Pick another folder."
         : null;
 
     /// <summary>Why the result cannot be made (a missing input, a Core refusal), or null.</summary>
@@ -592,7 +592,7 @@ public sealed class RetargetDialogViewModel : ObservableObject, IDisposable
         string? path = _shell.Dialogs.SaveDocument(folder, FileName, ".rfa");
         if (path is null) return null;
         if (_shell.IsGameDirectory(Path.GetDirectoryName(path))
-            && !_shell.Dialogs.Confirm("Write into the game directory?", "A loose clip there changes what the game loads, for every level. Write it anyway?", "_Write anyway"))
+            && !_shell.Dialogs.Confirm("Write into the game directory?", "That folder holds the game's own files, and the game loads clips only from packfiles. Write it anyway?", "_Write anyway"))
             return null;
         return WriteTo(path, clip, inputs);
     }

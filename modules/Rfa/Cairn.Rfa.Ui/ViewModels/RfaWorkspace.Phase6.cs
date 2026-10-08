@@ -65,7 +65,7 @@ public sealed partial class RfaWorkspace
     /// <summary>
     /// The folder a new output (retarget result, export) is offered in: <paramref name="remembered"/> when
     /// it still exists, else the last folder saved to, else the documents folder — never the game directory
-    /// (a loose file there changes what the game loads).
+    /// (it holds the game's own files).
     /// </summary>
     public string DefaultOutputFolder(string? remembered = null)
     {

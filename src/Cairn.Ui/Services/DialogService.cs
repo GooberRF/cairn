@@ -108,7 +108,7 @@ public class DialogService : IDialogService
 
     /// <summary>
     /// Where a save or export dialog starts: <paramref name="preferred"/> when it exists and is not the game directory
-    /// or inside it (a loose file there changes what the game loads); otherwise the last folder saved to under the
+    /// or inside it (it holds the game's own files); otherwise the last folder saved to under the
     /// same rule; otherwise the Documents folder. With no <paramref name="settings"/>, <paramref name="preferred"/>.
     /// </summary>
     public static string? SafeSaveFolder(string? preferred, AppSettings? settings)

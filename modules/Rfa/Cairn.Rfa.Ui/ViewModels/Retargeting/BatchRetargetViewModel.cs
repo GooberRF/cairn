@@ -284,7 +284,7 @@ public sealed class BatchRetargetViewModel : ObservableObject, IDisposable
 
     /// <summary>Why the folder cannot be used, or null.</summary>
     public string? OutputFolderProblem => _shell.IsGameDirectory(_outputFolder)
-        ? "That is the game directory: loose clips there change what the game loads. Pick another folder."
+        ? "That is the game directory, which holds the game's own files. Pick another folder."
         : null;
 
     /// <summary>The output name pattern: {rig}, {clip}, {source}, {target}, {sourcerig}.</summary>

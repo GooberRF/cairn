@@ -8,7 +8,8 @@ Cairn replaces ATX Workbench and RFA Workbench, and imports their settings on fi
 
 ![Cairn with an animated texture, a clip and an effect open](docs/screenshot.png)
 
-See the [usage guide](docs/USAGE.md) for a walk-through of every module.
+See the [usage guide](docs/USAGE.md) for how to do things in every module, and the [reference](docs/REFERENCE.md)
+for menus, settings, problem codes and format limits.
 
 ## Formats
 
