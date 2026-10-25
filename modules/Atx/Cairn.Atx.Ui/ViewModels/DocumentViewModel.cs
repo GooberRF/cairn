@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using Cairn.Ui.Mvvm;
+using Cairn.Ui.Modules;
 using Cairn.Atx.Ui.Services;
 using Cairn.Assets;
 using Cairn.Atx.Editing;
@@ -1014,7 +1015,9 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable, C
         Frames.OnAssetsChanged();
     }
 
-    private AssetResolver BuildResolver() => _main.Shell.Assets.ResolverFor(AtxFolder);
+    // a work copy opened from a packfile finds its frames among the packfile's other entries first
+    private AssetResolver BuildResolver() =>
+        AssetSiblings.For(_main.Shell, _filePath).Layer(_main.Shell.Assets.ResolverFor(AtxFolder)) ?? _main.Shell.Assets.ResolverFor(AtxFolder);
 
     /// <summary>A token that cancels every in-flight thumbnail request for this document.</summary>
     public CancellationToken ThumbnailToken => _thumbnails.Token;

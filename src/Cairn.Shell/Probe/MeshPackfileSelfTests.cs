@@ -97,6 +97,8 @@ internal static class MeshPackfileSelfTests
                 opened.Add(mesh);
                 var tools = RfaModule.Workspace.Legacy;
                 ctx.Check(tools.PackfileOf(mesh) == "meshes.vpp" && tools.NextToFolder(mesh) == folder, $"the tab knows its packfile ({tools.PackfileOf(mesh)}, {tools.NextToFolder(mesh)})");
+                var sibling = mesh.Resolver.Resolve("readme.txt");
+                ctx.Check(sibling is { Origin: "meshes.vpp" }, $"the tab finds textures among the packfile's other entries, as its preview does ({sibling?.DisplayLocation ?? "not found"})");
                 var written = await tools.ConvertDocumentAsync(mesh, new LegacyConvertChoice(LegacyConvertTarget.IntoPackfile, null, false));
                 ctx.Check(written is { Count: 1 } && written[0] == "box (2).v3m" && doc.Current.Find("box (2).v3m") is not null, $"converted into the packfile as {(written is { Count: 1 } ? written[0] : "nothing")} (box.v3m was taken)");
                 ctx.Check(doc.UndoLabel == "Convert box.v3d to .v3m", $"one undo step in the packfile: {doc.UndoLabel}");

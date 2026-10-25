@@ -86,19 +86,32 @@ public sealed class TextureService
                 return null;
             }
             if (location is null) return null;
-            var (time, size) = location.Stamp();
-            string key = (location.FilePath ?? $"{location.ArchivePath}|{location.ResolvedName}") + "|" + time.Ticks + "|" + size;
+            string key;
+            byte[]? overlayBytes = null;
+            if (location.Origin is not null)
+            {
+                // an overlay entry (a packfile's own texture) has no file or stamp: key it by content, so two packfiles'
+                // textures of one name, or an entry replaced since, never share a decoded image
+                try { overlayBytes = location.ReadAllBytes(); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+                key = $"overlay|{location.ResolvedName}|{Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(overlayBytes))}";
+            }
+            else
+            {
+                var (time, size) = location.Stamp();
+                key = (location.FilePath ?? $"{location.ArchivePath}|{location.ResolvedName}") + "|" + time.Ticks + "|" + size;
+            }
             if (_cache.Count > MaxEntries) _cache.Clear();
-            var lazy = _cache.GetOrAdd(key, _ => new Lazy<Task<TextureImage?>>(() => Task.Run(() => Decode(location))));
+            var lazy = _cache.GetOrAdd(key, _ => new Lazy<Task<TextureImage?>>(() => Task.Run(() => Decode(location, overlayBytes))));
             return await lazy.Value.ConfigureAwait(false);
         }, cancellationToken);
     }
 
-    private static TextureImage? Decode(AssetLocation location)
+    private static TextureImage? Decode(AssetLocation location, byte[]? bytesRead = null)
     {
         try
         {
-            byte[] bytes = location.ReadAllBytes();
+            byte[] bytes = bytesRead ?? location.ReadAllBytes();
             var image = ImageDecoder.Decode(bytes, location.ResolvedName, MaxEdge);
             bool alpha = false;
             var pixels = image.Pixels;

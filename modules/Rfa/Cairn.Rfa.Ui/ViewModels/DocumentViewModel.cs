@@ -290,8 +290,9 @@ public abstract partial class DocumentViewModel : ObservableObject, IDisposable,
     /// <summary>Called by the shell when the library snapshot or the table index changes.</summary>
     public virtual void OnLibraryChanged() { }
 
-    /// <summary>The resolver for this document (its own folder first).</summary>
-    public AssetResolver Resolver => Shell.Assets.ResolverFor(Folder);
+    /// <summary>The resolver for this document (the rest of its packfile for a work copy, then its own folder).</summary>
+    public AssetResolver Resolver =>
+        AssetSiblings.For(Shell.Host, _filePath).Layer(Shell.Assets.ResolverFor(Folder)) ?? Shell.Assets.ResolverFor(Folder);
 
     /// <summary>The document's identity for the lint context (file path, or archive path|entry).</summary>
     public string? LintDocumentPath => _filePath

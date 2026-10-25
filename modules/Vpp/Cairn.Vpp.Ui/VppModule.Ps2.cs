@@ -224,8 +224,10 @@ public sealed partial class VppModule : IAssetPreviewProvider
     {
         var items = doc.SelectedItems.Where(i => PngExport.CanExport(i.Name)).ToList();
         if (items.Count == 0) { doc.ShowStatus("Select images or PEG texture packs to extract as PNG."); return; }
-        var folder = Shell.Dialogs.PickFolder(doc.Folder, items.Count == 1 ? $"Extract {items[0].Name} as PNG to" : $"Extract {items.Count:N0} images as PNG to");
-        if (folder is not null) await ExtractAsPngAsync(doc, items, folder);
+        var folder = Shell.Dialogs.PickFolder(Settings.ExtractFolderOr(doc.Folder), items.Count == 1 ? $"Extract {items[0].Name} as PNG to" : $"Extract {items.Count:N0} images as PNG to");
+        if (folder is null) return;
+        Settings.LastExtractFolder = folder;
+        await ExtractAsPngAsync(doc, items, folder);
     }
 
     /// <summary>Writes <paramref name="items"/> into <paramref name="folder"/> as PNG files (never over an existing file). Returns the paths written.</summary>

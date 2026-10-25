@@ -472,6 +472,26 @@ public static class AssetSiblings
             name => siblings.Read(name) is { } bytes ? new MemoryStream(bytes, writable: false) : null);
     }
 
+    /// <summary>
+    /// The files that came with the file at <paramref name="path"/> (the rest of its packfile for a work copy), from the
+    /// first <see cref="IAssetSiblingsProvider"/> that knows it; null otherwise, and off the UI thread.
+    /// </summary>
+    public static IAssetSiblings? For(IShellContext? shell, string? path) =>
+        shell is null || string.IsNullOrEmpty(path) || !shell.Dispatcher.CheckAccess() ? null
+            : shell.Modules.OfType<IAssetSiblingsProvider>().Select(p => p.SiblingsFor(path)).FirstOrDefault(s => s is not null);
+
+    /// <summary>
+    /// The resolver for a document at <paramref name="path"/>: its siblings (<see cref="For"/>) first, then the shell's
+    /// resolver with the document's folder searched first, so a tab opened from a packfile finds the packfile's other
+    /// entries the way its preview does.
+    /// </summary>
+    public static AssetResolver ResolverForDocument(IShellContext shell, string? path)
+    {
+        ArgumentNullException.ThrowIfNull(shell);
+        var resolver = shell.Assets.ResolverFor(path is null ? null : Path.GetDirectoryName(path));
+        return For(shell, path).Layer(resolver) ?? resolver;
+    }
+
     /// <summary>The name a lookup of <paramref name="requestedName"/> finds among <paramref name="siblings"/> (supersede rules applied), or null.</summary>
     public static string? Find(this IAssetSiblings siblings, string requestedName)
     {

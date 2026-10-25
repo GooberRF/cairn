@@ -27,6 +27,10 @@ public sealed class VppSettings(Func<ModuleSettings?> store)
     }
     /// <summary>Play a sound as soon as it is selected in the entry list (the toolbar's autoplay toggle).</summary>
     public bool AutoPlaySounds { get => store()?.Get("autoPlaySounds", false) ?? false; set => store()?.Set("autoPlaySounds", value); }
+    /// <summary>The folder entries were last extracted to (Extract to, Extract as PNG); empty until the first extraction.</summary>
+    public string LastExtractFolder { get => store()?.Get("lastExtractFolder", string.Empty) ?? string.Empty; set => store()?.Set("lastExtractFolder", value ?? string.Empty); }
+    /// <summary>The folder an extraction picker starts in: the last one used while it still exists, else <paramref name="fallback"/>.</summary>
+    public string? ExtractFolderOr(string? fallback) => LastExtractFolder is { Length: > 0 } last && Directory.Exists(last) ? last : fallback;
     /// <summary>A half-transparent band up to twice the threshold.</summary>
     public bool Mpeg2SoftEdge { get => store()?.Get("mpeg2SoftEdge", false) ?? false; set => store()?.Set("mpeg2SoftEdge", value); }
     /// <summary>The key MPEG-2 backgrounds are decoded with (previews, conversion, PNG export), or null when black stays black.</summary>

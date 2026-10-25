@@ -120,8 +120,8 @@ public abstract class DocumentBase : ObservableObject, IDocument
     public string? ArchiveOriginText { get; protected set; }
     public bool IsFromArchive => _filePath is null && ArchiveOriginText is not null;
     public string? Folder => _filePath is null ? null : Path.GetDirectoryName(_filePath);
-    /// <summary>A resolver that also searches the document's folder.</summary>
-    public AssetResolver Resolver => Shell.Assets.ResolverFor(Folder);
+    /// <summary>A resolver that also searches the document's folder (and the rest of its packfile for a work copy).</summary>
+    public AssetResolver Resolver => AssetSiblings.ResolverForDocument(Shell, _filePath);
 
     public string DisplayName
     {

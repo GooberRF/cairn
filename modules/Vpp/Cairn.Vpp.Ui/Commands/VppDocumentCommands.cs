@@ -375,8 +375,11 @@ public sealed class VppDocumentCommands(VppDocument doc)
 
     private async Task ExtractToAsync(IReadOnlyList<VppItem> items)
     {
-        var folder = Dialogs.PickFolder(doc.Folder, items.Count == 1 ? $"Extract {items[0].Name} to" : $"Extract {items.Count:N0} entries to");
-        if (folder is not null) await ExtractAsync(items, folder);
+        var settings = doc.Module.Settings;
+        var folder = Dialogs.PickFolder(settings.ExtractFolderOr(doc.Folder), items.Count == 1 ? $"Extract {items[0].Name} to" : $"Extract {items.Count:N0} entries to");
+        if (folder is null) return;
+        settings.LastExtractFolder = folder;
+        await ExtractAsync(items, folder);
     }
 
     /// <summary>"Extract here": next to the packfile.</summary>
