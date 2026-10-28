@@ -29,6 +29,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Red Faction II to Red Faction texture names (Rf2/Rf2TextureNames): the two lists of the author's REDUX
+         converter (MIT), unchanged. -->
+    <EmbeddedResource Include="Rf2\Resources\*.txt" LogicalName="Cairn.Formats.Rf2.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- GltfWriter saves through AtomicFile (write to a temporary file, then replace). -->
     <ProjectReference Include="..\Cairn.Workspace\Cairn.Workspace.csproj" />
   </ItemGroup>

@@ -62,7 +62,8 @@ public sealed partial class VppModule : IArchiveEntryTarget
             Options = options,
             RunAsync = (title, work) => doc.RunOperationAsync(title, op =>
                 work(new Progress<(double Fraction, string Item)>(p => op.Report(p.Fraction, p.Item)), op.Token)),
-            AddFiles = (label, files, replace) => AddToPackfile(doc, label, files, replace) ?? [],
+            // a read-only Red Faction II group takes no files: converters then write to a folder only
+            AddFiles = doc.IsReadOnly ? null : (label, files, replace) => AddToPackfile(doc, label, files, replace) ?? [],
             AllEntries = [.. doc.Current.Items.Select(i => new ArchiveBatchEntry(i.Name, i.Size, () => i.Source.ReadAll()))],
         };
         string? summary = await converter.ConvertAsync(request);
@@ -88,7 +89,8 @@ public sealed partial class VppModule : IArchiveEntryTarget
     }
 
     /// <inheritdoc/>
-    public string? ArchiveOf(string path) => DocumentOfWorkCopy(path)?.DisplayName;
+    /// <remarks>Null for a work copy of a read-only Red Faction II group: it takes no files, so nothing offers "into the packfile".</remarks>
+    public string? ArchiveOf(string path) => DocumentOfWorkCopy(path) is { IsReadOnly: false } doc ? doc.DisplayName : null;
 
     /// <inheritdoc/>
     public IReadOnlyList<string>? EntryNamesOf(string path) => DocumentOfWorkCopy(path)?.Current.Items.Select(i => i.Name).ToList();
@@ -99,6 +101,11 @@ public sealed partial class VppModule : IArchiveEntryTarget
         if (DocumentOfWorkCopy(path) is not { } doc)
         {
             Shell.Dialogs.ShowError("The packfile is not open", "The packfile this file came from is no longer open in Cairn.");
+            return null;
+        }
+        if (doc.IsReadOnly)
+        {
+            Shell.Dialogs.ShowError($"Could not add to {doc.DisplayName}", VppDocument.ReadOnlyReason);
             return null;
         }
         if (doc.IsBusy)

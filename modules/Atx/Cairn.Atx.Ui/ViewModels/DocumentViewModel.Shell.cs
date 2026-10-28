@@ -10,7 +10,7 @@ using Cairn.Ui.Modules;
 namespace Cairn.Atx.Ui.ViewModels;
 
 /// <summary>The shell's document contract on top of ATX's document (history = AvalonEdit's undo stack).</summary>
-public sealed partial class DocumentViewModel
+public sealed partial class DocumentViewModel : IDocumentContent
 {
     private static readonly HashSet<string> StatusSources = new(StringComparer.Ordinal)
     {
@@ -54,6 +54,12 @@ public sealed partial class DocumentViewModel
 
     /// <inheritdoc/>
     public byte[]? CaptureRecovery() => IsDirty ? System.Text.Encoding.UTF8.GetBytes(Document.Text) : null;
+
+    /// <summary>The name with .atx (an unsaved tab's name may not have it).</summary>
+    public string FileName => DisplayName.EndsWith(".atx", StringComparison.OrdinalIgnoreCase) ? DisplayName : DisplayName + ".atx";
+
+    /// <summary>The text as Save would write it (UTF-8 without a BOM, the document's line endings), unsaved edits included.</summary>
+    public byte[] CurrentBytes() => new UTF8Encoding(false).GetBytes(Cairn.Atx.Text.LineEndings.Normalize(TextForSave, LineEnding));
 
     /// <inheritdoc/>
     public IReadOnlyList<StatusItem> StatusItems

@@ -14,7 +14,7 @@ namespace Cairn.Snd.Ui.Documents;
 /// An open sound: read-only (PS2 sounds are never written; Save As writes a WAV), decoded once to PCM. Holds the player
 /// (play, pause, stop, loop, volume) and the view state (zoom, scroll) the view draws.
 /// </summary>
-public sealed class SndDocument : DocumentBase
+public sealed class SndDocument : DocumentBase, IDocumentContent
 {
     private readonly SndModule _module;
     private byte[] _bytes;
@@ -45,6 +45,12 @@ public sealed class SndDocument : DocumentBase
     public WaveformPeaks Peaks { get; private set; }
     /// <summary>The file's bytes as opened.</summary>
     public byte[] Bytes => _bytes;
+
+    /// <summary>The name the sound goes by (Convert to… names the outputs after it).</summary>
+    public string FileName => DisplayName;
+
+    /// <summary>The file as opened (sound tabs are never edited).</summary>
+    public byte[] CurrentBytes() => _bytes;
 
     public RelayCommand PlayPauseCommand { get; }
     public RelayCommand StopCommand { get; }

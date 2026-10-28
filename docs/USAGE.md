@@ -1,8 +1,8 @@
 # Cairn usage guide
 
 Cairn is a Windows editor for Red Faction modders. It opens the game's animated textures, animations, meshes,
-effects, packfiles, tables, fonts, bitmaps and sounds in tabs of one window, and checks every file against what the
-game will do with it. Cairn targets [Alpine Faction](https://alpinefaction.com), the patch practically every player
+effects, packfiles, tables, fonts, bitmaps, sounds and levels in tabs of one window, checks every file against what
+the game will do with it, and converts between the game's formats and those of other tools. Cairn targets [Alpine Faction](https://alpinefaction.com), the patch practically every player
 runs, and shows the Alpine Faction version a feature needs where it matters (for example "Alpine Faction 1.1+").
 
 ![Cairn with several documents open](screenshot.png)
@@ -42,6 +42,12 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
 | Change a font's characters | [Replace a glyph with a picture](#replace-a-glyph-with-a-picture), [Edit the whole font in an image editor](#edit-the-whole-font-in-an-image-editor) |
 | Get a sound out as WAV or Ogg | [Convert a sound to WAV or Ogg Vorbis](#convert-a-sound-to-wav-or-ogg-vorbis), [Convert many sounds in a packfile](#convert-many-sounds-in-a-packfile) |
 | Use the PlayStation 2 version's content | [Convert the PlayStation 2 version](#convert-the-playstation-2-version), [Convert the PS2 version's textures for the PC game](#convert-the-ps2-versions-textures-for-the-pc-game), [Convert exporter and PS2 meshes](#convert-exporter-and-ps2-meshes) |
+| See every conversion Cairn offers for a file | [Convert a file to another format](#convert-a-file-to-another-format) |
+| Look at a level in 3D, or check its textures | [Open a level or group file](#open-a-level-or-group-file), [Look around a level](#look-around-a-level) |
+| Take a level into Blender or another 3D tool | [Convert a level to glTF, OBJ or a static mesh](#convert-a-level-to-gltf-obj-or-a-static-mesh) |
+| Turn a model into brushes for the level editor | [Make a group file from a model](#make-a-group-file-from-a-model) |
+| Use OBJ files | [Import and export OBJ](#import-and-export-obj) |
+| Use Red Faction II's levels, meshes, animations and packfiles | [Use Red Faction II content](#use-red-faction-ii-content) |
 | Fix something that does not work | [Troubleshooting and FAQ](#troubleshooting-and-faq) |
 
 ## Contents
@@ -49,7 +55,9 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
 - [The Cairn window](#the-cairn-window)
   - [Tabs, panes and menus](#tabs-panes-and-menus) ·
     [The start page and the Packfiles browser](#the-start-page-and-the-packfiles-browser) ·
-    [Open, save and close](#open-save-and-close) · [Game folder and search folders](#game-folder-and-search-folders) ·
+    [Open, save and close](#open-save-and-close) ·
+    [Convert a file to another format](#convert-a-file-to-another-format) ·
+    [Game folder and search folders](#game-folder-and-search-folders) ·
     [File associations](#file-associations) · [Themes](#themes) ·
     [Recovery and files changed outside Cairn](#recovery-and-files-changed-outside-cairn) ·
     [Help and keyboard shortcuts](#help-and-keyboard-shortcuts) ·
@@ -61,6 +69,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Make an animated texture for a level or mesh](#make-an-animated-texture-for-a-level-or-mesh) ·
     [Find what uses a file](#find-what-uses-a-file) ·
     [Convert the PlayStation 2 version](#convert-the-playstation-2-version) ·
+    [Use Red Faction II content](#use-red-faction-ii-content) ·
     [Edit the game's tables safely](#edit-the-games-tables-safely)
 - [Animated textures (ATX)](#animated-textures-atx)
   - [Try the ATX samples](#try-the-atx-samples) · [Make a new animated texture](#make-a-new-animated-texture) ·
@@ -79,7 +88,9 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Make a new animation](#make-a-new-animation) ·
     [Retarget animations to another character](#retarget-animations-to-another-character) ·
     [Edit a character mesh](#edit-a-character-mesh) · [Import and export glTF](#import-and-export-gltf) ·
+    [Import and export OBJ](#import-and-export-obj) ·
     [Convert exporter and PS2 meshes](#convert-exporter-and-ps2-meshes) ·
+    [Convert Red Faction II animations](#convert-red-faction-ii-animations) ·
     [See which table lines play a clip](#see-which-table-lines-play-a-clip) ·
     [Fix the problems Cairn reports](#fix-the-problems-cairn-reports) ·
     [Get your work into the game](#get-your-work-into-the-game) · [Good to know](#good-to-know) ·
@@ -95,7 +106,8 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Rotate or scale around a different point](#rotate-or-scale-around-a-different-point) ·
     [Fix effect problems](#fix-effect-problems) ·
     [Round-trip an effect through Blender or REDUX](#round-trip-an-effect-through-blender-or-redux) ·
-    [Edit an older effect](#edit-an-older-effect) · [Good to know (effects)](#good-to-know-effects) ·
+    [Edit an older effect](#edit-an-older-effect) · [Convert Red Faction II effects](#convert-red-faction-ii-effects) ·
+    [Good to know (effects)](#good-to-know-effects) ·
     [Limitations (effects)](#limitations-effects)
 - [Packfiles (VPP)](#packfiles-vpp)
   - [Open a packfile and find files in it](#open-a-packfile-and-find-files-in-it) ·
@@ -107,6 +119,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Save a packfile safely](#save-a-packfile-safely) ·
     [Convert the PS2 version's textures for the PC game](#convert-the-ps2-versions-textures-for-the-pc-game) ·
     [Open a PEG texture pack on its own](#open-a-peg-texture-pack-on-its-own) ·
+    [Open a Red Faction II packfile group](#open-a-red-faction-ii-packfile-group) ·
     [Good to know (packfiles)](#good-to-know-packfiles) · [Limitations (packfiles)](#limitations-packfiles)
 - [Tables (TBL)](#tables-tbl)
   - [Open a table](#open-a-table) · [Find your way around a table](#find-your-way-around-a-table) ·
@@ -141,10 +154,20 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Convert a sound to WAV or Ogg Vorbis](#convert-a-sound-to-wav-or-ogg-vorbis) ·
     [Convert many sounds in a packfile](#convert-many-sounds-in-a-packfile) ·
     [Good to know (sounds)](#good-to-know-sounds) · [Limitations (sounds)](#limitations-sounds)
+- [Levels and groups (RFL, RFG)](#levels-and-groups-rfl-rfg)
+  - [Open a level or group file](#open-a-level-or-group-file) · [Look around a level](#look-around-a-level) ·
+    [Find out what a face or object is](#find-out-what-a-face-or-object-is) ·
+    [Convert a level to glTF, OBJ or a static mesh](#convert-a-level-to-gltf-obj-or-a-static-mesh) ·
+    [Make a group file from a level](#make-a-group-file-from-a-level) ·
+    [Make a group file from a model](#make-a-group-file-from-a-model) ·
+    [Convert a Red Faction II level](#convert-a-red-faction-ii-level) ·
+    [Convert many levels in a packfile](#convert-many-levels-in-a-packfile) ·
+    [Good to know (levels)](#good-to-know-levels) · [Limitations (levels)](#limitations-levels)
 - [Troubleshooting and FAQ](#troubleshooting-and-faq)
   - [Game folder and libraries](#game-folder-and-libraries) ·
     [Missing files and textures](#missing-files-and-textures) · [Opening and saving](#opening-and-saving) ·
     [Sounds and previews](#sounds-and-previews) · [Animations and meshes](#animations-and-meshes) ·
+    [Levels and group files](#levels-and-group-files) ·
     [Cairn itself](#cairn-itself) · [Where Cairn keeps its files](#where-cairn-keeps-its-files)
 - [Glossary](#glossary)
 - [Keyboard shortcuts](#keyboard-shortcuts)
@@ -171,8 +194,9 @@ by side; the menus and panes change to suit the tab in front.
 - **Status bar.** Facts about the tab in front, such as its frame count or problem count. Click a problem count to
   open the problems.
 - **Menus.** **File**, **Edit**, then the menu of the tab in front (**Frames**, **Clip**, **Mesh**, **Effect**,
-  **Packfile**, **Table**, **Font**, **Bitmap** or **Sound**), **View**, **Tools** and **Help**. **File › New** has an
-  entry per kind of file Cairn creates; importers and exporters are under **File › Import** and **File › Export**.
+  **Packfile**, **Table**, **Font**, **Bitmap**, **Sound** or **Level**), **View**, **Tools** and **Help**. **File ›
+  New** has an entry per kind of file Cairn creates; importers and exporters are under **File › Import** and **File ›
+  Export**, and **File › Convert to** lists every conversion for the tab in front.
 
 ### The start page and the Packfiles browser
 
@@ -212,6 +236,39 @@ path.
   included.
 - **Undo and redo** (**Ctrl+Z**, **Ctrl+Y** or **Ctrl+Shift+Z**) belong to each tab; the **Edit** menu names the step
   they will undo or redo.
+
+### Convert a file to another format
+
+**File › Convert to** lists every format the file in front converts to, whichever module does the work, grouped by
+module. A conversion that loses something on the way (an animation's frame rate, a level's objects, a mesh's bones) is
+marked **(lossy)**; the window it opens, or its report, says what. The submenu is hidden when the file in front
+converts to nothing.
+
+In a packfile, right-click a single entry for the same **Convert to** submenu, without opening the entry first. For a
+file opened from a packfile, the conversion can go back into that packfile as a new entry (one undo step; save the
+packfile to keep it). Several entries at once convert with the packfile's batch commands: **Convert images to DDS…**,
+**Convert to .tga…**, **Convert meshes and animations…**, **Convert sounds…** and **Convert levels…**.
+
+| From | Converts to |
+|---|---|
+| Animated VBM (`.vbm`) | Animated texture (`.atx`), frames as `.tga` or `.png` |
+| Clip, mesh (`.rfa`, `.v3m`, `.v3c`) | glTF (`.gltf` or `.glb`); meshes also OBJ and a group file (`.rfg`) |
+| Exporter, PS2 and Red Faction II meshes (`.v3d`, `.vcm`, `.rfm`, `.rfc`) | `.v3m` or `.v3c`, glTF |
+| Red Faction II animation (`.rfa`) | Red Faction clip (`.rfa` version 8), glTF |
+| Red Faction II effect (`.rfe`) | Red Faction effect (`.vfx`) |
+| OBJ (`.obj`) | `.v3m`, `.v3c`, glTF, group file (`.rfg`) |
+| glTF (`.gltf`, `.glb`) | OBJ, group file (`.rfg`); **File › Import** builds a clip, mesh or effect from it |
+| Effect (`.vfx`) | glTF |
+| Font (`.vf`) | Image sheet (`.png` with a `.json`) |
+| Sound | WAV, Ogg Vorbis |
+| Image (`.tga`, `.png`, `.jpg`) | DDS |
+| PEG texture pack (`.peg`) | `.tga` files |
+| Level (`.rfl`) | glTF, OBJ, static mesh (`.v3m`), group file (`.rfg`) |
+| Group file (`.rfg`) | glTF, OBJ, static mesh (`.v3m`) |
+
+OBJ and glTF files do not open in tabs of their own: convert a loose one with **File › Import** (a mesh, a clip, an
+effect or a group file), or an entry of a packfile with its **Convert to** submenu. The **File › Export** commands each
+module had before are still there.
 
 ### Game folder and search folders
 
@@ -359,8 +416,9 @@ An old animated `.vbm` converts in one step; see [Convert an old animated VBM](#
   Usages**): the **Usages** panel lists every use in every table Cairn knows. Clicking a file name in a table also
   shows, below its preview, which tables use it. See
   [Go to definition and find usages](#go-to-definition-and-find-usages).
-- **Levels.** Select a `.rfl` in a packfile: the **References** group lists every texture, mesh, clip, effect, sound
-  and music file it names, and where each was found.
+- **Levels.** Select a `.rfl` in a packfile, or open it in a tab: the **References** group lists every texture, mesh,
+  clip, effect, sound and music file it names, and where each was found. In the 3D preview, click a face to see its
+  texture (see [Find out what a face or object is](#find-out-what-a-face-or-object-is)).
 - **Animations.** The **Animations** library and a clip's **Table usage** panel show which characters and table
   entries play each clip (see [See which table lines play a clip](#see-which-table-lines-play-a-clip)).
 - **Effects.** The **Effects** library lists the tables that use each effect; type a table's name in its filter.
@@ -372,13 +430,40 @@ does not load. Open the PS2 `.vpp`; a bar above the list says what can be conver
 
 1. **Textures.** Select the `.peg` texture packs and choose **Convert to .tga…**. See
    [Convert the PS2 version's textures for the PC game](#convert-the-ps2-versions-textures-for-the-pc-game).
-2. **Meshes.** Select the `.rfm` and `.rfc` meshes and choose **Convert meshes…**; they become `.v3m` and `.v3c`,
-   using the `.tga` names from step 1. See [Convert exporter and PS2 meshes](#convert-exporter-and-ps2-meshes).
+2. **Meshes.** Select the `.rfm` and `.rfc` meshes and choose **Convert meshes and animations…**; they become `.v3m`
+   and `.v3c`, using the `.tga` names from step 1. See [Convert exporter and PS2 meshes](#convert-exporter-and-ps2-meshes).
 3. **Sounds.** Select the `.vse` and `.vmu` sounds and choose **Convert sounds…**; they become `.wav` or `.ogg`. See
    [Convert many sounds in a packfile](#convert-many-sounds-in-a-packfile).
 4. **Save As** a new packfile, so the original stays as it was.
 
 PS2 levels cannot be converted: the PC game cannot use them.
+
+### Use Red Faction II content
+
+Cairn reads Red Faction II's PC files but never writes them: it previews them, extracts them and converts what Red
+Faction can use. Nothing in your Red Faction II install is changed.
+
+1. **Open the packfile group.** Red Faction II keeps its files in packfile groups: open a `.toc_group` from the
+   game's `pc_media` folder with **File › Open…**. It opens as a read-only packfile tab (see
+   [Open a Red Faction II packfile group](#open-a-red-faction-ii-packfile-group)).
+2. **Levels.** Select a `.rfl` to see it in 3D, or **Open in Cairn**. Convert it to a group file (`.rfg`) for Alpine
+   Faction's level editor, or to glTF, OBJ or a static mesh (see
+   [Convert a Red Faction II level](#convert-a-red-faction-ii-level)).
+3. **Meshes.** Select a `.rfm` or `.rfc` and use **Convert to** (or select several and choose **Convert meshes and
+   animations…**); they become `.v3m` and `.v3c` (see [Convert exporter and PS2 meshes](#convert-exporter-and-ps2-meshes)).
+4. **Animations.** Select a `.rfa` to watch it play on a Red Faction II character, and use **Convert to › Red Faction
+   clip (.rfa)** (or select several and choose **Convert meshes and animations…**); they become clips Red Faction
+   plays on the converted characters (see [Convert Red Faction II animations](#convert-red-faction-ii-animations)).
+5. **Effects.** Select a `.rfe` to watch it play, or **Open in Cairn** for its facts; **Convert to › Red Faction
+   effect (.vfx)** (or **Convert effects…** for several) makes a Red Faction effect (see
+   [Convert Red Faction II effects](#convert-red-faction-ii-effects)).
+6. **Textures.** Red Faction II keeps its textures in `.peg` packs. Conversions translate the texture names to Red
+   Faction textures by default; you can keep the Red Faction II names and have Cairn write the textures from the packs
+   beside the converted file instead.
+7. **Put the results in a packfile** for Alpine Faction, as for anything else you make (see
+   [Release a mod in a packfile](#release-a-mod-in-a-packfile)).
+
+Red Faction II's other types Cairn does not read can only be extracted.
 
 ### Edit the game's tables safely
 
@@ -496,7 +581,7 @@ simulation of the game's texture format to show roughly what it does to the colo
 ## Animations and meshes (RFA, V3C, V3M)
 
 Watch, fix, make and retarget character animations (`.rfa`), edit character meshes (`.v3c`), look at static meshes
-(`.v3m`), and swap both with Blender through glTF.
+(`.v3m`), and swap both with Blender through glTF or OBJ.
 
 ### What you can do
 
@@ -510,8 +595,11 @@ Watch, fix, make and retarget character animations (`.rfa`), edit character mesh
   bones.
 - [Import and export glTF](#import-and-export-gltf) to animate or model in Blender, including
   [rigging a new mesh to a stock skeleton](#rig-a-new-mesh-to-a-stock-skeleton).
-- [Convert exporter and PS2 meshes](#convert-exporter-and-ps2-meshes) (`.v3d`, `.vcm`, `.rfm`, `.rfc`) to
-  `.v3m`/`.v3c`.
+- [Import and export OBJ](#import-and-export-obj) for modelling tools that prefer it.
+- [Convert exporter, PS2 and Red Faction II meshes](#convert-exporter-and-ps2-meshes) (`.v3d`, `.vcm`, `.rfm`,
+  `.rfc`) to `.v3m`/`.v3c`, and [Red Faction II animations](#convert-red-faction-ii-animations) to Red Faction clips.
+- Turn a mesh into brushes for the level editor (see
+  [Make a group file from a model](#make-a-group-file-from-a-model)).
 - [See which table lines play a clip](#see-which-table-lines-play-a-clip) and copy ready-made `+State:` and
   `+Action:` lines.
 - [Fix the problems Cairn reports](#fix-the-problems-cairn-reports) before you start the game.
@@ -575,6 +663,16 @@ empty, set the game folder or add a search folder there.
 - Right-click an entry for **Open in new tab**, **Preview on this mesh** / **Preview this clip**, **Open containing
   folder**, **Extract to…**, **Copy name**, **Retarget…** (clips) and **New Clip for This Mesh…** (characters).
 - After copying new files in, press the library's ⟳ button or choose **Tools › Refresh Library**.
+- **Every packfile open in Cairn** (a `.vpp`, a PS2 packfile, a Red Faction II `.toc_group`) gets its own group at
+  the top of both tabs, named after it with its counts ("All_Levels.toc_group · 319 meshes · 60 clips"). Its
+  characters are grouped into skeleton families the same way (Red Faction II `.rfc` characters too), and its clips
+  list with their facts (Red Faction II clips show version 9). The group appears when the packfile's tab opens,
+  follows its changes and goes when it closes; it needs no game folder. Double-click, preview, **Copy name** and
+  **Extract to…** work as for the library; **Ctrl+double-click** opens the entry through the packfile's **Open in
+  Cairn**, so the tab stays linked to it.
+- A clip and a mesh of different games never play together: a clip stores bone indices only, so a Red Faction II
+  clip on a Red Faction mesh (or the reverse) would play mangled. Double-click then opens a new tab and the status
+  bar says why.
 
 ### Preview a clip on a character
 
@@ -590,8 +688,10 @@ empty, set the game folder or add a search folder there.
    new tab**.
 
 A clip tab plays on a **preview mesh** you pick in the viewport header (or with **Clip › Choose Preview Mesh…**).
-The list offers the meshes the tables play the clip on first, then meshes with the same bone count, then the rest
-marked "does not fit". Cairn remembers your pick for each clip. If the bone counts differ, the viewport says so: the
+The list starts with the clip's own packfile (for a tab opened with **Open in Cairn**), then the other open
+packfiles, then the library, each under its own heading. From the library it offers the meshes the tables play the
+clip on first, then meshes with the same bone count, then the rest marked "does not fit". Cairn remembers your pick
+for each clip. If the bone counts differ, the viewport says so: the
 game would play the clip just as wrongly on that mesh. A mesh tab's **Preview clip** box works the same way and has
 a **Bind pose** entry for no clip. Neither choice is saved into the file.
 
@@ -996,17 +1096,50 @@ Rules on the Blender side:
 All dialog options and pre-flight codes are under
 [glTF options for clips and meshes](REFERENCE.md#gltf-options-for-clips-and-meshes).
 
+### Import and export OBJ
+
+Wavefront OBJ is the plainest 3D exchange format: geometry, texture coordinates and materials, with no bones,
+weights or animation. Use it for tools that read OBJ better than glTF; for characters, glTF is the better choice.
+
+**Export a mesh as OBJ**
+
+1. Open the `.v3m` or `.v3c` and choose **File › Export › OBJ…** (or **File › Convert to › Wavefront OBJ**).
+2. Pick the **Level of detail** (LOD 0 alone is usually what you want to edit; 3D tools show every object at once).
+3. Leave **Textures (as PNG beside the .obj)** on to get the textures as images the `.mtl` points to.
+4. Leave **Write Cairn's metadata lines** on: they are comment lines other tools ignore, and they let Cairn rebuild
+   the submeshes, LODs, render flags, double-sided faces and prop points when the file comes back.
+5. Choose the output and press **Export**. A character is written in its bind pose, without its skeleton.
+
+**Import an OBJ as a mesh**
+
+1. Choose **File › Import › Mesh from OBJ…** and pick the `.obj`; keep its `.mtl` beside it.
+2. Under **BUILD**, choose **Static mesh (.v3m)** or **Character (.v3c)**. OBJ has no bones: for a character, tick
+   **Use the skeleton, spheres and prop points of** an open character mesh, and every vertex follows its nearest bone.
+   For real skinning, weight the mesh in Blender and import glTF instead.
+3. **Restore from Cairn's metadata lines** appears for a file Cairn exported: leave it on to get the mesh back as it
+   was.
+4. Check **OPTIONS**: **Scale** (0.01 for centimetres), **The file is Z-up** (off for Blender, Maya and 3ds Max's
+   default export), **Texture names** (**Name them .tga** is recommended) and the LOD distances (objects named
+   `_LOD0`, `_LOD1`, `_LOD2` become levels of detail).
+5. Read the **PRE-FLIGHT** list: polygons that were triangulated, materials without a texture, a missing `.mtl`, and
+   anything over the game's limits. Errors disable **Import**.
+6. Press **Import**. The mesh opens in a new, unsaved tab; save it.
+
+Texture names come from each material's image (`map_Kd`), else from the material's name; faces without a material get
+`default.tga`. The pre-flight codes are listed under
+[OBJ mesh import findings](REFERENCE.md#obj-mesh-import-findings).
+
 ### Convert exporter and PS2 meshes
 
-Cairn reads four mesh formats the PC game does not load, shows them in 3D and converts them to `.v3m`/`.v3c`. It
-never saves them in their own format.
+Cairn reads mesh formats the PC game does not load, shows them in 3D and converts them to `.v3m`/`.v3c`. It never
+saves them in their own format.
 
 | Format | What it is | Converts to |
 |---|---|---|
 | `.v3d` | The 3ds Max exporter's static mesh (the source a `.v3m` was made from) | `.v3m` |
 | `.vcm` | The exporter's character mesh, with skeleton, collision spheres, prop points and weights | `.v3c` |
-| `.rfm` | Red Faction's PlayStation 2 static mesh | `.v3m` |
-| `.rfc` | Red Faction's PlayStation 2 character mesh | `.v3c` |
+| `.rfm` | Red Faction's PlayStation 2 static mesh, or Red Faction II's static mesh | `.v3m` |
+| `.rfc` | Red Faction's PlayStation 2 character mesh, or Red Faction II's character mesh | `.v3c` |
 
 (The tables also use `.vcm` and `.v3d` as spellings of `.v3c` and `.v3m`; those are the PC meshes, not these source
 files.)
@@ -1018,15 +1151,56 @@ files.)
    goes: next to the source, into a folder, or into the packfile it came from as a new entry (save the packfile to
    keep it). A taken name gets a free one (`box (2).v3m`) unless you tick **Replace**. The window lists what the
    conversion changed.
-3. **Many at once**: in a packfile, select the meshes and choose **Convert meshes…** (right-click, or the Packfile
-   menu). You get one report of what could not be converted and what was approximated.
+3. **Many at once**: in a packfile, select the meshes and choose **Convert meshes and animations…** (right-click, or
+   the Packfile menu). You get one report of what could not be converted and what was approximated.
 
 PS2 meshes lost some detail in the PS2 build. When the exporter mesh with the same name is beside a `.rfm`/`.rfc`
 (same packfile or folder), Cairn converts that instead and says so. Texture names are kept; they name `.tga` files,
-which the packfile's **Convert to .tga…** makes from the PS2 texture packs (see [Packfiles](#packfiles-vpp)). Red
-Faction II meshes and damaged files open with the reason in Problems and cannot be converted. The whole PS2
-conversion route is in [Making a mod](#making-a-mod); conversion details are under
+which the packfile's **Convert to .tga…** makes from the PS2 texture packs (see [Packfiles](#packfiles-vpp)). Damaged
+files open with the reason in Problems and cannot be converted. The whole PS2 conversion route is in
+[Making a mod](#making-a-mod); conversion details are under
 [exporter and PS2 mesh conversion](REFERENCE.md#exporter-and-ps2-mesh-conversion).
+
+**Red Faction II meshes** (the PC game's `.rfm` and `.rfc`) open the same way. Their textures come from the `.peg`
+packs beside them (in their folder, or in the same packfile group). Converting translates the texture names to Red
+Faction textures, using REDUX's tables; in the Convert window, **Keep the Red Faction II texture names** writes the
+textures from the packs beside the converted mesh as `.tga` files instead. They also convert to glTF (**File ›
+Convert to**), keeping their own texture names, with the textures as PNG. The report lists what is approximated, such
+as material settings Red Faction has no place for. Early prototype versions open with the reason in Problems. See
+[Use Red Faction II content](#use-red-faction-ii-content).
+
+### Convert Red Faction II animations
+
+Red Faction II's animations are `.rfa` files too, but in their own version (9), which Red Faction cannot play. Cairn
+plays them and converts them to Red Faction clips (version 8); it never writes them in their own version.
+
+1. **Open one** like any file, or select it in a packfile group and use **Open in Cairn**. It opens in a clip tab,
+   read-only (**Save** is off), with a banner and a **Convert…** button. **Problems** lists, as information, what
+   converting approximates.
+2. **Watch it play.** A clip stores no bone names, so Cairn picks the Red Faction II character that fits it best,
+   converted on the fly: one beside the clip (in its packfile group or folder) or, failing that, one of the Red Faction
+   II install the clip comes from. The name decides first (`mech_bash` plays on `mech_suit`, `tang_hudtalk60` on
+   `tangier_hudhead`), then the character whose skeleton the clip was made on. A selected `.rfa` in a packfile group
+   previews the same way, on a character of the group. **Preview mesh** lists the Red Faction II characters of the
+   clip's own packfile group first, then of the other open packfiles, best first (name, then fit, shown in mm);
+   pick another to watch it on that one: your pick wins over Cairn's and is remembered. Red Faction meshes are left
+   out (the clip would play mangled on them); tick **Other game** to list the library's anyway. With no character
+   found, the viewport says so: open a Red Faction II packfile group, or pick a mesh from **Preview mesh**.
+   A Red Faction II character's tab works the other way round: its **Preview clip** lists the Red Faction II clips of
+   the open packfiles with its bone count, best fit first.
+3. **Convert** with **Convert…** on the banner or **File › Convert to › Red Faction clip (.rfa)**. Choose where the clip
+   goes: next to the source, into a folder, or into a packfile you can change. The clip keeps its name; a taken name
+   gets a free one (`medm_talk (2).rfa`), and a Red Faction II clip (the source or another, a file or a packfile
+   entry) is never replaced, even with **Replace**. Every key is kept.
+4. **Many at once**: in a packfile group, select the animations (and meshes) and choose **Convert meshes and
+   animations…**. Red Faction clips among the selection are left alone.
+
+The converted clip plays on a mesh with the same bones in the same order: a Red Faction II character converted to
+`.v3c` (see [Convert exporter and PS2 meshes](#convert-exporter-and-ps2-meshes)). Red Faction II stores no eases or
+control points, so the converted clip moves in straight lines between keys (they are 1/60 s apart in most clips). A
+clip with vertex (face) animation moves the vertices of the Red Faction II mesh it was made for, so it plays as made
+only on the character converted from that mesh. See
+[Red Faction II animation conversion](REFERENCE.md#red-faction-ii-animation-conversion).
 
 ### See which table lines play a clip
 
@@ -1232,6 +1406,24 @@ entry's right-click menu; each fix is one undo step.
 An effect in an older format version opens with a bar saying it can be viewed and saved unchanged. Press **Convert**
 on the bar, or choose **Effect › Convert to current format**, to edit it. The conversion is one undo step.
 
+### Convert Red Faction II effects
+
+A Red Faction II effect (`.rfe`) opens read-only: open it from disk, or select it in a Red Faction II packfile group
+to preview it and choose **Open in Cairn**. The right pane lists its textures (and the `.peg` pack each came from),
+materials, meshes and emitters; the transport plays, scrubs and loops it. Meshes move exactly as in the game; the
+particles are close, with the approximations listed at the bottom of the facts.
+
+1. Choose **File › Convert to › Red Faction effect (.vfx)**, or **Convert…** on the banner (for a packfile entry,
+   right-click › **Convert to**; for several, **Packfile › Convert effects…**).
+2. Pick the folder and what happens to the textures: translated to Red Faction names (the default), or kept and
+   written beside the effect as `.tga` from the `.peg` packs.
+3. Read the report in the window. The converted effect opens in a tab, with the report in **Problems** as notes.
+
+The source is never replaced: an output whose name is taken gets a free one (`name (2).vfx`). Into a packfile, only
+the textures it does not hold yet are added (all of them with **Replace**). In **Convert effects…**, an effect that
+cannot be converted is named in the summary and the others are still converted. Check converted particle effects in
+the game; acceleration, launch cones and streaks have no exact Red Faction equivalent.
+
 ### Good to know (effects)
 
 - Effects run at 15 frames a second. Each mesh appears at its start frame and disappears after its end frame.
@@ -1268,8 +1460,10 @@ undo until you save.
 **What you can do**
 
 - Browse every packfile of the game, its `user_maps` and mods, and find files in them by name or type.
-- Preview images, sounds, meshes, clips, effects, animated textures, fonts, tables and text without extracting.
+- Preview images, sounds, meshes, clips, effects, animated textures, fonts, tables, levels and text without
+  extracting.
 - Read a level's details, including every file it needs and whether it can be found.
+- Open Red Faction II's packfile groups read-only, to preview, extract and convert what they hold.
 - Extract files, or edit them in another program or in Cairn and put them back.
 - Add, rename, replace and remove entries, and build new packfiles for your mods.
 - Convert images to DDS.
@@ -1309,6 +1503,8 @@ size and a bar per type.
   with the same number of bones.
 - **Tables** show highlighted and foldable, **fonts** show their characters, **text** shows numbered lines with
   **Find** (**Ctrl+F**) and **Copy**.
+- **Levels and group files** (`.rfl`, `.rfg`) show in 3D, with the level's textures from the same packfile; object
+  markers start hidden in this small view (see [Look around a level](#look-around-a-level)).
 - **Other types** show their first bytes in hex.
 
 **Open in Cairn** above the preview opens the entry in a tab of its own, for every type Cairn edits.
@@ -1321,7 +1517,7 @@ Entries larger than 48 MB wait for **Preview anyway**.
 
 ### Read a level's details
 
-Levels (`.rfl`) have no picture; select one and read the details pane. It is grouped:
+Select a level (`.rfl`): the preview shows it in 3D and the details pane describes it. The details are grouped:
 
 - **Level**: name, author, when it was last saved, which games load it, single or multiplayer.
 - **Properties**: ambient light, fog, the geomod texture and hardness.
@@ -1333,7 +1529,9 @@ Levels (`.rfl`) have no picture; select one and read the details pane. It is gro
   game would not find them either unless another packfile brings them.
 - **Preloads**, **Notes** and **Sections**: the editor's preload lists, anything unusual, the file's sections.
 
-Long groups start collapsed; click a heading to open it. **Copy all** copies every row as text.
+Long groups start collapsed; click a heading to open it. **Copy all** copies every row as text. **Open in Cairn**
+opens the level in a tab of its own, with more facts and the full 3D view (see
+[Levels and groups](#levels-and-groups-rfl-rfg)).
 
 ### Extract files
 
@@ -1450,7 +1648,7 @@ What the textures become:
   summary says which it kept.
 
 The exact rules are in the [reference](REFERENCE.md#peg-conversion-rules). PS2 meshes and sounds convert with
-**Convert meshes…** and **Convert sounds…** (see [Convert the PlayStation 2 version](#convert-the-playstation-2-version)).
+**Convert meshes and animations…** and **Convert sounds…** (see [Convert the PlayStation 2 version](#convert-the-playstation-2-version)).
 
 ### Open a PEG texture pack on its own
 
@@ -1458,6 +1656,28 @@ Open a `.peg` with **File › Open…**, or with **Open in Cairn** on a `.peg` e
 the `.tga` files its textures become, under a bar that says what is not converted. The `.peg` is only read: **Save**
 writes a new PC `.vpp`. Before saving you can preview, extract (the `.tga` files), **Extract as PNG…**, rename or
 remove entries as in any packfile.
+
+### Open a Red Faction II packfile group
+
+Red Faction II for PC keeps its files in packfile groups: a `<name>.toc_group` file in the game's `pc_media` folder
+lists the files of the group. A *packed* group keeps their data in one `<name>.packfile` (in the group's own folder);
+a *loose* group lists files that sit in folders of the install.
+
+1. Choose **File › Open…** and pick the `.toc_group`. Cairn finds the `.packfile` in the group's folder, beside the
+   `.toc_group`, or where the group says below the install, and refuses a file it cannot make sense of with the
+   reason.
+2. The group opens as a packfile tab under a bar that says what it is. With nothing selected, the details pane
+   describes the group: packed or loose, its files and where the data is.
+3. Filter, sort, preview and read the details as in any packfile. The **Type** column uses Red Faction II's names
+   (**RF2 texture pack**, **RF2 level**, **RF2 static mesh**, **RF2 animation** and so on). Levels and meshes preview
+   with their textures from the group's `.peg` packs, and animations play on a character of the group.
+4. **Extract** works as usual. **Open in Cairn** opens levels, meshes, animations, texture packs, tables and sounds in
+   tabs, and **Convert to** on an entry writes into a folder.
+
+A group is read only: nothing can be added, removed, renamed or saved, and the commands that would do so are hidden
+or off. The types Cairn does not read (effects, cutscene scripts, videos) can only be extracted. The problems list notes listed files that are missing
+on disk or differ in size, names listed twice in different case, and empty files. What to do with the files is in
+[Use Red Faction II content](#use-red-faction-ii-content).
 
 ### Good to know (packfiles)
 
@@ -1476,8 +1696,9 @@ remove entries as in any packfile.
 ### Limitations (packfiles)
 
 - The undo history starts again after each save.
-- Levels have no visual preview, only their details; legacy motion files (`.mvf`), editor groups (`.rfg`) and
-  Photoshop files show as hex.
+- Legacy motion files (`.mvf`) and Photoshop files show as hex.
+- Red Faction II packfile groups are read only, and new ones cannot be made. Packfile groups are not listed in the
+  **Packfiles** browser; open them with **File › Open…**.
 - A packfile inside a packfile cannot be opened directly: extract it first.
 - PS2 levels cannot be converted. MPEG-2 backgrounds have no transparency of their own, and the main menu
   animation's speed is a guess. A `.peg` opened on its own converts every texture with the current settings.
@@ -1980,6 +2201,212 @@ This is the quickest way to bring the PS2 version's sounds to the PC game; see
 - AIFF loop markers are not read.
 - Cairn never writes `.vse` or `.vmu` files.
 
+## Levels and groups (RFL, RFG)
+
+The Levels & groups module shows levels (`.rfl`) and the level editor's group files (`.rfg`) in 3D and converts them
+to formats other tools read. A level is what the game loads; a group file is a set of brushes and objects saved from
+the level editor, to be imported into another level there. The game never loads group files.
+
+Level and group file tabs are read-only: Cairn never changes a level or a group file, and never writes a level. Edit
+them in Alpine Faction's level editor. Cairn writes group files only as the result of a conversion.
+
+A level tab shows the facts on the left and the 3D preview on the right, with its toolbar above it. The **Level** menu
+appears with a level or group file in front.
+
+**What you can do**
+
+- Look around a level or group file in 3D, with its textures, and pick faces and objects to see what they are.
+- Read a level's facts: properties, statistics, brushes, movers, groups, and every file it names with where it was
+  found.
+- Convert a level or group file to glTF or OBJ for Blender and other 3D tools, or to a static mesh (`.v3m`).
+- Convert a level to a group file, to bring its brushes and objects into another level in the editor.
+- Turn a model (glTF, OBJ, `.v3m`, `.v3c`) into brushes in a group file.
+- Open and convert Red Faction II levels.
+
+### Open a level or group file
+
+- **From disk**: **File › Open…** (**Ctrl+O**), or drop the file on the window.
+- **From a packfile**: select the entry to preview it, and press **Open in Cairn** for a tab. A level opened from a
+  packfile finds its textures in the rest of that packfile.
+- **From Red Faction II**: open the `.toc_group` that holds the level (see
+  [Open a Red Faction II packfile group](#open-a-red-faction-ii-packfile-group)) and use **Open in Cairn**.
+
+The tab opens at once and reads the file in the background; a large level takes a moment. The facts on the left
+describe the level (name, author, format version and which game loads it, properties, statistics and object classes,
+Alpine Faction settings, the files it names, brushes, movers and groups, and how each section of the file was read) or
+the group file (its groups, brushes, objects by type and textures). Anything that did not read cleanly is listed and
+flagged at the top. **Copy all** copies the facts as text.
+
+### Look around a level
+
+- **Orbit**: drag with the left button to turn around the level, with the middle button (or **Shift** and the left
+  button) to pan, and use the wheel to zoom. **F** (or **Frame**) shows the whole level, **Home** resets the view, and
+  **1**, **3** and **7** look from the front, side and top.
+- **Fly**: press **V** (or **Fly**) to fly through the level. Drag with either button to look around, **W A S D** to
+  move, **Q** and **E** to go down and up, **Shift** to go faster and **Ctrl** slower; the wheel steps forward and
+  back. While you fly, these keys move the camera even with **Ctrl** held (**Ctrl+W** does not close the tab). Press
+  **V** again to go back to orbiting.
+- **Compiled** or **Brushes** (levels only): the compiled geometry is what the game draws, the rooms and movers that
+  the level editor built; the brushes are what the editor works on. A group file has only brushes.
+- **Faces**: tick the face classes to draw: **Ordinary faces**, **Portal**, **Detail**, **Sky**, **Invisible**,
+  **Holes**, **Liquid surface**, **Alpha**, **Full bright** and **Scrolling**. Portal and invisible faces start hidden
+  because the game does not draw them. **Both sides of each face** draws the backs too: the game draws only the front
+  of a face, so a room seen from outside shows its inside.
+- **Objects**: markers for **Lights**, **Player start and respawn points** and **Items** at first; **Entities**,
+  **Clutter**, **Triggers and events** and **Other objects** (sounds, emitters, regions, nav points, cameras, Alpine
+  meshes and more) on request. Walls hide the markers behind them.
+- **Lighting**: **Full bright** draws each texture at its own colours, **Level ambient light** at the level's ambient
+  colour, and **Shaded** adds a light from the camera's side to show the shapes. Lightmaps are not drawn.
+
+The toolbar counts the triangles and textures drawn, and the textures that are missing. Textures are found beside the
+file first (the rest of its packfile for a level opened from one), then in your search folders and the game. A face
+whose texture is missing is drawn in a flat colour.
+
+A level with more triangles than the preview's limit (300,000 at first) asks before it is built, because a very
+large level takes longer and uses more memory: press **Build the preview**, or hide face classes or switch between
+**Compiled** and **Brushes** to bring the count down. The limit is on the settings page.
+
+### Find out what a face or object is
+
+Click a face: a box shows what it belongs to (a room of the compiled geometry, a brush or a mover, with its uid and
+solid flags), its texture and where it was found, its classes, its flags in words, its smoothing groups and its scroll
+speed. Click a marker to see the object: its type, position, script name and links. **Esc** clears the box.
+
+### Convert a level to glTF, OBJ or a static mesh
+
+1. Choose **Level › Convert…** (**Ctrl+Shift+E**), **Convert…** on the toolbar, or **File › Convert to**. In a
+   packfile, right-click the entry › **Convert to**.
+2. Pick the **Format**:
+   - **glTF (.gltf + .bin, textures beside it)** or **glTF binary (.glb, textures inside)**: for Blender and other 3D
+     tools. Brushes, flags, groups and objects are kept in the file, so Cairn can read them back.
+   - **Wavefront OBJ (.obj + .mtl, textures beside it)**: geometry and textures only; other tools drop the flags.
+   - **Static mesh (.v3m)**: a Red Faction mesh of the level's geometry, checked like any mesh.
+3. Choose the **Geometry**: **Compiled geometry (what the game draws)** or **Brushes (what the level editor works
+   on)**, and whether to **Include the movers**. A group file has only brushes.
+4. Untick the **Faces to include** you don't want (portal and invisible faces are left out at first).
+5. For glTF, choose the **Objects to carry**: they become empty nodes with their fields, and lights also glTF lights.
+6. Set the format's own options: glTF can **Keep each brush's position and rotation on its node** or **Move the
+   vertices into world space**, and can write the lightmap coordinates; OBJ can write triangles instead of the faces'
+   polygons and **Cairn's comment lines** (face and brush flags Cairn reads back); a static mesh has **One submesh per
+   brush, room or mover** or **One submesh for the whole level**. **Write the textures as PNG files** decodes each
+   texture beside the output (inside a `.glb`).
+7. Choose **Where**: into the packfile the level came from (as new entries, one undo step; save the packfile to keep
+   them), next to the source, or into a folder. A name that is taken gets a free one (`name (2).glb`) unless you tick
+   **Replace**; Cairn asks before replacing anything.
+8. Press **Convert**. The report lists the files written, the counts, and what was approximated, dropped or split,
+   each with a code; **Copy report** copies it.
+
+Each face keeps its own texture coordinates at every corner, normals follow the faces' smoothing groups, and each
+brush stays where the level puts it. A static mesh is split where the engine's limits require it (seven textures per
+submesh, the size of a batch), and the report says so. Texture images are named after the textures, so an image of the
+same name beside the output is written over.
+
+### Make a group file from a level
+
+A group file carries a level's brushes and objects into another level: in Alpine Faction's level editor, import it
+into the level you are building.
+
+1. Open the level and choose **Level › Convert…**, then **Group file (.rfg)**.
+2. The geometry starts at **Brushes**, which is what the editor needs. **Compiled geometry** makes one detail brush
+   per room; it is hard to edit and mostly useful to look at.
+3. Choose the **Objects to carry**: lights, items, clutter, entities, triggers, events, spawn points, nav points,
+   regions, sounds, effects and decals, cameras, Alpine meshes, coronas, keyframes.
+4. Choose where it goes and press **Convert**.
+
+The group file holds the brushes with their flags, textures and scrolling, the level's groups and moving groups with
+their keyframes, the chosen objects and the level's Alpine Faction data, in the layout Alpine Faction's level editor
+writes. A group file has no place for the level's own settings, its player start, cutscenes or lightmaps (the editor
+lights the level again when you build it); the report lists what was left out. A group file opens in Cairn as well:
+open it to check the result.
+
+### Make a group file from a model
+
+You can turn a model into brushes: a mesh you built in Blender, a stock or custom `.v3m`, or geometry from another
+level.
+
+1. **Start the conversion**:
+   - a file on disk: **File › Import › Group file from glTF, OBJ or mesh…** and pick a `.gltf`, `.glb`, `.obj`,
+     `.v3m` or `.v3c`;
+   - a mesh in a tab: **File › Convert to › Group file (.rfg)**;
+   - a packfile entry: right-click › **Convert to › Group file (.rfg)**.
+2. Choose how meshes become **Brushes**:
+   - **Solid when closed, else detail (recommended)**: a closed mesh whose faces point outward becomes a solid brush;
+     anything else a detail brush. Detail brushes are drawn and collided with but not cut into the level's rooms, so
+     they cannot leak.
+   - **Always solid brushes**: an open mesh can then leave holes or leaks when the level is built; the report warns.
+   - **Always detail brushes**.
+3. Pick the **Level of detail** to take. It applies to `.v3m` and `.v3c` files and to glTF and OBJ files Cairn wrote
+   from a mesh, which hold each submesh once per level of detail. For glTF, choose the **Objects to carry**.
+4. Choose where it goes and press **Convert**. The report says which brushes became solid or detail and why; a group
+   file written to disk opens in a tab.
+
+Each glTF mesh node, OBJ object or group, or mesh submesh becomes one brush, placed where the node or object is (any
+scale is applied to the vertices). Faces with no area are dropped and faces with many corners split into triangles.
+Texture names come from Cairn's or REDUX's glTF extras, else from the material's name or its image (a `.png` or `.jpg`
+image gives a `.tga` name). A glTF or OBJ that Cairn wrote from a level brings back its brushes with their own flags,
+uids and groups (glTF also its objects and moving groups). Model in metres, apply your object transforms, and keep
+texture names to 31 characters.
+
+### Convert a Red Faction II level
+
+Red Faction II levels open and convert like any other, read-only (see
+[Use Red Faction II content](#use-red-faction-ii-content)). Their textures come from the `.peg` texture packs beside
+the level (in its folder or its packfile group) and then from the shared packs of the Red Faction II install it belongs
+to, when Cairn can tell which one that is: from the `.toc_group` the level was opened from, or by looking up from the
+level's folder for the install's `pc_media` folder.
+
+The Convert window adds a **Red Faction II** section:
+
+- **Translate the names to Red Faction textures** (the default) renames each texture to the Red Faction texture
+  REDUX's tables match it with; names without a match stay. **Keep the Red Faction II names and textures** keeps the
+  names, and a static mesh or group file gets the textures from the level's `.peg` packs written beside it as `.tga`
+  files (glTF and OBJ always write the textures as PNG).
+- **Lights, coronas, clutter and brushes** (folded at first): **Light intensity ×** and **Light range ×** (Red Faction
+  II's range is where light falls to half, Red Faction's where it reaches nothing), **Apply the level's lightmap
+  multiplier**, **Fill lights where only baked light shows**, **Jump pad strength ×** (Red Faction II's gravity is
+  stronger), **A light for each coloured corona** with its range and intensity (blank fits them to the level's baked
+  colours), **Keep the coronas (as Alpine coronas)**, **Clutter as Alpine static meshes** (named after the clutter's
+  mesh in the install's clutter table; convert those meshes too), **Geoable brushes without the detail flag** and
+  **Leave out invisible trigger brushes**.
+
+The values start at REDUX's defaults, and **Defaults** puts them back. A number Cairn cannot use turns red and turns
+**Convert** off. The report lists every approximation (codes LC090 to LC097): textures translated or kept, lights
+rescaled, coronas turned into lights, what to set by hand for ambient light and fog, and what was not converted.
+
+### Convert many levels in a packfile
+
+1. In the packfile, select the levels and group files (tick **Levels** in the **File types** panel to list only them).
+2. Choose **Packfile › Convert levels…** (also on the right-click menu).
+3. Choose the format and options once for all of them, and where the files go: into the packfile as new entries (one
+   undo step) or into a folder.
+4. **Convert**. Progress shows in the packfile's status bar, where you can cancel. One report covers every file.
+
+### Good to know (levels)
+
+- **Only packfiles count.** The game loads a level, and everything it uses, from a packfile in a folder it loads (see
+  [How the game finds your files](#how-the-game-finds-your-files)). A converted or extracted file on disk is for other
+  tools.
+- **Group files are for the editor.** Import them into a level in Alpine Faction's level editor and build the level
+  there.
+- **Settings**: **Tools › Settings… › Levels & groups** sets the preview's triangle limit, its lighting and whether both
+  sides of each face are drawn, and where conversions go by default. The Convert window remembers its other choices.
+- **Help › Levels and groups** (**F1** in a level tab) summarises this chapter. The report codes are in the
+  [reference](REFERENCE.md#level-conversion-report-codes).
+
+### Limitations (levels)
+
+- Levels and group files are never edited; Cairn never writes a level, and does not rewrite a group file as a group
+  file.
+- Lightmaps are not drawn, and distant textures can shimmer in the preview (no mipmaps).
+- Levels and group files do not convert to a character mesh (`.v3c`): they have no skeleton.
+- Group files from triangle meshes (`.v3m`, `.v3c`, glTF from other tools) keep triangles: faces are not merged back
+  into polygons.
+- Red Faction II levels: entities, nav points, room effects and a few other sections are not converted; item and event
+  class names are kept as they are; some translated texture names are not stock Red Faction textures and show as
+  missing; light and corona conversion follows REDUX and is an approximation. The packfile preview of a Red Faction II
+  level uses only its group's texture packs.
+- The PlayStation 2 version's levels are not read.
+
 ## Troubleshooting and FAQ
 
 ### Game folder and libraries
@@ -2019,6 +2446,8 @@ name loaded later does not win. By default a level packfile cannot replace the g
   [Edit a file and put it back](#edit-a-file-and-put-it-back)).
 - It is a static mesh (`.v3m`) or an exporter or PS2 mesh: these open read-only. Use **Save As…** or **Convert…**.
 - It is a sound: sound tabs only play and convert.
+- It is a level or group file, a Red Faction II animation or a Red Faction II packfile group: these open read-only.
+  Use **Convert to**, or extract.
 - It is an effect in an older format version: press **Convert** on its bar first (see
   [Edit an older effect](#edit-an-older-effect)).
 - It could not be read: the reason is in **Problems**.
@@ -2073,6 +2502,27 @@ for; retargeting, glTF export and conforming drop it.
 options; map the missing bones in the **Bone map** tab, or rename them in Blender to match. REDUX reads only
 `.gltf` with its `.bin`, not `.glb`. See [Import and export glTF](#import-and-export-gltf).
 
+### Levels and group files
+
+**Faces are drawn in a flat colour, or the toolbar says textures are missing.** Cairn could not find those textures
+beside the level, in your search folders or in the game. For a level from a packfile, open it from that packfile so
+its own textures are found. For a Red Faction II level, keep its `.peg` packs beside it, or open it from its
+`.toc_group`.
+
+**The preview asks before it builds.** The level has more triangles than the limit on **Tools › Settings… › Levels &
+groups**. Press **Build the preview**, or raise the limit.
+
+**I see the inside of rooms from outside, or walls vanish.** The game draws only the front of each face. Fly inside
+(**V**), or turn on **Faces › Both sides of each face**.
+
+**The group file from my model leaks or has holes when the level is built.** A mesh that is not closed should be a
+detail brush. Convert again with **Solid when closed, else detail** or **Always detail brushes**; the report lists the
+meshes that are not closed.
+
+**Textures of a converted Red Faction II level are missing in Red Faction.** Translated names point at Red Faction
+textures, and a few have no stock texture of that name. Convert with **Keep the Red Faction II names and textures**
+and ship the `.tga` files written beside the output with your level.
+
 ### Cairn itself
 
 **Cairn offered to recover files at start.** It closed with unsaved work last time. Restore what you want; **Not
@@ -2105,11 +2555,18 @@ mask image.
 
 **Animated texture (`.atx`).** Alpine Faction's text file that lists frame images and their timing (1.4.0+).
 
-**Clip (`.rfa`).** One character animation: a walk, a reload, a death. Tables spell clips `.mvf`.
+**Brush.** A solid shape the level editor builds a level from. A **solid** brush is cut into the level's rooms when
+the level is built; a **detail** brush is drawn and collided with but not cut into rooms.
+
+**Clip (`.rfa`).** One character animation: a walk, a reload, a death. Tables spell clips `.mvf`. Red Faction II's
+animations are `.rfa` files too, in a version Red Faction cannot play; Cairn converts them.
 
 **Character mesh (`.v3c`), static mesh (`.v3m`).** A model with a skeleton (characters), or without one (items,
 props, level objects). Tables spell them `.vcm` and `.v3d`. The 3ds Max exporter's own source files also use
-`.vcm` and `.v3d`, and the PS2 version has `.rfc` and `.rfm`; Cairn converts all four.
+`.vcm` and `.v3d`, and the PS2 version and Red Faction II have `.rfc` and `.rfm`; Cairn converts them all.
+
+**Compiled geometry.** The rooms and movers the level editor makes from the brushes when it builds a level, and what
+the game draws. A level (`.rfl`) holds both its compiled geometry and its brushes.
 
 **Entry.** One file inside a packfile.
 
@@ -2120,7 +2577,12 @@ frames a bitmap or effect plays per second.
 
 **Glyph.** The picture of one character in a font.
 
+**Group file (`.rfg`).** Brushes and objects saved from the level editor, to be imported into another level. The game
+never loads group files.
+
 **Kerning pair.** A spacing correction applied when one particular character follows another.
+
+**Level (`.rfl`).** A map the game loads: its compiled geometry, brushes, lights, objects and settings.
 
 **Mip levels (mipmaps).** Smaller copies of a texture, each half the size of the one before, used for distant
 surfaces.
@@ -2128,13 +2590,20 @@ surfaces.
 **Mod (`mods` folder).** A set of packfiles in `mods\<name>`, loaded when the game starts with `-mod <name>`. A mod
 may replace any stock file, tables included.
 
+**OBJ (`.obj`).** Wavefront OBJ, a plain 3D exchange format most modelling tools read and write, with its materials
+in a `.mtl` file.
+
 **Packfile (`.vpp`).** The game's archive: a flat list of files with no folders. See
 [How the game finds your files](#how-the-game-finds-your-files).
 
-**PEG (`.peg`).** The PlayStation 2 version's texture pack. Cairn converts its textures to `.tga` and `.atx`.
+**PEG (`.peg`).** The texture pack of the PlayStation 2 version and of Red Faction II. Cairn converts its textures to
+`.tga` and `.atx`.
 
 **Problems.** Cairn's live checks of a file against what the game will do with it: **errors** the game cannot cope
 with, **warnings** that probably do not do what you want, and **information**.
+
+**Red Faction II packfile group (`.toc_group`).** Red Faction II's list of the files in one group, kept in one
+`.packfile` or in loose files. Cairn opens it read-only.
 
 **Search folders.** Extra folders where Cairn looks for the files your files name, after the file's own folder and
 before the game. See [Game folder and search folders](#game-folder-and-search-folders).
@@ -2189,7 +2658,7 @@ Shortcuts you will meet in several modules:
 | **Del** | Remove or delete |
 | **Ctrl+D** | Duplicate |
 | **Ctrl+E** | Extract (packfiles), focus the source editor (animated textures) |
-| **Ctrl+Shift+E** | Export or convert (sounds, bitmaps, font image sheets) |
+| **Ctrl+Shift+E** | Export or convert (sounds, bitmaps, font image sheets, levels) |
 | **Ctrl+R** | Replace with an image (bitmap frames, font glyphs) |
 | **Q**, **W**, **E**, **R** | Hide the gizmo, move, rotate, scale (animations, meshes, effects) |
 | **Ctrl+F**, **Ctrl+H** | Find, find and replace |

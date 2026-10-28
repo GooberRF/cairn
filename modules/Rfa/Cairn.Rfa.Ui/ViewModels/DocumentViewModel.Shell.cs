@@ -7,7 +7,7 @@ namespace Cairn.Rfa.Ui.ViewModels;
 /// The shell's side of a clip or mesh document: the <see cref="IDocument"/> members the existing structure
 /// does not already provide under the same name.
 /// </summary>
-public abstract partial class DocumentViewModel
+public abstract partial class DocumentViewModel : IDocumentContent
 {
     private DocumentView? _view;
     private bool _errorSaveConfirmed;
@@ -70,6 +70,34 @@ public abstract partial class DocumentViewModel
         try { return CaptureSerializer()(); }
         catch (ArgumentException) { return null; }
     }
+
+    /// <summary>
+    /// The name the content goes by (Convert to… names the outputs after it): an exporter or PS2 mesh tab's own name
+    /// (.v3d, .vcm, .rfm, .rfc), else the name with the extension of what the tab holds.
+    /// </summary>
+    public string FileName
+    {
+        get
+        {
+            if (Path.HasExtension(DisplayName)) return DisplayName;
+            return DisplayName + (Kind switch { DocumentKind.Clip => ".rfa", DocumentKind.CharacterMesh => ".v3c", _ => ".v3m" });
+        }
+    }
+
+    /// <summary>
+    /// The content as Save would write it, unsaved edits included; for an exporter or PS2 mesh tab the file it shows (that
+    /// is what converts).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The content cannot be written now (the message says why).</exception>
+    public byte[] CurrentBytes()
+    {
+        if (this is MeshDocumentViewModel { Legacy: { } legacy }) return legacy.Bytes;
+        try { return CaptureSerializer()(); }
+        catch (ArgumentException ex) { throw new InvalidOperationException(ex.Message, ex); }
+    }
+
+    /// <summary>A clip's signature and version (a Red Faction II clip has its own Convert to targets); empty for a mesh.</summary>
+    ReadOnlyMemory<byte> IDocumentContent.ContentHead => this is ClipDocumentViewModel clip ? clip.Head() : ReadOnlyMemory<byte>.Empty;
 
     /// <summary>1.0.1's status bar: error and warning counts (open the Problems tab), bones, duration, playhead and speed.</summary>
     public IReadOnlyList<StatusItem> StatusItems

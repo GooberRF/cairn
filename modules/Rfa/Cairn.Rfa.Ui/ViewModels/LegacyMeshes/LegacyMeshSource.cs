@@ -3,7 +3,7 @@ using Cairn.Rfa.Formats.Legacy;
 namespace Cairn.Rfa.Ui.ViewModels;
 
 /// <summary>
-/// The exporter (.v3d, .vcm) or PlayStation 2 (.rfm, .rfc) file a read-only mesh tab shows: its bytes, the mesh
+/// The exporter (.v3d, .vcm), PlayStation 2 or Red Faction II (.rfm, .rfc) file a read-only mesh tab shows: its bytes, the mesh
 /// read from them (shown as the .v3m/.v3c converting it makes), or why it could not be read.
 /// </summary>
 /// <param name="SourceFormat">"v3d", "vcm", "rfm" or "rfc" (by content when the name says otherwise).</param>
@@ -23,7 +23,7 @@ public sealed record LegacyMeshSource(string SourceFormat, byte[] Bytes, LegacyM
     {
         get
         {
-            string name = LegacyMeshSupport.FormatName(SourceFormat);
+            string name = Mesh is not null ? LegacyMeshSupport.FormatName(Mesh) : LegacyMeshSupport.FormatName(SourceFormat, LegacyMeshSupport.IsRedFactionII(Bytes));
             return char.ToUpperInvariant(name[0]) + name[1..] + " (." + SourceFormat + ")";
         }
     }

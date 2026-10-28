@@ -18,7 +18,7 @@ namespace Cairn.Snd.Ui;
 /// tabs with a waveform, playback (loops included) and the format's details, and converts them to WAV or Ogg Vorbis, one at a time
 /// from a tab or in a batch from a packfile ("Convert sounds..." in the packfile's menus).
 /// </summary>
-public sealed class SndModule : ModuleBase, IArchiveBatchConverter
+public sealed class SndModule : ModuleBase, IArchiveBatchConverter, IAssetConverter
 {
     /// <summary>The bottom Problems tab's id.</summary>
     public const string ProblemsPanelId = "snd.problems";
@@ -158,7 +158,10 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter
     /// output never takes the source's place: a sound already in the chosen format is not converted, an output name
     /// never equals the source's, and a file or entry of that name is only replaced after asking.
     /// </summary>
-    public Task<IReadOnlyList<string>?> ConvertDocumentAsync(SndDocument doc, SndConvertChoice? choice = null)
+    public Task<IReadOnlyList<string>?> ConvertDocumentAsync(SndDocument doc, SndConvertChoice? choice = null) => ConvertDocumentAsync(doc, choice, null);
+
+    /// <summary>As above, the window starting at <paramref name="startFormat"/> (File › Convert to…) instead of the last format used.</summary>
+    private Task<IReadOnlyList<string>?> ConvertDocumentAsync(SndDocument doc, SndConvertChoice? choice, SoundOutputFormat? startFormat)
     {
         ArgumentNullException.ThrowIfNull(doc);
         string? packfile = PackfileOf(doc), nextTo = NextToFolder(doc);
@@ -167,6 +170,7 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter
             if (base.Shell.IsDiagnosticRun) return Task.FromResult<IReadOnlyList<string>?>(null);
             var window = new SndConvertWindow(base.Shell.Dialogs, [doc.DisplayName], packfile, nextTo, Settings, o => SoundConversion.Notes(doc.Sound, o),
                 f => SoundConversion.SameFormatReason(doc.Sound, f), NoNextToReason(SourceFolder(doc))) { Owner = base.Shell.MainWindow };
+            if (startFormat is { } start) window.Select(start);
             if (window.ShowDialog() != true || window.Result is not { } chosen) return Task.FromResult<IReadOnlyList<string>?>(null);
             Remember(chosen);
             choice = chosen;
@@ -268,6 +272,66 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter
         return written;
     }
 
+    // ── Convert to… (IAssetConverter): one sound, from a tab or a packfile entry ─────────────────────────────────
+
+    private static SoundOutputFormat? FormatFor(string extension) => extension.ToLowerInvariant() switch
+    {
+        ".wav" => SoundOutputFormat.Wav,
+        ".ogg" => SoundOutputFormat.Ogg,
+        _ => null,
+    };
+
+    /// <summary>
+    /// WAV and Ogg Vorbis for every sound Cairn decodes, except the source's own extension (the output never takes its
+    /// place) and Ogg when the encoder is missing.
+    /// </summary>
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName)
+    {
+        if (!SoundDecoder.CanDecode(sourceName)) return [];
+        string own = Path.GetExtension(sourceName);
+        var targets = new List<ConversionTarget>();
+        if (!own.Equals(".wav", StringComparison.OrdinalIgnoreCase))
+            targets.Add(new(".wav", "WAV (.wav)", "16-bit PCM WAVE, the decoded sound exactly (with its loop): into its packfile, next to it or into a folder", false));
+        if (!own.Equals(".ogg", StringComparison.OrdinalIgnoreCase) && OggVorbisWriter.IsAvailable)
+            targets.Add(new(".ogg", "Ogg Vorbis (.ogg)", "Compressed Ogg Vorbis at the quality you choose: into its packfile, next to it or into a folder", true));
+        return targets;
+    }
+
+    public bool CanConvert(string sourceName, string targetExtension) =>
+        SoundDecoder.CanDecode(sourceName) && FormatFor(targetExtension) is { } format && (format != SoundOutputFormat.Ogg || OggVorbisWriter.IsAvailable);
+
+    /// <summary>
+    /// A sound tab through its Convert window (starting at the chosen format); a packfile entry through the batch path
+    /// with that one entry. Without a dialog: the chosen format with the remembered options, into the packfile when the
+    /// request can add to it, else into <see cref="AssetConversionRequest.OutputFolder"/>. Returns the first name or
+    /// path written.
+    /// </summary>
+    public async Task<string?> ConvertAsync(AssetConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!CanConvert(request.FileName, request.TargetExtension)) return null;
+        var format = FormatFor(request.TargetExtension)!.Value;
+        var options = new SoundConvertOptions { Format = format, WriteLoop = Settings.WriteLoop, Quality = Settings.Quality };
+        SndConvertChoice? choice = request.Interactive ? null
+            : new SndConvertChoice(request.AddToArchive is not null && request.OutputFolder is null ? SoundTarget.IntoPackfile : SoundTarget.Folder,
+                request.OutputFolder ?? DefaultFolder(), options, Replace: false);
+        if (request.Document is SndDocument doc)
+            return (await ConvertDocumentAsync(doc, choice, format))?.FirstOrDefault();
+        var bytes = request.Bytes;
+        string? archive = request.ArchivePath;
+        var batch = new ArchiveBatchRequest(archive is null ? request.FileName : Path.GetFileName(archive), archive is null ? null : Path.GetDirectoryName(archive),
+            [new ArchiveBatchEntry(request.FileName, bytes.LongLength, () => bytes)])
+        {
+            Interactive = request.Interactive,
+            Options = choice,
+            AddFiles = request.AddToArchive is { } add ? (label, files, replace) => add(label, files, replace) ?? [] : null,
+            AllEntries = [.. request.ArchiveEntryNames.Select(n => new ArchiveBatchEntry(n, 0, () => []))],
+        };
+        LastBatch = null;
+        if (await ConvertBatchAsync(batch, format) is null) return null;
+        return LastBatch?.FirstOrDefault(r => r.Succeeded)?.OutputName;
+    }
+
     // ── converting a batch from a packfile (IArchiveBatchConverter) ───────────────────────────────────────────
 
     public string CommandText => "Convert _sounds...";
@@ -275,7 +339,10 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter
 
     public bool CanConvert(string entryName) => SoundDecoder.CanDecode(entryName);
 
-    public async Task<string?> ConvertAsync(ArchiveBatchRequest request)
+    public Task<string?> ConvertAsync(ArchiveBatchRequest request) => ConvertBatchAsync(request, null);
+
+    /// <summary>The batch, the window starting at <paramref name="startFormat"/> when given (a single entry's Convert to…).</summary>
+    private async Task<string?> ConvertBatchAsync(ArchiveBatchRequest request, SoundOutputFormat? startFormat)
     {
         ArgumentNullException.ThrowIfNull(request);
         var entries = request.Entries.Where(e => CanConvert(e.Name)).ToList();
@@ -288,6 +355,7 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter
         {
             var window = new SndConvertWindow(base.Shell.Dialogs, [.. entries.Select(e => e.Name)], packfile, nextTo, Settings, null,
                 noNextToReason: NoNextToReason(request.ArchiveFolder)) { Owner = base.Shell.MainWindow };
+            if (startFormat is { } start) window.Select(start);
             if (window.ShowDialog() != true || window.Result is not { } chosen) return null;
             Remember(chosen);
             choice = chosen;

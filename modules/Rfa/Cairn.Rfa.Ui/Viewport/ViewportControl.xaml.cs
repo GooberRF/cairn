@@ -727,8 +727,10 @@ public partial class ViewportControl : UserControl
     private void OnDragOver(object sender, DragEventArgs e)
     {
         var item = e.Data.GetData(LibraryDragFormat);
-        bool ok = (item is LibraryMesh { HasSkeleton: true } && _document is ClipDocumentViewModel)
-            || (item is LibraryClip { IsReadable: true } && _document is MeshDocumentViewModel { HasSkeleton: true });
+        bool ok = ((item is LibraryMesh { HasSkeleton: true } && _document is ClipDocumentViewModel)
+            || (item is LibraryClip { IsReadable: true } && _document is MeshDocumentViewModel { HasSkeleton: true }))
+            // a clip and a mesh of different games never preview together (a clip stores bone indices only)
+            && _document?.Shell.Library.GameMismatch(item, _document) is null;
         if (item is not null)
         {
             e.Effects = ok ? DragDropEffects.Link : DragDropEffects.None;
@@ -738,6 +740,12 @@ public partial class ViewportControl : UserControl
 
     private void OnDrop(object sender, DragEventArgs e)
     {
+        if (_document?.Shell.Library.GameMismatch(e.Data.GetData(LibraryDragFormat), _document) is { } otherGame)
+        {
+            _document.Shell.ShowShellStatus($"Not previewed: {otherGame}.");
+            e.Handled = true;
+            return;
+        }
         switch (e.Data.GetData(LibraryDragFormat))
         {
             case LibraryMesh mesh when _document is ClipDocumentViewModel clipDocument && mesh.HasSkeleton:

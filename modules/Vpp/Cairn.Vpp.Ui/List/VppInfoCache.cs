@@ -129,8 +129,12 @@ public sealed class VppInfoCache(Dispatcher dispatcher) : IDisposable
         }
     }
 
+    /// <summary>True for a Red Faction II packfile group's list: its extract-only types are not read as their RF1 namesakes.</summary>
+    public bool Rf2 { get; init; }
+
     private VppInfoLine Compute(VppItem item, SharedArchives archives)
     {
+        if (item.Source is MissingFileSource missing) return new VppInfoLine("not on disk", IsUnreadable: true, missing.FilePath);
         Func<Stream> open = item.Source is ArchiveSource archive ? () => archives.Open(archive) : item.Source.Open;
         return VppInfo.WithOrigin(VppInfo.Summarize(item.Name, open, item.Size, Zone), item.Source);
     }

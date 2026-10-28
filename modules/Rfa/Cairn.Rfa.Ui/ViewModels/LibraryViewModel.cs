@@ -51,6 +51,12 @@ public class LibraryNode : ObservableObject
     /// <summary>True for a node whose item is missing (a table clip no searched location has).</summary>
     public bool IsMissing { get; init; }
 
+    /// <summary>True for an item of an open packfile's group (no New Clip for it: that works on the library's meshes).</summary>
+    public bool IsPackfileItem { get; init; }
+
+    /// <summary>For an open packfile's group node: the packfile's session key (its expanded state is kept).</summary>
+    public string? GroupKey { get; init; }
+
     public ObservableCollection<LibraryNode> Children { get; } = [];
 
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
@@ -73,8 +79,8 @@ public class LibraryNode : ObservableObject
     /// <summary>The context menu's preview caption for this node's item.</summary>
     public string PreviewHeader => Item is LibraryMesh ? "_Preview on this mesh" : "_Preview this clip";
 
-    /// <summary>True for a readable character mesh (the context menu offers New Clip for This Mesh…).</summary>
-    public bool IsCharacterMesh => ClipCreation.NewClipCommands.CanCreateFor(Item);
+    /// <summary>True for a readable character mesh of the library (the context menu offers New Clip for This Mesh…).</summary>
+    public bool IsCharacterMesh => !IsPackfileItem && ClipCreation.NewClipCommands.CanCreateFor(Item);
 
     /// <summary>Gives the node children that are built the first time it is expanded.</summary>
     public void SetLazyChildren(Func<IEnumerable<LibraryNode>> load)
@@ -100,6 +106,7 @@ public sealed class LibraryClipRow : ObservableObject
         _toolTip = f is null
             ? $"{clip.Name}\n{clip.Location.DisplayLocation}\nCannot be read: {clip.Error}"
             : $"{clip.Name}\n{clip.Location.DisplayLocation}\n{f.BoneCount} bones · {TimeFormat.Duration(f.Duration)} · version {f.Version}"
+              + (f.IsRedFactionII ? " (Red Faction II, read-only)" : "")
               + (HasMorph ? $"\nMorph: {f.MorphVertexCount:N0} vertices, {f.MorphKeyframeCount} keyframes" : "");
     }
 
@@ -117,6 +124,9 @@ public sealed class LibraryClipRow : ObservableObject
 
     public bool IsReadable => Clip.IsReadable;
 
+    /// <summary>False: a clip, not a group header.</summary>
+    public bool IsHeader => false;
+
     /// <summary>The clip's facts, plus what a double-click on it would do now.</summary>
     public string ToolTip => LibraryViewModel.ActivationHint is { } hint ? _toolTip + "\n\n" + hint(Clip) : _toolTip;
 
@@ -126,12 +136,24 @@ public sealed class LibraryClipRow : ObservableObject
     public string AutomationName => $"{Name}, {DurationText}, {BonesText} bones, {VersionText}{(HasMorph ? ", morph" : "")}";
 }
 
+/// <summary>A group header of the library's Clips list: an open packfile's clips, or the search-path library's.</summary>
+/// <param name="Header">"All_Levels.toc_group", "Library".</param>
+/// <param name="Detail">"60 clips", "3 of 60 clips", "reading…".</param>
+/// <param name="ToolTip">What the group is.</param>
+public sealed record LibraryClipGroupRow(string Header, string Detail, string ToolTip)
+{
+    /// <summary>True: a header, not a clip.</summary>
+    public bool IsHeader => true;
+
+    public string AutomationName => $"{Header}, {Detail}";
+}
+
 /// <summary>
 /// The Library panel (left, global; DESIGN.md "Library"): every clip and mesh the resolver can see,
-/// built by <see cref="AssetLibrary"/> off the UI thread. The Meshes tab groups characters by skeleton
-/// family (static meshes apart) and lists under each character the clips the tables give it; the Clips
-/// tab is a virtualised list with a debounced, off-thread filter and a "compatible with the active
-/// mesh" toggle.
+/// built by <see cref="AssetLibrary"/> off the UI thread, and above it one group per packfile open in Cairn
+/// (<see cref="PackfileSources"/>, DESIGN.md 12). The Meshes tab groups characters by skeleton family (static meshes
+/// apart) and lists under each library character the clips the tables give it; the Clips tab is a virtualised list
+/// with a debounced, off-thread filter and a "compatible with the active mesh" toggle (bone count and game).
 /// </summary>
 public sealed class LibraryViewModel : ObservableObject
 {
@@ -141,10 +163,15 @@ public sealed class LibraryViewModel : ObservableObject
     private bool _compatibleOnly;
     private int _selectedTab;
     private IReadOnlyList<LibraryClipRow> _allClipRows = [];
-    private IReadOnlyList<LibraryClipRow> _clipRows = [];
+    private LibrarySnapshot? _rowsOf;
+    private IReadOnlyList<(PackfileLibrary Source, IReadOnlyList<LibraryClipRow> Rows)> _packfileClipRows = [];
+    private IReadOnlyList<object> _clipRows = [];
+    private int _shownClips;
+    private int _totalClips;
     private int _filterGeneration;
-    private LibraryClipRow? _selectedClipRow;
+    private object? _selectedClipRow;
     private LibraryNode? _selectedNode;
+    private readonly HashSet<string> _collapsedGroups = new(StringComparer.Ordinal);
 
     public LibraryViewModel(RfaWorkspace shell)
     {
@@ -167,7 +194,7 @@ public sealed class LibraryViewModel : ObservableObject
         RetargetCommand = new RelayCommand(p => { if ((p ?? SelectedItem) is LibraryClip clip) _shell.Retarget.RetargetLibraryClip(clip); },
             p => (p ?? SelectedItem) is LibraryClip { IsReadable: true });
         NewClipCommand = new RelayCommand(p => { if ((p ?? SelectedItem) is LibraryMesh mesh) _shell.NewClips.ShowForLibraryMesh(mesh); },
-            p => ClipCreation.NewClipCommands.CanCreateFor(p ?? SelectedItem));
+            p => ClipCreation.NewClipCommands.CanCreateFor(p ?? SelectedItem) && PackfileLibrary.KeyOf(p ?? SelectedItem) is null);
         RefreshCommand = new RelayCommand(() => _shell.Assets.Refresh(), () => !_shell.Assets.IsLoading && _shell.Assets.HasSources);
         SetGameDirectoryCommand = new RelayCommand(_shell.PickGameDirectory);
         AddSearchFolderCommand = new RelayCommand(_shell.PickSearchFolder);
@@ -175,6 +202,7 @@ public sealed class LibraryViewModel : ObservableObject
 
         _shell.Assets.LibraryChanged += (_, _) => Rebuild();
         _shell.Assets.UsageChanged += (_, _) => Rebuild();
+        _shell.Packfiles.Changed += (_, _) => Rebuild();
         _shell.Assets.ProgressChanged += (_, _) =>
         {
             RaiseAll(nameof(IsLoading), nameof(ProgressText), nameof(ProgressFraction), nameof(HasProgressFraction),
@@ -185,8 +213,11 @@ public sealed class LibraryViewModel : ObservableObject
 
     public ObservableCollection<LibraryNode> MeshRoots { get; } = [];
 
-    /// <summary>The clips shown (after the filter and the compatibility toggle).</summary>
-    public IReadOnlyList<LibraryClipRow> ClipRows
+    /// <summary>
+    /// The Clips list (after the filter and the compatibility toggle): per open packfile a <see cref="LibraryClipGroupRow"/>
+    /// and its <see cref="LibraryClipRow"/>s, then the library's (under a "Library" header when packfile groups show).
+    /// </summary>
+    public IReadOnlyList<object> ClipRows
     {
         get => _clipRows;
         private set
@@ -197,10 +228,10 @@ public sealed class LibraryViewModel : ObservableObject
         }
     }
 
-    /// <summary>"1,234 clips" / "12 of 1,234 clips".</summary>
-    public string ClipCountText => _clipRows.Count == _allClipRows.Count
-        ? $"{_allClipRows.Count:N0} clips"
-        : $"{_clipRows.Count:N0} of {_allClipRows.Count:N0} clips";
+    /// <summary>"1,234 clips" / "12 of 1,234 clips" (packfile groups included).</summary>
+    public string ClipCountText => _shownClips == _totalClips
+        ? $"{_totalClips:N0} clips"
+        : $"{_shownClips:N0} of {_totalClips:N0} clips";
 
     /// <summary>The filter text (substring or wildcard), applied after a short pause in typing.</summary>
     public string Filter
@@ -215,7 +246,7 @@ public sealed class LibraryViewModel : ObservableObject
         }
     }
 
-    /// <summary>Show only clips whose bone count matches the active document's mesh.</summary>
+    /// <summary>Show only clips whose bone count (and game) matches the active document's mesh.</summary>
     public bool CompatibleOnly
     {
         get => _compatibleOnly;
@@ -229,8 +260,16 @@ public sealed class LibraryViewModel : ObservableObject
     /// <summary>The bone count "compatible" means, from the active document (0 = none).</summary>
     public int ActiveBoneCount => _shell.ActiveDocument?.Scene.Skeleton.Count ?? 0;
 
+    /// <summary>The game of the active document's mesh: a Red Faction II character's tab or clip, or a Red Faction one.</summary>
+    public bool ActiveIsRedFactionII => _shell.ActiveDocument switch
+    {
+        MeshDocumentViewModel mesh => mesh.IsRedFactionIIMesh,
+        ClipDocumentViewModel clip => clip.IsRedFactionII,
+        _ => false,
+    };
+
     public string CompatibleToolTip => ActiveBoneCount > 0
-        ? $"Show only clips with {ActiveBoneCount} bones (the active mesh's count)"
+        ? $"Show only {AssetGames.Name(ActiveIsRedFactionII)} clips with {ActiveBoneCount} bones (the active mesh's count and game)"
         : "Show only clips that fit the active document's mesh (open a mesh or a clip with a preview mesh first)";
 
     /// <summary>0 = Meshes, 1 = Clips (remembered).</summary>
@@ -244,7 +283,8 @@ public sealed class LibraryViewModel : ObservableObject
         }
     }
 
-    public LibraryClipRow? SelectedClipRow
+    /// <summary>The selected row of the Clips list: a <see cref="LibraryClipRow"/>, a group header, or null.</summary>
+    public object? SelectedClipRow
     {
         get => _selectedClipRow;
         set
@@ -265,7 +305,7 @@ public sealed class LibraryViewModel : ObservableObject
     }
 
     /// <summary>The item the commands act on when no parameter is given.</summary>
-    public object? SelectedItem => _selectedTab == 1 ? _selectedClipRow?.Clip : _selectedNode?.Item;
+    public object? SelectedItem => _selectedTab == 1 ? (_selectedClipRow as LibraryClipRow)?.Clip : _selectedNode?.Item;
 
     public bool IsLoading => _shell.Assets.IsLoading;
 
@@ -275,12 +315,15 @@ public sealed class LibraryViewModel : ObservableObject
 
     public bool HasProgressFraction => _shell.Assets.IsLoading && _shell.Assets.ProgressFraction is not null;
 
+    /// <summary>True while a packfile is open in Cairn (its group shows even without a game directory).</summary>
+    private bool HasPackfileGroups => _shell.Packfiles.Libraries.Any(l => !l.IsEmpty) || _shell.Packfiles.ProbingLabels.Count > 0;
+
     /// <summary>Nowhere to look yet: show "Set game directory…" and "Add search folder…".</summary>
-    public bool IsEmptyNoSources => !_shell.Assets.HasSources && !_shell.Assets.IsLoading;
+    public bool IsEmptyNoSources => !_shell.Assets.HasSources && !_shell.Assets.IsLoading && !HasPackfileGroups;
 
     /// <summary>Looked, found nothing.</summary>
     public bool IsEmptyNothingFound => _shell.Assets.HasSources && !_shell.Assets.IsLoading
-        && _shell.Assets.Snapshot.Clips.Length == 0 && _shell.Assets.Snapshot.Meshes.Length == 0;
+        && _shell.Assets.Snapshot.Clips.Length == 0 && _shell.Assets.Snapshot.Meshes.Length == 0 && !HasPackfileGroups;
 
     public bool HasContent => !IsEmptyNoSources && !IsEmptyNothingFound;
 
@@ -298,7 +341,7 @@ public sealed class LibraryViewModel : ObservableObject
     /// <summary>Retarget… (a clip): opens the retarget dialog on it.</summary>
     public RelayCommand RetargetCommand { get; }
 
-    /// <summary>New Clip for This Mesh… (a character mesh): opens File › New Clip… on it.</summary>
+    /// <summary>New Clip for This Mesh… (a character mesh of the library): opens File › New Clip… on it.</summary>
     public RelayCommand NewClipCommand { get; }
     public RelayCommand RefreshCommand { get; }
     public RelayCommand SetGameDirectoryCommand { get; }
@@ -311,7 +354,7 @@ public sealed class LibraryViewModel : ObservableObject
     /// <summary>Called when the active document changes (compatibility and preview targets change).</summary>
     public void OnActiveDocumentChanged()
     {
-        RaiseAll(nameof(ActiveBoneCount), nameof(CompatibleToolTip), nameof(DoubleClickHint));
+        RaiseAll(nameof(ActiveBoneCount), nameof(ActiveIsRedFactionII), nameof(CompatibleToolTip), nameof(DoubleClickHint));
         RaiseCommands();
         RefreshToolTips();
         if (_compatibleOnly) ApplyFilter();
@@ -327,6 +370,7 @@ public sealed class LibraryViewModel : ObservableObject
     private void RefreshToolTips()
     {
         foreach (var row in _allClipRows) row.RefreshToolTip();
+        foreach (var (_, rows) in _packfileClipRows) foreach (var row in rows) row.RefreshToolTip();
         foreach (var node in MeshRoots) node.RefreshToolTip();
     }
 
@@ -344,10 +388,25 @@ public sealed class LibraryViewModel : ObservableObject
 
     private enum ActivationKind { NewTab, PlayOnMesh, PreviewOnMesh, NewTabOnSameMesh }
 
+    /// <summary>
+    /// Why <paramref name="item"/> cannot preview on <paramref name="document"/> because they are of different games (a
+    /// Red Faction II clip and a Red Faction mesh, or the reverse: a clip stores bone indices only, so it would play
+    /// mangled), or null when they are of the same game or the pair is not a clip and a mesh.
+    /// </summary>
+    public string? GameMismatch(object? item, DocumentViewModel? document) => (document, item) switch
+    {
+        (MeshDocumentViewModel { HasSkeleton: true } mesh, LibraryClip { IsReadable: true } clip) =>
+            AssetGames.Mismatch(clip.Name, PackfileLibrary.IsRedFactionII(clip), mesh.DisplayName, mesh.IsRedFactionIIMesh),
+        (ClipDocumentViewModel clipDoc, LibraryMesh { HasSkeleton: true } mesh) =>
+            AssetGames.Mismatch(clipDoc.DisplayName, clipDoc.IsRedFactionII, mesh.Name, _shell.Packfiles.IsRedFactionII(mesh)),
+        _ => null,
+    };
+
     /// <summary>What double-click on <paramref name="item"/> does now, and why when it falls back to a new tab.</summary>
     private (ActivationKind Kind, string? Reason) Plan(object item)
     {
         if (!DoubleClickPreviews) return (ActivationKind.NewTab, null);
+        if (GameMismatch(item, _shell.ActiveDocument) is { } otherGame) return (ActivationKind.NewTab, otherGame);
         switch (_shell.ActiveDocument, item)
         {
             case (MeshDocumentViewModel { HasSkeleton: true } mesh, LibraryClip { IsReadable: true } clip):
@@ -358,7 +417,8 @@ public sealed class LibraryViewModel : ObservableObject
                 return libraryMesh.BoneCount == clipDoc.Current.BoneCount
                     ? (ActivationKind.PreviewOnMesh, null)
                     : (ActivationKind.NewTab, $"{libraryMesh.Name} has {libraryMesh.BoneCount} bones and {clipDoc.DisplayName} has {clipDoc.Current.BoneCount}");
-            case (ClipDocumentViewModel { PreviewMesh: not null }, LibraryClip):
+            case (ClipDocumentViewModel { PreviewMesh: not null } clipDoc, LibraryClip clip)
+                when PackfileLibrary.IsRedFactionII(clip) == clipDoc.IsRedFactionII && PackfileLibrary.KeyOf(clip) is null:
                 return (ActivationKind.NewTabOnSameMesh, null);
             default:
                 return (ActivationKind.NewTab, null);
@@ -371,14 +431,15 @@ public sealed class LibraryViewModel : ObservableObject
         const string newTab = "Ctrl+double-click or middle-click: open in a new tab";
         var (kind, reason) = Plan(item);
         var active = _shell.ActiveDocument;
+        string where = _shell.Packfiles.SourceOf(item) is { } source ? $" (from {source.Label}, linked to it)" : "";
         return kind switch
         {
-            ActivationKind.PlayOnMesh => $"Double-click: play it on {active?.DisplayName}\n{newTab}",
-            ActivationKind.PreviewOnMesh => $"Double-click: preview {active?.DisplayName} on this mesh\n{newTab}",
+            ActivationKind.PlayOnMesh => $"Double-click: play it on {active?.DisplayName}\n{newTab}{where}",
+            ActivationKind.PreviewOnMesh => $"Double-click: preview {active?.DisplayName} on this mesh\n{newTab}{where}",
             ActivationKind.NewTabOnSameMesh when active is ClipDocumentViewModel c =>
                 $"Double-click: open in a new tab, previewed on {c.Scene.MeshName} when its bone count fits",
-            _ when reason is not null => $"Double-click: open in a new tab ({reason})",
-            _ => "Double-click: open in a new tab",
+            _ when reason is not null => $"Double-click: open in a new tab{where} ({reason})",
+            _ => $"Double-click: open in a new tab{where}",
         };
     }
 
@@ -404,7 +465,8 @@ public sealed class LibraryViewModel : ObservableObject
     /// Double-click / Enter: with a mesh in front, a clip that fits plays on it; with a clip in front, a mesh
     /// that fits becomes its preview mesh and another clip opens in a new tab on the same mesh; otherwise
     /// (or with <paramref name="newTab"/>, Ctrl, or the "always open" setting) the item opens in a new tab.
-    /// A mismatched bone count opens a new tab and says why in the status bar.
+    /// A mismatched bone count, or a clip and a mesh of different games, opens a new tab and says why in the status bar.
+    /// An item of an open packfile's group opens through the packfile's Open in Cairn (its tab is linked to it).
     /// </summary>
     public void Activate(object? item, bool newTab)
     {
@@ -436,18 +498,23 @@ public sealed class LibraryViewModel : ObservableObject
         }
     }
 
-    /// <summary>Opens a clip in a new tab previewed on <paramref name="source"/>'s mesh when the bone counts match.</summary>
-    private void OpenOnSameMesh(object item, ClipDocumentViewModel source)
+    /// <summary>
+    /// Opens a clip in a new tab previewed on <paramref name="source"/>'s mesh when the bone counts match: the same entry
+    /// (a packfile's mesh stays the packfile's, never a library mesh of the same name) with the same textures.
+    /// </summary>
+    internal void OpenOnSameMesh(object item, ClipDocumentViewModel source)
     {
         var mesh = source.PreviewMesh;
-        string? meshName = source.PreviewLibraryMesh?.Name ?? source.Scene.MeshName;
-        string? textureFolder = source.PreviewLibraryMesh?.Location.FilePath is { } p ? Path.GetDirectoryName(p) : source.Folder;
+        var entry = source.PreviewLibraryMesh;
+        var textures = source.PreviewTextures;
+        string? meshName = entry?.Name ?? source.Scene.MeshName;
+        string? textureFolder = entry?.Location.FilePath is { } p ? Path.GetDirectoryName(p) : source.Folder;
         Open(item, document =>
         {
             if (document is ClipDocumentViewModel opened && mesh is not null && !string.IsNullOrWhiteSpace(meshName)
                 && mesh.Bones.Length == opened.Current.BoneCount)
             {
-                opened.UsePreviewMesh(mesh, meshName, textureFolder);
+                opened.UsePreviewMesh(mesh, meshName, textureFolder, entry, textures);
             }
         });
     }
@@ -460,6 +527,7 @@ public sealed class LibraryViewModel : ObservableObject
         OpenFolderCommand.RaiseCanExecuteChanged();
         ExtractCommand.RaiseCanExecuteChanged();
         CopyNameCommand.RaiseCanExecuteChanged();
+        NewClipCommand.RaiseCanExecuteChanged();
     }
 
     // ── Building ─────────────────────────────────────────────────────────────
@@ -467,7 +535,13 @@ public sealed class LibraryViewModel : ObservableObject
     private void Rebuild()
     {
         var snapshot = _shell.Assets.Snapshot;
-        _allClipRows = [.. snapshot.Clips.Select(c => new LibraryClipRow(c))];
+        // the library's rows are made again only when the library changed (not when a packfile opens or closes)
+        if (!ReferenceEquals(snapshot, _rowsOf))
+        {
+            _allClipRows = [.. snapshot.Clips.Select(c => new LibraryClipRow(c))];
+            _rowsOf = snapshot;
+        }
+        _packfileClipRows = [.. _shell.Packfiles.Libraries.Where(l => !l.IsEmpty).Select(l => (l, (IReadOnlyList<LibraryClipRow>)[.. l.Clips.Select(c => new LibraryClipRow(c))]))];
         ApplyFilter();
         RaiseAll(nameof(IsEmptyNoSources), nameof(IsEmptyNothingFound), nameof(HasContent));
     }
@@ -477,49 +551,113 @@ public sealed class LibraryViewModel : ObservableObject
         int generation = ++_filterGeneration;
         string filter = _filter;
         int bones = _compatibleOnly ? ActiveBoneCount : 0;
+        bool rf2 = ActiveIsRedFactionII;
         bool compatibleOnly = _compatibleOnly;
         var rows = _allClipRows;
+        var packfileRows = _packfileClipRows;
+        var probing = _shell.Packfiles.ProbingLabels;
         var snapshot = _shell.Assets.Snapshot;
         var usage = _shell.Assets.Usage;
+        var collapsed = _collapsedGroups.ToHashSet(StringComparer.Ordinal);
         var busy = BusyTracker.Begin("library filter");
         _ = Task.Run(() =>
         {
-            var clips = rows.Where(r => LibrarySnapshot.Matches(r.Name, filter)
-                && (!compatibleOnly || (bones > 0 && r.Clip.BoneCount == bones))).ToList();
-            var meshes = BuildMeshTree(snapshot, usage, filter);
-            return (clips, meshes);
+            bool Keep(LibraryClipRow r) => LibrarySnapshot.Matches(r.Name, filter)
+                && (!compatibleOnly || (bones > 0 && r.Clip.BoneCount == bones && PackfileLibrary.IsRedFactionII(r.Clip) == rf2));
+            var list = new List<object>();
+            int shown = 0, total = rows.Count;
+            foreach (var (source, groupRows) in packfileRows)
+            {
+                var kept = groupRows.Where(Keep).ToList();
+                total += groupRows.Count;
+                shown += kept.Count;
+                if (kept.Count == 0) continue;
+                string count = kept.Count == groupRows.Count ? $"{groupRows.Count:N0} clips" : $"{kept.Count:N0} of {groupRows.Count:N0} clips";
+                list.Add(new LibraryClipGroupRow(source.Label, count, PackfileToolTip(source)));
+                list.AddRange(kept);
+            }
+            foreach (string label in probing) list.Add(new LibraryClipGroupRow(label, "reading…", $"Cairn is reading the clips and meshes of {label}."));
+            var libraryKept = rows.Where(Keep).ToList();
+            shown += libraryKept.Count;
+            if (list.Count > 0 && libraryKept.Count > 0)
+                list.Add(new LibraryClipGroupRow("Library", $"{libraryKept.Count:N0} clips", "The clips of the game directory and the search folders."));
+            list.AddRange(libraryKept);
+            var meshes = BuildMeshTree(snapshot, usage, filter, packfileRows.Select(p => p.Source).ToList(), probing, collapsed);
+            return (list, shown, total, meshes);
         }).ContinueWith(task => _shell.Dispatcher.BeginInvoke(new Action(() =>
         {
             busy.Dispose();
             if (generation != _filterGeneration || !task.IsCompletedSuccessfully) return;
-            ClipRows = task.Result.clips;
+            _shownClips = task.Result.shown;
+            _totalClips = task.Result.total;
+            ClipRows = task.Result.list;
             MeshRoots.Clear();
-            foreach (var node in task.Result.meshes) MeshRoots.Add(node);
+            foreach (var node in task.Result.meshes)
+            {
+                // a packfile group remembers being collapsed (the tree is rebuilt on every change)
+                if (node.GroupKey is { } key)
+                    node.PropertyChanged += (_, e) =>
+                    {
+                        if (e.PropertyName != nameof(LibraryNode.IsExpanded) || !string.IsNullOrWhiteSpace(_filter)) return;
+                        if (node.IsExpanded) _collapsedGroups.Remove(key);
+                        else _collapsedGroups.Add(key);
+                    };
+                MeshRoots.Add(node);
+            }
         })), TaskScheduler.Default);
     }
 
-    /// <summary>Builds the Meshes tree (off the UI thread; nodes are plain objects until bound).</summary>
-    private static List<LibraryNode> BuildMeshTree(LibrarySnapshot snapshot, ClipUsageIndex usage, string filter)
+    private static string PackfileToolTip(PackfileLibrary source) =>
+        $"{source.Label}: open in Cairn ({source.Summary}{(source.Errors > 0 ? $", {source.Errors:N0} unreadable" : "")}; read in {source.ProbeTime.TotalSeconds:0.00} s).\n"
+        + "Its clips and meshes are previewed from the packfile; Ctrl+double-click opens one in a tab linked to it. Closing the packfile removes the group.";
+
+    /// <summary>Builds the Meshes tree (off the UI thread; nodes are plain objects until bound): the open packfiles' groups, then the library.</summary>
+    private static List<LibraryNode> BuildMeshTree(LibrarySnapshot snapshot, ClipUsageIndex usage, string filter,
+        IReadOnlyList<PackfileLibrary> packfiles, IReadOnlyList<string> probing, IReadOnlySet<string> collapsed)
     {
         var roots = new List<LibraryNode>();
         bool filtering = !string.IsNullOrWhiteSpace(filter);
-        foreach (var family in snapshot.Families.OrderByDescending(f => f.Members.Length).ThenBy(f => f.Members[0], StringComparer.OrdinalIgnoreCase))
+        foreach (var source in packfiles)
         {
-            var members = family.Members.Where(m => LibrarySnapshot.Matches(m, filter)).Select(snapshot.FindMesh).OfType<LibraryMesh>().ToList();
+            var children = FamilyNodes(source.Families, source.FindMesh, source.StaticMeshes, filter, m => PackfileMeshNode(m, source));
+            if (children.Count == 0) continue;
+            var group = new LibraryNode(source.Label, source.Summary, "", PackfileToolTip(source))
+            {
+                GroupKey = source.Key,
+                IsExpanded = filtering || !collapsed.Contains(source.Key),
+            };
+            foreach (var child in children) group.Children.Add(child);
+            roots.Add(group);
+        }
+        foreach (string label in probing)
+            roots.Add(new LibraryNode(label, "reading…", "", $"Cairn is reading the clips and meshes of {label}."));
+        roots.AddRange(FamilyNodes(snapshot.Families, snapshot.FindMesh, snapshot.StaticMeshes, filter, m => MeshNode(m, usage, snapshot)));
+        return roots;
+    }
+
+    /// <summary>Skeleton family nodes (largest first) with their members, then the static meshes' node, as the library shows them.</summary>
+    private static List<LibraryNode> FamilyNodes(IEnumerable<Cairn.Rfa.Animation.SkeletonFamily> families, Func<string, LibraryMesh?> find,
+        IEnumerable<LibraryMesh> staticMeshes, string filter, Func<LibraryMesh, LibraryNode> meshNode)
+    {
+        var roots = new List<LibraryNode>();
+        bool filtering = !string.IsNullOrWhiteSpace(filter);
+        foreach (var family in families.OrderByDescending(f => f.Members.Length).ThenBy(f => f.Members[0], StringComparer.OrdinalIgnoreCase))
+        {
+            var members = family.Members.Where(m => LibrarySnapshot.Matches(m, filter)).Select(find).OfType<LibraryMesh>().ToList();
             if (members.Count == 0) continue;
             string title = FamilyTitle(family);
-            var node = new LibraryNode(title, Bones(family.BoneCount),"",
+            var node = new LibraryNode(title, Bones(family.BoneCount), "",
                 family.Members.Length == 1
                     ? $"No other mesh shares this skeleton ({family.BoneCount} bones)."
                     : $"{family.Members.Length} meshes share this skeleton ({family.BoneCount} bones); any clip made for one plays on all of them.")
             {
                 IsExpanded = filtering,
             };
-            foreach (var mesh in members.OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)) node.Children.Add(MeshNode(mesh, usage, snapshot));
+            foreach (var mesh in members.OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)) node.Children.Add(meshNode(mesh));
             roots.Add(node);
         }
 
-        var statics = snapshot.StaticMeshes.Where(m => LibrarySnapshot.Matches(m.Name, filter)).ToList();
+        var statics = staticMeshes.Where(m => LibrarySnapshot.Matches(m.Name, filter)).ToList();
         if (statics.Count > 0)
         {
             var group = new LibraryNode("Static meshes", $"{statics.Count:N0}", "",
@@ -527,7 +665,7 @@ public sealed class LibraryViewModel : ObservableObject
             {
                 IsExpanded = filtering && statics.Count <= 200,
             };
-            foreach (var mesh in statics) group.Children.Add(MeshNode(mesh, usage, snapshot));
+            foreach (var mesh in statics) group.Children.Add(meshNode(mesh));
             roots.Add(group);
         }
         return roots;
@@ -555,6 +693,16 @@ public sealed class LibraryViewModel : ObservableObject
         return node;
     }
 
+    /// <summary>A mesh of an open packfile: its game says what it plays (a Red Faction II character plays Red Faction II clips).</summary>
+    private static LibraryNode PackfileMeshNode(LibraryMesh mesh, PackfileLibrary source)
+    {
+        bool rf2 = source.IsRedFactionII(mesh);
+        string detail = mesh.IsReadable ? (mesh.HasSkeleton ? Bones(mesh.BoneCount) : "static") : "unreadable";
+        string game = rf2 ? (mesh.HasSkeleton ? "Red Faction II character (plays Red Faction II clips)" : "Red Faction II static mesh") : "";
+        string tip = $"{mesh.Name}\n{mesh.Location.DisplayLocation}" + (game.Length > 0 ? "\n" + game : "") + (mesh.Error is { } e ? $"\nCannot be read: {e}" : "");
+        return new LibraryNode(mesh.Name, detail, mesh.HasSkeleton ? "" : "", tip, mesh) { IsMissing = !mesh.IsReadable, IsPackfileItem = true };
+    }
+
     private static IEnumerable<LibraryNode> TableClips(LibraryMesh mesh, ClipUsageIndex usage, LibrarySnapshot snapshot)
     {
         foreach (var list in usage.ClipListsForMesh(mesh.Name))
@@ -578,6 +726,8 @@ public sealed class LibraryViewModel : ObservableObject
 
     private void Open(object? item, Action<DocumentViewModel>? opened = null)
     {
+        // an open packfile's item: through the packfile's Open in Cairn, so the tab is linked to it
+        if (item is not null && PackfileLibrary.KeyOf(item) is not null && _shell.Packfiles.OpenInTab(item)) return;
         switch (item)
         {
             case LibraryClip clip: _shell.OpenLocation(clip.Location, clip.Name, opened); break;
@@ -585,7 +735,7 @@ public sealed class LibraryViewModel : ObservableObject
         }
     }
 
-    private bool CanPreview(object? item) => item switch
+    private bool CanPreview(object? item) => GameMismatch(item, _shell.ActiveDocument) is null && item switch
     {
         LibraryMesh mesh => mesh.HasSkeleton && _shell.ActiveDocument is ClipDocumentViewModel,
         LibraryClip clip => clip.IsReadable && _shell.ActiveDocument is MeshDocumentViewModel { HasSkeleton: true },
@@ -594,6 +744,11 @@ public sealed class LibraryViewModel : ObservableObject
 
     private void Preview(object? item)
     {
+        if (GameMismatch(item, _shell.ActiveDocument) is { } reason)
+        {
+            _shell.ShowShellStatus($"Not previewed: {reason}.");
+            return;
+        }
         switch (item)
         {
             case LibraryMesh mesh when _shell.ActiveDocument is ClipDocumentViewModel clipDocument:
@@ -615,7 +770,8 @@ public sealed class LibraryViewModel : ObservableObject
     private void OpenFolder(object? item)
     {
         if (LocationOf(item) is not { } location) return;
-        string? path = location.FilePath ?? location.ArchivePath;
+        // an open packfile's item: the packfile itself
+        string? path = location.FilePath ?? location.ArchivePath ?? _shell.Packfiles.SourceOf(item)?.ArchivePath;
         if (path is null) return;
         try
         {

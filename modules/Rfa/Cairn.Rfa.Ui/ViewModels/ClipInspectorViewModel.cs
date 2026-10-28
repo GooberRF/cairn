@@ -246,10 +246,12 @@ public sealed class ClipInspectorViewModel : ObservableObject
     /// <summary>Read-only facts: bones, keys, morph data, file size, origin.</summary>
     public ObservableCollection<FactRow> Facts { get; } = [];
 
-    /// <summary>The version choices.</summary>
-    public IReadOnlyList<int> Versions { get; } = [7, 8];
+    /// <summary>The version choices (a Red Faction II clip, read-only, shows its own 9 among them).</summary>
+    public IReadOnlyList<int> Versions => _document.IsRedFactionII ? Rf2Versions : RfVersions;
 
-    /// <summary>The clip's format version (7 or 8); setting it converts (one undo step).</summary>
+    private static readonly int[] RfVersions = [7, 8], Rf2Versions = [7, 8, RfaClip.Rf2Version];
+
+    /// <summary>The clip's format version (7 or 8; 9 for a Red Faction II clip); setting it converts (one undo step).</summary>
     public int Version
     {
         get => _document.Current.Version;
@@ -302,7 +304,9 @@ public sealed class ClipInspectorViewModel : ObservableObject
         var clip = _document.Current;
         foreach (var row in AllRows()) row.Refresh();
         DurationText = TimeFormat.Duration(clip.Duration);
-        RaiseAll(nameof(Version), nameof(IsVersionModified), nameof(IsReadOnly));
+        // the list first, so the box can select the version (a reload can turn the clip into a Red Faction II one, or back)
+        RaiseAll(nameof(Versions), nameof(Version), nameof(IsVersionModified), nameof(IsReadOnly));
+        ConvertVersionCommand.RaiseCanExecuteChanged();
         ResetVersionCommand.RaiseCanExecuteChanged();
         RebuildFacts(clip);
     }

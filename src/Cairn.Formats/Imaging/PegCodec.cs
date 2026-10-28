@@ -194,6 +194,8 @@ public static class PegCodec
     {
         ArgumentNullException.ThrowIfNull(bytes);
         name ??= "texture pack";
+        // Red Faction II ships 0-byte .peg files (placeholders); say so instead of "no signature"
+        if (bytes.Length == 0) throw new AssetFormatException($"'{name}' is an empty file (0 bytes): it holds no textures.");
         if (bytes.Length < 8 || !IsPeg(bytes)) throw new AssetFormatException($"'{name}' is not a PEG texture pack (no GEKV signature).");
         int version = (int)BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(4));
         return version switch

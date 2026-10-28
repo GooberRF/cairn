@@ -14,6 +14,43 @@ public readonly record struct VfxParticle(Vector3 Position, Vector3 Velocity, fl
     float Angle, float LifeFraction);
 
 /// <summary>
+/// Behaviour outside Red Faction's particle systems, for playing another game's emitter through
+/// <see cref="VfxParticleSimulator"/> (a Red Faction II effect: its emitter converted to a particle system, plus what the
+/// format has no field for). With extras a particle is born at the emitter with age 0, its life is the lifetime times
+/// 1 + U(-v, v), and it is launched along the emitter's local -Y (type 0, from a point of the X by Z rectangle) or from a
+/// point at the width's distance in a random direction (type 1).
+/// </summary>
+public sealed record VfxParticleExtras
+{
+    /// <summary>A constant acceleration in effect space, m/s².</summary>
+    public Vector3 Acceleration { get; init; }
+
+    /// <summary>The cosine of a cone the launch direction is drawn from (uniform over the cap); 1 or more: no cone.</summary>
+    public float Spread { get; init; } = 1;
+
+    /// <summary>Type 1: the cosine of the cone (around the launch axis) the spawn direction is drawn from; -1 or less: the whole sphere.</summary>
+    public float SpawnCone { get; init; } = -1;
+
+    /// <summary>The launch speed is multiplied by 1 + U(-v, v) (instead of the per-axis jitter of the frame's speed variation).</summary>
+    public float SpeedVariance { get; init; }
+
+    /// <summary>The fade and shrink curves as stored: (0, 0) fades over the whole life instead of meaning none.</summary>
+    public bool LiteralEnvelopes { get; init; }
+
+    /// <summary>Particles per second at a time in seconds (instead of the frames' per-tick birth rate), or null.</summary>
+    public Func<float, float>? BirthRate { get; init; }
+
+    /// <summary>The launch speed at a time in seconds (instead of the frames'), or null.</summary>
+    public Func<float, float>? Speed { get; init; }
+
+    /// <summary>The emitter's position and orientation at a time in seconds (instead of the frames'), or null.</summary>
+    public Func<float, (Vector3 Position, Quaternion Orientation)>? Pose { get; init; }
+
+    /// <summary>The effect's length in 15 fps frames when it is not a whole number (births stop there; loops wrap there); 0: the file's end frame.</summary>
+    public double EndFrame { get; init; }
+}
+
+/// <summary>
 /// Deterministic simulation of one particle system. Particles are born in effect space (the preview host sits at
 /// the origin) and do not follow the emitter after birth. The state advances in fixed steps from time zero, so
 /// any time is reached identically whether played forward, scrubbed back (restart and replay) or run fresh.
@@ -25,6 +62,8 @@ public sealed class VfxParticleSimulator
     private readonly VfxParticleSystem system;
     private readonly int index, seed, material, endFrame;
     private readonly VfxPlaybackMode mode;
+    private readonly VfxParticleExtras? extras;
+    private readonly double end;
     private readonly float step;
     private readonly uint flags;
     private readonly float shrinkBirth, shrinkDeath, fadeBirth, fadeDeath;
@@ -44,20 +83,25 @@ public sealed class VfxParticleSimulator
     /// <param name="seed">Random seed; equal seeds give equal results.</param>
     /// <param name="mode">Playback mode (looping re-emits, one-shot and hold stop emitting at the end).</param>
     /// <param name="stepsPerFrame">Simulation steps per 15 fps frame (the game ticks at the render rate; 2 = 30 Hz).</param>
+    /// <param name="extras">Behaviour of another game's emitter (see <see cref="VfxParticleExtras"/>), or null for Red Faction's.</param>
     public VfxParticleSimulator(VfxSampler sampler, int systemIndex, int seed = 1, VfxPlaybackMode mode = VfxPlaybackMode.Loop,
-        int stepsPerFrame = 2)
+        int stepsPerFrame = 2, VfxParticleExtras? extras = null)
     {
         this.sampler = sampler;
         index = systemIndex;
         this.seed = seed;
         this.mode = mode;
+        this.extras = extras;
         system = sampler.ParticleSystems[systemIndex];
         material = sampler.ParticleMaterial(systemIndex);
         endFrame = sampler.EndFrame;
+        end = extras is { EndFrame: > 0 } x && double.IsFinite(x.EndFrame) ? x.EndFrame : endFrame;
         step = 1f / Math.Max(1, stepsPerFrame);
         flags = system.Flags ?? (uint)(system.LegacyFlags ?? 0);
-        (shrinkBirth, shrinkDeath) = Curve(system.Shrink ?? new Vector2(system.LegacyShrinkBirth ?? 0, system.LegacyShrinkDeath ?? 0));
-        (fadeBirth, fadeDeath) = Curve(system.Fade ?? Vector2.Zero);
+        var shrink = system.Shrink ?? new Vector2(system.LegacyShrinkBirth ?? 0, system.LegacyShrinkDeath ?? 0);
+        (shrinkBirth, shrinkDeath) = extras?.LiteralEnvelopes == true ? (shrink.X, shrink.Y) : Curve(shrink);
+        var fade = system.Fade ?? Vector2.Zero;
+        (fadeBirth, fadeDeath) = extras?.LiteralEnvelopes == true ? (fade.X, fade.Y) : Curve(fade);
         var warpList = new List<int>();
         foreach (var name in system.Warps)
             for (int w = 0; w < sampler.Spacewarps.Count; w++)
@@ -80,7 +124,7 @@ public sealed class VfxParticleSimulator
     public bool IsDrops => system.IsDrops;
 
     /// <summary>True when the result relies on approximated behaviour (spacewarp forces or drop streaks).</summary>
-    public bool IsApproximate => UsesSpacewarps || IsDrops;
+    public bool IsApproximate => UsesSpacewarps || IsDrops || extras is not null;
 
     /// <summary>Approximate streak length for a drops particle: the stored tail distance, else the distance travelled in one frame.</summary>
     public float ApproximateStreakLength(in VfxParticle p) =>
@@ -176,7 +220,7 @@ public sealed class VfxParticleSimulator
         StepsRun++;
         float t1 = (steps + 1) * step;
         steps++;
-        var state = VfxPlayback.Evaluate(mode, t1 / VfxTime.FramesPerSecond, endFrame);
+        var state = VfxPlayback.Evaluate(mode, t1 / VfxTime.FramesPerSecond, end);
         float local = state.Frame - system.StartTime;
         if (local < 0) return;
         float dt = step / VfxTime.FramesPerSecond;
@@ -191,10 +235,12 @@ public sealed class VfxParticleSimulator
             if (age[i] < 0) continue;
             Vector3 a = (flags & 2) != 0 ? new Vector3(0, -Gravity, 0) : Vector3.Zero;
             foreach (int w in warpIndices) a += WarpForce(w, state.Frame, pos[i]);
+            if (extras is not null) a += extras.Acceleration;
             vel[i] += a * dt;
             pos[i] += vel[i] * dt;
         }
         var e = sampler.SampleEmitter(index, local);
+        if (extras is not null) { StepExtras(extras, state, local, dt, e); return; }
         if (!hasPrevEmitter) { prevEmitter = e.Position; hasPrevEmitter = true; }
         if (state.Emitting && system.Frames.Length > 0 && local > system.Start && local < system.Frames.Length)
         {
@@ -210,6 +256,66 @@ public sealed class VfxParticleSimulator
             }
         }
         prevEmitter = e.Position;
+    }
+
+    /// <summary>Births with <see cref="VfxParticleExtras"/>: rate per second over the effect's own length, at the emitter, age 0.</summary>
+    private void StepExtras(VfxParticleExtras x, VfxPlaybackState state, float local, float dt, VfxEmitterSample e)
+    {
+        float seconds = local / VfxTime.FramesPerSecond;
+        if (!state.Emitting || local >= end) return;
+        if (x.Pose is { } pose)
+        {
+            var (p, q) = pose(seconds);
+            e = e with { Position = p, Orientation = q };
+        }
+        float rate = x.BirthRate is { } br ? br(seconds) : e.BirthRate * VfxTime.TicksPerSecond;
+        accumulator += (float.IsFinite(rate) ? MathF.Max(0, rate) : 0) * dt;
+        int n = (int)MathF.Floor(accumulator);
+        accumulator -= n;
+        float speed = x.Speed is { } sp ? sp(seconds) : e.Speed;
+        int slot = 0;
+        for (int j = 0; j < n; j++)
+        {
+            while (slot < age.Length && age[slot] >= 0) slot++;
+            if (slot >= age.Length) break;
+            BirthExtras(slot, x, e, speed);
+        }
+    }
+
+    private void BirthExtras(int i, VfxParticleExtras x, in VfxEmitterSample e, float speed)
+    {
+        life[i] = MathF.Max(1e-4f, system.Lifetime / (float)VfxTime.TicksPerSecond * (1 + Jitter(system.LifetimeVariation)));
+        if (x.SpeedVariance != 0) speed *= 1 + Jitter(x.SpeedVariance);
+        var axis = Vector3.Transform(-Vector3.UnitY, e.Orientation);
+        Vector3 dir;
+        if (system.EmitterType == 1)
+        {
+            var d0 = x.SpawnCone <= -1 ? RandomUnit() : Cone(axis, x.SpawnCone);
+            pos[i] = e.Position + d0 * e.Width;
+            dir = x.Spread >= 1 ? d0 : Cone(d0, x.Spread);
+        }
+        else
+        {
+            var r = new Vector3(Uniform(-e.Width / 2, e.Width / 2), 0, Uniform(-e.Height / 2, e.Height / 2));
+            pos[i] = Vector3.Transform(r, e.Orientation) + e.Position;
+            dir = x.Spread >= 1 ? axis : Cone(axis, x.Spread);
+        }
+        vel[i] = float.IsFinite(speed) ? dir * speed : Vector3.Zero;
+        angle[i] = (flags & 0x10) != 0 ? Uniform(0, MathF.Tau) : 0;
+        age[i] = 0;
+    }
+
+    /// <summary>A random direction within the cone around <paramref name="axis"/> whose half angle has cosine <paramref name="cosine"/>, uniform over the cap.</summary>
+    private Vector3 Cone(Vector3 axis, float cosine)
+    {
+        float lengthSquared = axis.LengthSquared();
+        var z = lengthSquared > 1e-12f && float.IsFinite(lengthSquared) ? axis / MathF.Sqrt(lengthSquared) : -Vector3.UnitY;
+        float c = float.IsFinite(cosine) ? Math.Clamp(cosine, -1, 1) : 1;
+        float h = Uniform(c, 1), t = Uniform(0, MathF.Tau), r = MathF.Sqrt(MathF.Max(0, 1 - h * h));
+        var helper = MathF.Abs(z.Y) < 0.9f ? Vector3.UnitY : Vector3.UnitX;
+        var u = Vector3.Normalize(Vector3.Cross(helper, z));
+        var v = Vector3.Cross(z, u);
+        return u * (r * MathF.Cos(t)) + v * (r * MathF.Sin(t)) + z * h;
     }
 
     private void Birth(int i, in VfxEmitterSample e, Vector3 origin, float dt)
@@ -238,7 +344,7 @@ public sealed class VfxParticleSimulator
 
     private void Emit(float timelineFrame, float extra)
     {
-        var state = VfxPlayback.Evaluate(mode, timelineFrame / VfxTime.FramesPerSecond, endFrame);
+        var state = VfxPlayback.Evaluate(mode, timelineFrame / VfxTime.FramesPerSecond, end);
         var e = sampler.SampleEmitter(index, state.Frame - system.StartTime);
         var tex = material >= 0 ? sampler.Materials[material].Texture0 : null;
         int effectTex = VfxSampler.TextureFrame(tex, state.Frame);

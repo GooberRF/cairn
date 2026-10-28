@@ -177,11 +177,27 @@ public static class ShellSelfTests
         if (!ctx.Check(two != null, "second probe module loaded")) return;
 
         // A real PreviewKeyDown through the window (modifier-less keys only: Keyboard.Modifiers is the live state).
+        // State left by an earlier test or held on the desktop (a menu still open, a modal dialog, a modifier held)
+        // would block the synthetic press: menus are closed first, and when a guard still applies the press is
+        // logged with the guard's name and routed with explicit modifiers instead, so this test checks the routing
+        // rules, not the live input state.
         bool Press(UIElement target, Key key)
         {
+            foreach (var menu in window.MainMenu.Items.OfType<System.Windows.Controls.MenuItem>()) menu.IsSubmenuOpen = false;
             if (PresentationSource.FromVisual(window) is not { } source) return router.TryExecute(key, ModifierKeys.None, target);
+            var live = Keyboard.Modifiers;
+            string? guard = live != ModifierKeys.None ? $"{live} held"
+                : System.Windows.Interop.ComponentDispatcher.IsThreadModal ? "a modal dialog is running"
+                : ShortcutRouter.IsMenuOrPopupActive(window, target) ? "a menu or popup holds the keyboard"
+                : null;
+            if (guard is not null)
+            {
+                ctx.Log($"  note: {guard}; {key} is routed with no modifiers instead of through the window");
+                return router.TryExecute(key, ModifierKeys.None, target);
+            }
             var e = new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, key) { RoutedEvent = Keyboard.PreviewKeyDownEvent };
             target.RaiseEvent(e);
+            if (!e.Handled) ctx.Log($"  note: {key} was not handled (modifiers {Keyboard.Modifiers}, focus {Keyboard.FocusedElement?.GetType().Name ?? "none"}, active {shell.ActiveDocument?.DisplayName ?? "none"})");
             return e.Handled;
         }
 
@@ -202,6 +218,11 @@ public static class ShellSelfTests
         ctx.Check(router.TryExecute(Key.P, CtrlShift, box) && doc.Text == "_F!", "a Ctrl+Shift gesture still fires in a text box");
         ctx.Check(!ShortcutRouter.YieldsToTextInput(new("t", "t", Key.Space, ModifierKeys.None, shell.SaveCommand, AllowInTextInput: true))
             && ShortcutRouter.YieldsToTextInput(new("t", "t", Key.C, ModifierKeys.Control, shell.SaveCommand)), "AllowInTextInput overrides; Ctrl+C yields");
+        // An element that claims the movement keys (a flying camera) keeps Ctrl+W (Close tab) for itself.
+        var claimed = new System.Windows.Controls.Border();
+        Cairn.Ui.Modules.KeyboardClaims.SetMovementKeys(claimed, true);
+        ctx.Check(!router.Route(window, Key.W, ModifierKeys.Control, claimed, out string? why) && why is not null && shell.Documents.Contains(doc),
+            $"Ctrl+W gives way to an element that claims the movement keys ({why ?? "ran"})");
 
         // The owner module of the active document wins a shared gesture; scoped shortcuts skip other kinds.
         var other = new ProbeDocument(shell, two!.Kind, string.Empty, "Other.cairnprobe2", null);

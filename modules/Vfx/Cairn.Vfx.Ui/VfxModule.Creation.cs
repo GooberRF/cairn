@@ -37,6 +37,7 @@ public sealed partial class VfxModule
     [
         new("vfx.format", "VFX format reference", () => BuildReference(VfxFormatDocs.Reference)),
         new("vfx.accuracy", "Effect preview accuracy", BuildAccuracy),
+        new(Rfe.RfeHelp.TopicId, "Red Faction II effects", Rfe.RfeHelp.Build),
     ];
 
     private void InitializeCreation()
@@ -240,15 +241,75 @@ public sealed partial class VfxModule
         var stem = Path.GetFileNameWithoutExtension(doc.DisplayName);
         var form = VfxCreationDialogs.GltfExport(stem, Shell.MainWindow, out var glb);
         if (form.ShowDialog() != true) return;
-        bool binary = glb();
-        var path = Shell.Dialogs.SaveFile(doc.FilePath is null ? null : Path.GetDirectoryName(doc.FilePath), "Export glTF",
+        ExportGltfTo(doc.Current, stem, doc.FilePath is null ? null : Path.GetDirectoryName(doc.FilePath), glb());
+    }
+
+    /// <summary>The save dialog for <paramref name="file"/> as glTF or GLB, then the export. Returns the path written, or null.</summary>
+    private string? ExportGltfTo(VfxFile file, string stem, string? folder, bool binary)
+    {
+        var path = Shell.Dialogs.SaveFile(folder, "Export glTF",
             binary ? "GLB (*.glb)|*.glb" : "glTF (*.gltf)|*.gltf", stem + (binary ? ".glb" : ".gltf"), binary ? ".glb" : ".gltf");
-        if (path is null) return;
-        try { VfxGltfExport.Save(doc.Current, path, binary); }
-        catch (Exception ex) { Shell.Dialogs.ShowError("glTF export failed", ex.Message, ex.ToString()); return; }
+        if (path is null) return null;
+        try { VfxGltfExport.Save(file, path, binary); }
+        catch (Exception ex) { Shell.Dialogs.ShowError("glTF export failed", ex.Message, ex.ToString()); return null; }
         Shell.ShowStatus($"Exported {Path.GetFileName(path)}");
         if (!Shell.IsDiagnosticRun && Shell.Dialogs.Confirm("Export finished", $"Wrote {path}" + (binary ? "" : " and its .bin"), "Open folder"))
             Process.Start("explorer.exe", $"/select,\"{path}\"");
+        return path;
+    }
+
+    // ── Convert to… (IAssetConverter): the effect as glTF ─────────────────────────────────────────────────────
+
+    private static bool IsEffectName(string name) => name.EndsWith(".vfx", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsGltfExtension(string extension) =>
+        string.Equals(extension, ".gltf", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".glb", StringComparison.OrdinalIgnoreCase);
+
+    /// <inheritdoc/>
+    public bool CanConvert(string sourceName, string targetExtension) =>
+        (IsEffectName(sourceName) && IsGltfExtension(targetExtension)) || IsRfeConversion(sourceName, targetExtension);
+
+    /// <inheritdoc/>
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName) => IsEffectName(sourceName)
+        ?
+        [
+            new(".gltf", "glTF (.gltf + .bin)", "Export the effect as glTF in REDUX's layout (Cairn reads it back losslessly)", false),
+            new(".glb", "glTF binary (.glb)", "Export the effect as one .glb file (Cairn reads it back losslessly)", false),
+        ]
+        : Rfe.RfeConversionUi.IsRfeName(sourceName) ? [Rfe.RfeConversionUi.Target] : [];
+
+    /// <summary>
+    /// The effect of the tab (unsaved edits included) or of a packfile entry's bytes as glTF: the save dialog, or without
+    /// a dialog written to <see cref="AssetConversionRequest.OutputFolder"/>. Returns the path written.
+    /// </summary>
+    public Task<string?> ConvertAsync(AssetConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!CanConvert(request.FileName, request.TargetExtension)) return Task.FromResult<string?>(null);
+        if (IsRfeConversion(request.FileName, request.TargetExtension)) return RfeTools.ConvertAsync(request);
+        bool binary = string.Equals(request.TargetExtension, ".glb", StringComparison.OrdinalIgnoreCase);
+        string stem = Path.GetFileNameWithoutExtension(request.FileName);
+        VfxFile file;
+        if (request.Document is VfxDocument doc) file = doc.Current;
+        else
+        {
+            try { file = VfxReader.Read(request.Bytes, request.FileName); }
+            catch (Cairn.Formats.AssetFormatException ex)
+            {
+                Shell.Dialogs.ShowError($"Could not convert {request.FileName}", ex.Message);
+                return Task.FromResult<string?>(null);
+            }
+        }
+        string? folder = request.FilePath is { } source ? Path.GetDirectoryName(source) : null;
+        if (request.Interactive) return Task.FromResult(ExportGltfTo(file, stem, folder, binary));
+        string path = Path.Combine(request.OutputFolder ?? folder ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), stem + (binary ? ".glb" : ".gltf"));
+        try { VfxGltfExport.Save(file, path, binary); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            Shell.Dialogs.ShowError("glTF export failed", ex.Message, ex.ToString());
+            return Task.FromResult<string?>(null);
+        }
+        return Task.FromResult<string?>(path);
     }
 
     private static FlowDocument BuildReference(FormatReference reference)

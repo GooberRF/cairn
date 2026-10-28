@@ -240,7 +240,8 @@ public sealed partial class VfModule
 
     // ── Image sheets ─────────────────────────────────────────────────────────────────────────────────────────
 
-    private void ExportSheetInteractive(VfDocument document)
+    /// <summary>The sheet options window, the save dialog, then the export. Returns the PNG's path, or null.</summary>
+    private string? ExportSheetInteractive(VfDocument document)
     {
         document.CommitPendingEdits();
         var f = document.Current;
@@ -253,15 +254,67 @@ public sealed partial class VfModule
         mono.IsEnabled = f.Format == VfPixelFormat.Mono || VfPixelConvert.IsWhitePalette(f);
         bool ok;
         using (ModalScope.Enter()) ok = w.ShowDialog() == true;
-        if (!ok) return;
+        if (!ok) return null;
         var options = new VfSheetOptions(16, (int)extra.Value, guide.IsChecked == true ? VfSheet.DefaultGuide : null, mono.SelectedIndex == 1 ? VfMonoStyle.Alpha : VfMonoStyle.Gray);
         if (!Shell.IsDiagnosticRun) { Settings.Set("sheetExtra", (int)extra.Value); Settings.Set("sheetGuide", guide.IsChecked == true); Settings.Set("sheetMono", mono.SelectedIndex); }
         string name = Path.GetFileNameWithoutExtension(document.DisplayName) + ".png";
-        if (Shell.Dialogs.SaveFile(Folder(document, "sheetFolder"), "Export image sheet", "PNG images (*.png)|*.png", name, ".png") is not { } path) return;
+        if (Shell.Dialogs.SaveFile(Folder(document, "sheetFolder"), "Export image sheet", "PNG images (*.png)|*.png", name, ".png") is not { } path) return null;
         Remember("sheetFolder", Path.GetDirectoryName(path));
         // The save dialog has asked about the PNG already; the JSON next to it is asked about separately.
-        if (ExportSheet(document, path, options, imageConfirmed: true))
-            Shell.ShowStatus($"Exported {f.GlyphCount} glyphs to {Path.GetFileName(path)} and {Path.GetFileName(SidecarOf(path))}");
+        if (!ExportSheet(document, path, options, imageConfirmed: true)) return null;
+        Shell.ShowStatus($"Exported {f.GlyphCount} glyphs to {Path.GetFileName(path)} and {Path.GetFileName(SidecarOf(path))}");
+        return path;
+    }
+
+    // ── Convert to… (IAssetConverter): the image sheet ─────────────────────────────────────────────────────────
+
+    private static bool IsFontName(string name) => name.EndsWith(".vf", StringComparison.OrdinalIgnoreCase);
+
+    /// <inheritdoc/>
+    public bool CanConvert(string sourceName, string targetExtension) =>
+        IsFontName(sourceName) && string.Equals(targetExtension, ".png", StringComparison.OrdinalIgnoreCase);
+
+    /// <inheritdoc/>
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName) => IsFontName(sourceName)
+        ? [new(".png", "Image sheet (.png + .json)", "Write the glyphs as a PNG grid plus a JSON file of every metric, to edit in an image editor and import back", false)]
+        : [];
+
+    /// <summary>
+    /// The image sheet of the tab (or of a packfile entry's bytes): the Export Image Sheet window, or without a dialog the
+    /// default layout written to <see cref="AssetConversionRequest.OutputFolder"/>. Returns the PNG's path.
+    /// </summary>
+    public Task<string?> ConvertAsync(AssetConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!CanConvert(request.FileName, request.TargetExtension)) return Task.FromResult<string?>(null);
+        VfDocument? owned = null;
+        var document = request.Document as VfDocument;
+        try
+        {
+            if (document is null)
+            {
+                string origin = request.ArchivePath is { } archive ? $"{request.FileName} in {Path.GetFileName(archive)}" : request.FileName;
+                try { document = owned = (VfDocument)Kind.OpenBytes(request.Bytes, request.FileName, origin); }
+                catch (Cairn.Formats.AssetFormatException ex)
+                {
+                    Shell.Dialogs.ShowError($"Could not convert {request.FileName}", ex.Message);
+                    return Task.FromResult<string?>(null);
+                }
+            }
+            if (document.Current.GlyphCount == 0)
+            {
+                Shell.Dialogs.ShowError($"Could not convert {request.FileName}", "The font has no glyphs to write.");
+                return Task.FromResult<string?>(null);
+            }
+            if (request.Interactive) return Task.FromResult(ExportSheetInteractive(document));
+            string folder = request.OutputFolder ?? Folder(document, "sheetFolder")!;
+            string path = Path.Combine(folder, Path.GetFileNameWithoutExtension(request.FileName) + ".png");
+            return Task.FromResult(ExportSheet(document, path, new VfSheetOptions()) ? path : null);
+        }
+        finally
+        {
+            owned?.Dispose();
+        }
     }
 
     /// <summary>The sidecar next to a sheet image ("x.png" → "x.json").</summary>

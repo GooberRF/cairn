@@ -5,9 +5,9 @@ namespace Cairn.Rfa.Formats.Legacy;
 
 /// <summary>
 /// A mesh read from a format Cairn reads and converts but never writes: the 3ds Max exporter's
-/// uncompiled meshes (<c>.v3d</c>, <c>.vcm</c>) and the PlayStation 2 build tool's compiled meshes
-/// (<c>.rfm</c>, <c>.rfc</c>). <see cref="Description"/> feeds <see cref="V3dBuilder.Build"/> to make
-/// the PC <c>.v3m</c> or <c>.v3c</c>.
+/// uncompiled meshes (<c>.v3d</c>, <c>.vcm</c>), the PlayStation 2 build tool's compiled meshes
+/// (<c>.rfm</c>, <c>.rfc</c>) and Red Faction II's meshes (<c>.rfm</c>, <c>.rfc</c> version 0x114).
+/// <see cref="Description"/> feeds <see cref="V3dBuilder.Build"/> to make the PC <c>.v3m</c> or <c>.v3c</c>.
 /// </summary>
 /// <param name="SourceFormat">The source extension without the dot, e.g. "v3d" or "rfc".</param>
 /// <param name="Description">The geometry, skeleton, spheres and prop points, ready for the builder.</param>
@@ -15,10 +15,17 @@ namespace Cairn.Rfa.Formats.Legacy;
 /// What the conversion approximates or leaves out (made-up submesh names, re-joined vertices,
 /// reduced weight precision and so on), in plain words for the conversion report.
 /// </param>
-public sealed record LegacyMesh(string SourceFormat, V3dMeshDescription Description, ImmutableArray<string> Notes);
+public sealed record LegacyMesh(string SourceFormat, V3dMeshDescription Description, ImmutableArray<string> Notes)
+{
+    /// <summary>
+    /// True for a Red Faction II mesh: its material names are Red Faction II texture names, whose pixels are in the
+    /// <c>.peg</c> packs beside it (see <see cref="LegacyMeshSupport.TexturePackSuffixes"/>).
+    /// </summary>
+    public bool IsRedFactionII { get; init; }
+}
 
 /// <summary>Why a legacy mesh could not be read.</summary>
-/// <param name="Message">A plain sentence for the Problems list, e.g. "Red Faction II mesh (version 0x114): not supported".</param>
+/// <param name="Message">A plain sentence for the Problems list, e.g. "Red Faction II prototype mesh (version 8): not supported".</param>
 /// <param name="Offset">The byte offset where reading stopped, when known.</param>
 public sealed record LegacyMeshError(string Message, long? Offset = null);
 
@@ -26,6 +33,7 @@ public sealed record LegacyMeshError(string Message, long? Offset = null);
 public interface ILegacyMeshFormat
 {
     /// <summary>The extension this format reads, with the dot, lower case (".v3d", ".vcm", ".rfm", ".rfc").</summary>
+    /// <remarks>One format per extension: <c>.rfm</c>/<c>.rfc</c> read both the PlayStation 2 and the Red Faction II files.</remarks>
     string Extension { get; }
 
     /// <summary>True when the bytes look like this format (magic and version), without reading the rest.</summary>

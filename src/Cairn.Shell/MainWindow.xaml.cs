@@ -70,11 +70,17 @@ public partial class MainWindow : Window
         var export = Menu("_Export", [.. Slot(MenuSlot.FileExport)]);
         import.Visibility = import.Items.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         export.Visibility = export.Items.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        // Filled for the tab in front on every activation (a submenu needs its items to open); hidden when no module
+        // converts that file.
+        _convertMenu = Menu("Con_vert to", []);
+        _convertMenu.ToolTip = "Convert the file in front to another format: what the modules offer for its type";
+        System.Windows.Automation.AutomationProperties.SetName(_convertMenu, "Convert to");
+        _convertMenu.SubmenuOpened += (_, e) => { if (e.OriginalSource == _convertMenu) UpdateConvertMenu(); };
         FillRecent();
 
         MainMenu.Items.Add(Menu("_File",
         [
-            newMenu, Item("_Open…", _shell.OpenCommand, "Ctrl+O"), _recentMenu, new Separator(), import, export, new Separator(),
+            newMenu, Item("_Open…", _shell.OpenCommand, "Ctrl+O"), _recentMenu, new Separator(), import, export, _convertMenu, new Separator(),
             Item("_Save", _shell.SaveCommand, "Ctrl+S"), Item("Save _As…", _shell.SaveAsCommand, "Ctrl+Shift+S"), Item("Save A_ll", _shell.SaveAllCommand),
             new Separator(), Item("_Close Tab", _shell.CloseTabCommand, "Ctrl+W"), Item("Close All Ta_bs", _shell.CloseAllCommand),
             Item("Reopen Closed _Tab", _shell.ReopenClosedCommand, "Ctrl+Shift+T"), new Separator(), Item("E_xit", new RelayCommand(Close), "Alt+F4"),
@@ -147,6 +153,24 @@ public partial class MainWindow : Window
     private static MenuItem Item(string header, ICommand command, string? gesture = null, object? parameter = null) =>
         new() { Header = header, Command = command, CommandParameter = parameter, InputGestureText = gesture ?? string.Empty };
 
+    private MenuItem _convertMenu = null!;
+    private IReadOnlyList<ConversionChoice> _convertChoices = [];
+
+    /// <summary>File › Convert to…: the targets for the tab in front (rebuilt only when they changed), hidden when none.</summary>
+    private void UpdateConvertMenu()
+    {
+        var choices = _shell.ConversionsForActive;
+        if (!choices.SequenceEqual(_convertChoices) || _convertMenu.Items.Count == 0 && choices.Count > 0)
+        {
+            _convertChoices = choices;
+            AssetConversions.FillMenu(_convertMenu, choices, c => _ = _shell.ConvertActiveAsync(c));
+        }
+        _convertMenu.Visibility = choices.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>The File › Convert to… submenu (self-tests).</summary>
+    internal MenuItem ConvertMenu => _convertMenu;
+
     private void FillRecent()
     {
         _recentMenu.Items.Clear();
@@ -202,6 +226,7 @@ public partial class MainWindow : Window
         finally { _fillingPanels = false; }
         UpdatePaneToggles();
         UpdateNewButton();
+        UpdateConvertMenu();
     }
 
     private bool _fillingPanels;

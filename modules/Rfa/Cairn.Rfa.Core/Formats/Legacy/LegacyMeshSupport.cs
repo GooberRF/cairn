@@ -20,12 +20,51 @@ public sealed record LegacyMeshConversion(
 {
     /// <summary>True when nothing was approximated.</summary>
     public bool IsLossless => Report.IsEmpty;
+
+    /// <summary>
+    /// Files written beside the mesh (a Red Faction II mesh converted with its original texture names: its textures
+    /// from the <c>.peg</c> packs, as <c>.tga</c>); empty otherwise.
+    /// </summary>
+    public ImmutableArray<(string Name, byte[] Bytes)> Textures { get; init; } = [];
+
+    /// <summary>The mesh and its <see cref="Textures"/>, in writing order.</summary>
+    public IReadOnlyList<(string Name, byte[] Bytes)> AllFiles => [(OutputName, Bytes), .. Textures];
+}
+
+/// <summary>What a Red Faction II mesh's conversion does with its texture names.</summary>
+public enum Rf2TextureMode
+{
+    /// <summary>
+    /// Translate each RF2 texture name to its Red Faction name (REDUX's tables, <see cref="Cairn.Formats.Rf2.Rf2TextureNames"/>);
+    /// names without a translation stay as they are. The default.
+    /// </summary>
+    Translate,
+
+    /// <summary>Keep the RF2 names and write the textures from the <c>.peg</c> packs beside the converted mesh (<c>.tga</c>).</summary>
+    KeepOriginals,
+}
+
+/// <summary>Options of a legacy mesh conversion (they only change Red Faction II meshes).</summary>
+public sealed record LegacyConvertOptions
+{
+    /// <summary>Translate RF2 names, no textures written.</summary>
+    public static LegacyConvertOptions Default { get; } = new();
+
+    /// <summary>What happens to RF2 texture names.</summary>
+    public Rf2TextureMode Rf2Textures { get; init; } = Rf2TextureMode.Translate;
+
+    /// <summary>
+    /// The textures beside the source (its <c>.peg</c> packs, see <see cref="LegacyMeshSupport.TexturePacksFor"/>), for
+    /// <see cref="Rf2TextureMode.KeepOriginals"/>; null when there are none.
+    /// </summary>
+    public PegTextureSet? TexturePacks { get; init; }
 }
 
 /// <summary>
 /// The one place the legacy mesh formats are registered, recognised by content and converted to the PC
 /// formats. <c>.v3d</c> and <c>.v3m</c> share a header, so a file is identified by its structure, not
-/// only its name: an exporter mesh misnamed <c>.v3m</c> is still read as one.
+/// only its name: an exporter mesh misnamed <c>.v3m</c> is still read as one. The PlayStation 2 and Red
+/// Faction II meshes share their magic and extensions; the version field tells them apart.
 /// </summary>
 public static class LegacyMeshSupport
 {
@@ -34,8 +73,53 @@ public static class LegacyMeshSupport
     /// <summary>The legacy extensions, lower case with the dot.</summary>
     public static ImmutableArray<string> Extensions { get; } = [".v3d", ".vcm", ".rfm", ".rfc"];
 
-    /// <summary>Magic of the PlayStation 2 meshes (<c>12 87 12 87</c>).</summary>
+    /// <summary>Magic of the PlayStation 2 meshes (<c>12 87 12 87</c>), which Red Faction II's meshes share.</summary>
     public const uint Ps2Magic = 0x87128712;
+
+    /// <summary>True when the bytes start like a Red Faction II mesh (any version, the prototypes Cairn refuses included).</summary>
+    public static bool IsRedFactionII(ReadOnlySpan<byte> data) => Rf2MeshParser.Rf2VersionOf(data) is not null;
+
+    /// <summary>
+    /// The skeleton of a Red Faction II character mesh in index order, as its conversion stores it (names, inverse bind
+    /// transforms, parents), read from the start of the file only (no geometry); null when the bytes are not a readable
+    /// one with bones. Cheap enough to rank many meshes for a clip.
+    /// </summary>
+    public static ImmutableArray<V3dBone>? Rf2Skeleton(ReadOnlySpan<byte> data) =>
+        Rf2MeshParser.TryReadBones(data, out var bones)
+            ? [.. bones.Select(b => new V3dBone(FixedString.FromText(BoneName(b.Name), V3dBone.NameSize), Rf2MeshConverter.BoneRotation(b.Rotation), b.Translation, b.Parent))]
+            : null;
+
+    // the name as the conversion fits it: Latin-1, cut to the field
+    private static string BoneName(string name)
+    {
+        string clean = new([.. name.Select(c => c == 0 || c > 255 ? '_' : c)]);
+        return clean.Length < V3dBone.NameSize ? clean : clean[..(V3dBone.NameSize - 1)];
+    }
+
+    /// <summary>
+    /// The pack suffixes a Red Faction II mesh's textures are looked for under, best first
+    /// (<c>&lt;mesh&gt;_v3d.peg</c> for a static mesh, <c>&lt;mesh&gt;_vcm.peg</c> for a character, then
+    /// <c>&lt;mesh&gt;.peg</c>); see <see cref="PegTextureSet.SearchOrder"/>.
+    /// </summary>
+    public static IReadOnlyList<string> TexturePackSuffixes(bool character) => character ? ["_vcm", ""] : ["_v3d", ""];
+
+    /// <summary>
+    /// The texture packs of a Red Faction II mesh among <paramref name="siblingNames"/> (the names beside it in its folder or
+    /// packfile), in the order its textures are looked for, read through <paramref name="read"/>.
+    /// </summary>
+    /// <param name="meshName">The mesh's file name.</param>
+    /// <param name="character">True for a character (.rfc).</param>
+    /// <param name="siblingNames">The files beside the mesh.</param>
+    /// <param name="read">Reads one of them by name (null when gone).</param>
+    /// <param name="label">Where they are, for messages.</param>
+    public static PegTextureSet TexturePacksFor(string meshName, bool character, IEnumerable<string> siblingNames, Func<string, byte[]?> read, string label)
+    {
+        ArgumentNullException.ThrowIfNull(meshName);
+        ArgumentNullException.ThrowIfNull(siblingNames);
+        ArgumentNullException.ThrowIfNull(read);
+        var order = PegTextureSet.SearchOrder(Path.GetFileName(meshName), siblingNames, TexturePackSuffixes(character));
+        return new PegTextureSet(label, order.Select(n => new PegPack(n, () => read(n))));
+    }
 
     /// <summary>Registers every legacy format with <see cref="LegacyMeshFormats"/> (once; later calls do nothing).</summary>
     public static void EnsureRegistered()
@@ -96,7 +180,7 @@ public static class LegacyMeshSupport
         var format = Identify(data, name);
         if (format is null)
         {
-            error = new LegacyMeshError($"'{name}' is not an exporter (.v3d, .vcm) or PlayStation 2 (.rfm, .rfc) mesh.");
+            error = new LegacyMeshError($"'{name}' is not an exporter (.v3d, .vcm), PlayStation 2 or Red Faction II (.rfm, .rfc) mesh.");
             return false;
         }
         try
@@ -167,13 +251,14 @@ public static class LegacyMeshSupport
     /// <param name="data">The legacy file.</param>
     /// <param name="name">Its file name.</param>
     /// <param name="sibling">Reads another file of the same folder or packfile by name (null when there is none), or null.</param>
+    /// <param name="options">What happens to a Red Faction II mesh's textures; null for <see cref="LegacyConvertOptions.Default"/>.</param>
     /// <exception cref="AssetFormatException">The file cannot be read or compiled; the message says why.</exception>
-    public static LegacyMeshConversion Convert(byte[] data, string name, Func<string, byte[]?>? sibling = null)
+    public static LegacyMeshConversion Convert(byte[] data, string name, Func<string, byte[]?>? sibling = null, LegacyConvertOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(name);
         var format = Identify(data, name);
-        if (format?.Extension is ".rfm" or ".rfc" && sibling is not null)
+        if (format?.Extension is ".rfm" or ".rfc" && sibling is not null && !IsRedFactionII(data))
         {
             string twinName = Path.ChangeExtension(Path.GetFileName(name), format.Extension == ".rfc" ? ".vcm" : ".v3d");
             byte[]? twin = null;
@@ -186,34 +271,42 @@ public static class LegacyMeshSupport
                 return converted with { TwinName = twinName, Report = converted.Report.Insert(0, note) };
             }
         }
-        return Convert(Read(data, name), name);
+        return Convert(Read(data, name), name, options);
     }
 
-    /// <summary>Converts a read legacy mesh: compiles it, writes the bytes and gathers the report.</summary>
+    /// <summary>
+    /// Converts a read legacy mesh: compiles it, writes the bytes and gathers the report. A Red Faction II mesh's
+    /// texture names are translated or kept (with the textures written beside it) as <paramref name="options"/> say.
+    /// </summary>
     /// <param name="mesh">The mesh.</param>
     /// <param name="sourceName">The legacy file's name (the output takes its stem).</param>
+    /// <param name="options">What happens to a Red Faction II mesh's textures; null for <see cref="LegacyConvertOptions.Default"/>.</param>
     /// <exception cref="AssetFormatException">The mesh cannot be compiled; the message says why.</exception>
-    public static LegacyMeshConversion Convert(LegacyMesh mesh, string sourceName)
+    public static LegacyMeshConversion Convert(LegacyMesh mesh, string sourceName, LegacyConvertOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(mesh);
+        var textureNotes = new List<string>();
+        var textures = ImmutableArray<(string, byte[])>.Empty;
+        if (mesh.IsRedFactionII) (mesh, textureNotes, textures) = Rf2MeshTextures.Apply(mesh, options ?? LegacyConvertOptions.Default);
         var compiled = Compile(mesh);
         byte[] bytes = V3dWriter.Write(compiled);
         string output = Path.ChangeExtension(Path.GetFileName(sourceName), TargetExtension(mesh));
         var report = ImmutableArray.CreateBuilder<string>();
         report.AddRange(mesh.Notes);
+        report.AddRange(textureNotes);
         foreach (var d in MeshLinter.Analyze(compiled, new MeshLintContext { FileName = output }))
         {
             if (d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
                 report.Add($"{output}: {d.Message}");
         }
-        return new LegacyMeshConversion(Path.GetFileName(sourceName), output, compiled, bytes, report.ToImmutable());
+        return new LegacyMeshConversion(Path.GetFileName(sourceName), output, compiled, bytes, report.ToImmutable()) { Textures = textures };
     }
 
     /// <summary>
     /// A one-line description for lists ("exporter mesh: 2 submeshes, 136 triangles, 2 LODs"), or the reason it
     /// cannot be read.
     /// </summary>
-    public static string Describe(LegacyMesh mesh) => FormatName(mesh?.SourceFormat ?? "") + ": " + Summary(mesh!);
+    public static string Describe(LegacyMesh mesh) => FormatName(mesh) + ": " + Summary(mesh!);
 
     /// <summary>"2 submeshes, 136 triangles, 2 LODs" (characters: bones instead of submeshes).</summary>
     public static string Summary(LegacyMesh mesh)
@@ -229,15 +322,21 @@ public static class LegacyMeshSupport
         return string.Join(", ", parts);
     }
 
-    /// <summary>"Exporter mesh", "PS2 mesh" and so on, for banners and lists.</summary>
-    public static string FormatName(string sourceFormat) => sourceFormat.ToLowerInvariant() switch
+    /// <summary>
+    /// "Exporter mesh", "PS2 mesh" and so on, for banners and lists. The extension alone cannot tell a PlayStation 2
+    /// mesh from a Red Faction II one: pass <paramref name="redFactionII"/>, or use <see cref="FormatName(LegacyMesh)"/>.
+    /// </summary>
+    public static string FormatName(string sourceFormat, bool redFactionII = false) => sourceFormat.ToLowerInvariant() switch
     {
         "v3d" => "exporter static mesh",
         "vcm" => "exporter character mesh",
-        "rfm" => "PS2 static mesh",
-        "rfc" => "PS2 character mesh",
+        "rfm" => redFactionII ? "Red Faction II static mesh" : "PS2 static mesh",
+        "rfc" => redFactionII ? "Red Faction II character mesh" : "PS2 character mesh",
         _ => "legacy mesh",
     };
+
+    /// <summary>The format name of a read mesh ("Red Faction II character mesh", "PS2 static mesh", ...).</summary>
+    public static string FormatName(LegacyMesh mesh) => FormatName(mesh?.SourceFormat ?? "", mesh?.IsRedFactionII == true);
 
     private static string Count(int n, string one, string? many = null) =>
         n.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " " + (n == 1 ? one : many ?? one + "s");

@@ -130,6 +130,7 @@ public class AssetDetailsPane : UserControl, IDisposable
         Rows = [];
         Warnings = [];
         _copyText = "";
+        _groups.Clear();
         _body.Children.Clear();
         var hint = PreviewUi.Text(text, "HintText");
         hint.Margin = new Thickness(0, 12, 0, 0);
@@ -198,15 +199,30 @@ public class AssetDetailsPane : UserControl, IDisposable
             _body.Children.Add(banner);
         }
 
+        _groups.Clear();
         foreach (var group in rows.GroupBy(r => r.Section))
         {
             var groupRows = group.ToList();
             int flagged = groupRows.Count(r => r.Flagged);
-            _body.Children.Add(BuildGroup(group.Key, groupRows, flagged, collapsed: groupRows.Count > CollapseAbove));
+            var (panel, toggle) = BuildGroup(group.Key, groupRows, flagged, collapsed: groupRows.Count > CollapseAbove);
+            _groups.TryAdd(group.Key, (panel, toggle));
+            _body.Children.Add(panel);
         }
     }
 
-    private static FrameworkElement BuildGroup(string section, List<AssetDetailRow> rows, int flagged, bool collapsed)
+    private readonly Dictionary<string, (FrameworkElement Panel, ToggleButton Toggle)> _groups = new(StringComparer.Ordinal);
+
+    /// <summary>Expands the group <paramref name="section"/> and scrolls it to the top of the pane (diagnostic runs); false when it is not shown.</summary>
+    public bool ShowGroup(string section)
+    {
+        if (!_groups.TryGetValue(section, out var g)) return false;
+        g.Toggle.IsChecked = true;
+        _scroll.UpdateLayout();
+        _scroll.ScrollToVerticalOffset(g.Panel.TransformToAncestor(_body).Transform(new Point(0, 0)).Y + _body.Margin.Top);
+        return true;
+    }
+
+    private static (FrameworkElement Panel, ToggleButton Toggle) BuildGroup(string section, List<AssetDetailRow> rows, int flagged, bool collapsed)
     {
         var grid = new Grid { Margin = new Thickness(18, 0, 0, 6) };
         // One label width across the groups (the body is the shared size scope).
@@ -273,7 +289,7 @@ public class AssetDetailsPane : UserControl, IDisposable
         var panel = new StackPanel();
         panel.Children.Add(headPanel);
         panel.Children.Add(grid);
-        return panel;
+        return (panel, toggle);
     }
 
     private static TextBox ValueBox(string text)

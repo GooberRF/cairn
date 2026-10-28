@@ -332,6 +332,35 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
 
     private sealed record ClosedTab(string KindId, string? Path, string DisplayName, byte[]? Data);
 
+    // ---- File › Convert to… ----
+
+    /// <summary>What File › Convert to… lists for the tab in front: every module's targets for its file name.</summary>
+    public IReadOnlyList<ConversionChoice> ConversionsForActive => AssetConversions.TargetsFor(this, ActiveDocument);
+
+    /// <summary>
+    /// Converts the tab in front with <paramref name="choice"/>: its current content (unsaved edits included) goes to the
+    /// module's converter, which asks for its options unless <paramref name="interactive"/> is false (self-tests, with
+    /// <paramref name="outputFolder"/>). Returns what the converter returned, or null.
+    /// </summary>
+    public async Task<string?> ConvertActiveAsync(ConversionChoice choice, bool interactive = true, string? outputFolder = null)
+    {
+        ArgumentNullException.ThrowIfNull(choice);
+        if (ActiveDocument is not { } document) return null;
+        AssetConversionRequest request;
+        try
+        {
+            request = AssetConversions.RequestFor(this, document, choice.Target.Extension, interactive) with { OutputFolder = outputFolder };
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or Cairn.Formats.AssetFormatException)
+        {
+            Dialogs.ShowError($"Could not convert {document.DisplayName}", ex.Message);
+            return null;
+        }
+        string? result = await AssetConversions.RunAsync(this, choice, request);
+        RefreshCommands();
+        return result;
+    }
+
     public void ShowStatus(string message) => StatusText = message;
 
     /// <summary>Raised when a module asks for a refresh: the window re-evaluates contribution visibility and panels.</summary>

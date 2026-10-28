@@ -16,8 +16,12 @@ namespace Cairn.Vpp.Ui.Documents;
 public sealed class VppDocumentView : Grid
 {
     private readonly VppDocument _doc;
-    private readonly Border _diskBar, _missingBar, _ps2Bar, _noticeBar, _workBar, _operationBar;
+    private readonly Border _diskBar, _missingBar, _ps2Bar, _rf2Bar, _noticeBar, _workBar, _operationBar;
     private readonly TextBlock _ps2Text = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _rf2Text = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+    // toolbar buttons (and their separator) that change the packfile: hidden for a read-only Red Faction II group
+    private readonly List<FrameworkElement> _editTools = [];
+    private readonly Button? _updateWorkButton;
     private readonly TextBlock _diskText;
     private const string DiskChangedText = "The packfile was changed on disk by another program. Its entries are read from that file, so reload it before saving.";
     private readonly TextBlock _noticeText = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
@@ -53,10 +57,14 @@ public sealed class VppDocumentView : Grid
         // (PEG texture packs convert per selection: select .peg entries, then Convert to .tga... in the context menu or Packfile menu)
         _ps2Bar = Bar(false, _ps2Text, ("Dismiss", "Hide this message", () => doc.Ps2BannerDismissed = true));
         AutomationProperties.SetName(_ps2Bar, "PlayStation 2 banner");
+        // a Red Faction II packfile group: what it is and that it is read only (no buttons: it stays while the tab is open)
+        _rf2Bar = Bar(false, _rf2Text);
+        AutomationProperties.SetName(_rf2Bar, "Red Faction II banner");
         _noticeBar = Bar(false, _noticeText, ("Dismiss", "Hide this message", () => doc.Notice = null));
         _workBar = Bar(false, _workText,
             ("Update packfile", "Replace the entries with the edited work copies (one undoable change)", () => doc.Commands.UpdateFromWorkCopies()),
             ("Ignore", "Keep the packfile's entries; the bar appears again if the copies change", doc.Commands.IgnoreWorkChanges));
+        _updateWorkButton = ((DockPanel)_workBar.Child).Children.OfType<Button>().FirstOrDefault(b => b.Content as string == "Update packfile");
         _cancel = new Button { Content = "Cancel", MinWidth = 72, Command = null };
         _cancel.SetResourceReference(StyleProperty, "PushButton");
         _cancel.Click += (_, _) => _doc.Operation?.Cancel();
@@ -67,7 +75,7 @@ public sealed class VppDocumentView : Grid
         opPanel.Children.Add(_progress);
         opPanel.Children.Add(_operationText);
         _operationBar = Bar(false, opPanel);
-        foreach (var b in new[] { _diskBar, _missingBar, _ps2Bar, _noticeBar, _workBar, _operationBar }) bars.Children.Add(b);
+        foreach (var b in new[] { _diskBar, _missingBar, _ps2Bar, _rf2Bar, _noticeBar, _workBar, _operationBar }) bars.Children.Add(b);
         Children.Add(bars);
 
         var body = new Grid();
@@ -129,6 +137,10 @@ public sealed class VppDocumentView : Grid
     public bool IsWorkBarVisible => _workBar.Visibility == Visibility.Visible;
     /// <summary>The PlayStation 2 banner's text when it is shown, else null (self-tests).</summary>
     public string? Ps2BannerText => _ps2Bar.Visibility == Visibility.Visible ? _ps2Text.Text : null;
+    /// <summary>The Red Faction II banner's text when it is shown, else null (self-tests).</summary>
+    public string? Rf2BannerText => _rf2Bar.Visibility == Visibility.Visible ? _rf2Text.Text : null;
+    /// <summary>The toolbar's buttons that change the packfile, when shown (self-tests: none for a read-only group).</summary>
+    public IReadOnlyList<string> VisibleEditTools => [.. _editTools.OfType<Button>().Where(b => b.Visibility == Visibility.Visible).Select(b => b.Content as string ?? string.Empty)];
     /// <summary>The PlayStation 2 banner's buttons (self-tests: only Dismiss, conversion is per selected .peg entry).</summary>
     public IReadOnlyList<string> Ps2BannerButtons => [.. ((DockPanel)_ps2Bar.Child).Children.OfType<Button>().Select(b => b.Content as string ?? string.Empty)];
 
@@ -146,13 +158,13 @@ public sealed class VppDocumentView : Grid
             bar.Children.Add(b);
             return b;
         }
-        void Gap() { var s = new Border { Width = 1, Margin = new Thickness(6, 3, 6, 3) }; s.SetResourceReference(Border.BackgroundProperty, "App.SubtleBorder"); DockPanel.SetDock(s, Dock.Left); bar.Children.Add(s); }
-        Tool("Add files...", "Add files to the packfile (or drop them on the list)", () => c.Fire(c.AddFilesAsync));
-        Tool("Add folder...", "Add every file of a folder and its sub-folders (flattened)", () => c.Fire(c.AddFolderAsync));
-        Gap();
+        Border Gap() { var s = new Border { Width = 1, Margin = new Thickness(6, 3, 6, 3) }; s.SetResourceReference(Border.BackgroundProperty, "App.SubtleBorder"); DockPanel.SetDock(s, Dock.Left); bar.Children.Add(s); return s; }
+        _editTools.Add(Tool("Add files...", "Add files to the packfile (or drop them on the list)", () => c.Fire(c.AddFilesAsync)));
+        _editTools.Add(Tool("Add folder...", "Add every file of a folder and its sub-folders (flattened)", () => c.Fire(c.AddFolderAsync)));
+        _editTools.Add(Gap());
         Tool("Extract...", "Write the selected entries to a folder (Ctrl+E); with nothing selected, every entry", () => c.Fire(_doc.SelectedItems.Count > 0 ? c.ExtractSelectedToAsync : c.ExtractAllToAsync));
-        Tool("Remove", "Remove the selected entries (Del; undoable)", c.RemoveSelected);
-        Tool("Rename", "Rename the selected entry (F2)", c.BeginRename);
+        _editTools.Add(Tool("Remove", "Remove the selected entries (Del; undoable)", c.RemoveSelected));
+        _editTools.Add(Tool("Rename", "Rename the selected entry (F2)", c.BeginRename));
         Gap();
 
         var filterHost = new Grid { VerticalAlignment = VerticalAlignment.Center };
@@ -240,12 +252,17 @@ public sealed class VppDocumentView : Grid
         _missingBar.Visibility = Show(_doc.IsMissingOnDisk);
         _ps2Text.Text = _doc.PegSource is { } peg ? Cairn.Vpp.Ps2.PegConverter.BannerFor(peg) : Cairn.Vpp.Ps2.Ps2Packfiles.BannerFor(_doc.PegEntryCount);
         _ps2Bar.Visibility = Show(!_doc.Ps2BannerDismissed && (_doc.PegSource is not null || _doc.IsPs2Packfile));
+        _rf2Text.Text = _doc.Rf2?.Banner ?? string.Empty;
+        _rf2Bar.Visibility = Show(_doc.Rf2 is not null);
+        foreach (var tool in _editTools) tool.Visibility = Show(!_doc.IsReadOnly);
+        if (_updateWorkButton is not null) _updateWorkButton.Visibility = Show(!_doc.IsReadOnly);
         _noticeText.Text = _doc.Notice ?? string.Empty;
         _noticeBar.Visibility = Show(_doc.Notice is not null);
         var changes = _doc.WorkChanges;
         _workText.Text = changes.Count == 0 ? string.Empty
             : (changes.Count == 1 ? "A work copy was changed outside the packfile: " : $"{changes.Count} work copies were changed outside the packfile: ")
-              + string.Join(", ", changes.Take(6).Select(c => c.EntryName)) + (changes.Count > 6 ? ", ..." : string.Empty);
+              + string.Join(", ", changes.Take(6).Select(c => c.EntryName)) + (changes.Count > 6 ? ", ..." : string.Empty)
+              + (_doc.IsReadOnly ? ". The group is read only: save the tab elsewhere (File > Save As) to keep the changes." : string.Empty);
         _workBar.Visibility = Show(changes.Count > 0);
 
         if (!ReferenceEquals(_watchedOperation, _doc.Operation))
@@ -276,7 +293,7 @@ public sealed class VppDocumentView : Grid
 
     // ---- drop in ---------------------------------------------------------------------------------------------
 
-    private bool AcceptsDrop(DragEventArgs e) => !FileList.IsDraggingOut && !_doc.IsBusy && e.Data.GetDataPresent(DataFormats.FileDrop);
+    private bool AcceptsDrop(DragEventArgs e) => !FileList.IsDraggingOut && !_doc.IsBusy && !_doc.IsReadOnly && e.Data.GetDataPresent(DataFormats.FileDrop);
 
     private void OnDragOver(object sender, DragEventArgs e)
     {

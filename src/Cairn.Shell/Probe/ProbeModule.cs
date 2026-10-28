@@ -15,8 +15,33 @@ namespace Cairn.Shell.Probe;
 /// Diagnostics-only module (enabled by <c>--probe-module</c>): a plain-text document kind that
 /// exercises the whole module contract so the shell self-tests can run without any real module.
 /// </summary>
-public sealed class ProbeModule : ModuleBase
+public sealed class ProbeModule : ModuleBase, IAssetConverter
 {
+    // ---- Convert to… (shell.convert-to): a probe document converts to plain text, or "shouted" (lossy) ----
+
+    private static bool IsProbeName(string name) => name.EndsWith(".cairnprobe", StringComparison.OrdinalIgnoreCase);
+
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName) => IsProbeName(sourceName)
+        ? [new(".txt", "Plain text (.txt)", "Write the probe text as a .txt file", false), new(".shout", "Shouted text (.shout)", "Upper-case the text into a .shout file", true)]
+        : [];
+
+    public bool CanConvert(string sourceName, string targetExtension) =>
+        IsProbeName(sourceName) && targetExtension is ".txt" or ".shout";
+
+    /// <summary>The last request converted (self-tests).</summary>
+    internal static AssetConversionRequest? LastRequest { get; set; }
+
+    /// <summary>Writes the text next to the output folder (non-interactive only; an interactive request just records itself).</summary>
+    public Task<string?> ConvertAsync(AssetConversionRequest request)
+    {
+        LastRequest = request;
+        if (request.Interactive || request.OutputFolder is not { } folder) return Task.FromResult<string?>(null);
+        string text = Encoding.UTF8.GetString(request.Bytes);
+        string path = Path.Combine(folder, Path.GetFileNameWithoutExtension(request.FileName) + request.TargetExtension);
+        File.WriteAllText(path, request.TargetExtension == ".shout" ? text.ToUpperInvariant() : text);
+        return Task.FromResult<string?>(path);
+    }
+
     private readonly ProbeKind _kind = new();
     private readonly List<MenuContribution> _menus = [];
     private readonly List<ShortcutInfo> _shortcuts = [];
@@ -117,9 +142,14 @@ public sealed class ProbeKind(string id = "probe", string displayName = "Probe d
 }
 
 public sealed class ProbeDocument(IShellContext shell, IDocumentKind kind, string text, string name, string? path, string? origin = null)
-    : SnapshotDocument<string>(shell, kind, text, name, path, origin)
+    : SnapshotDocument<string>(shell, kind, text, name, path, origin), IDocumentContent
 {
     public string Text { get => Current; set => Apply("Edit text", _ => value); }
+
+    /// <summary>The name with the kind's extension (an untitled probe has it already).</summary>
+    public string FileName => Kind.Extensions.Any(e => DisplayName.EndsWith(e, StringComparison.OrdinalIgnoreCase)) ? DisplayName : DisplayName + Kind.Extensions[0];
+
+    public byte[] CurrentBytes() => Serialize();
 
     public override IReadOnlyList<StatusItem> StatusItems => [new($"{Current.Length} chars", "Length of the probe text")];
 

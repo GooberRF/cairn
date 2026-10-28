@@ -41,7 +41,9 @@ public sealed class PegPreview : UserControl, IDisposable
         _blackKey = blackKey;
         _pack = PegCodec.Read(bytes, name);
 
-        var summary = PreviewUi.Secondary($"PEG texture pack (PlayStation 2), version {_pack.Version}: {_pack.Summary}");
+        // version 4 is the early PlayStation 2 layout; version 6 is shared by the PS2 games and Red Faction II on PC
+        string origin = _pack.Version == 4 ? "PlayStation 2" : "PlayStation 2 or Red Faction II";
+        var summary = PreviewUi.Secondary($"PEG texture pack ({origin}), version {_pack.Version}: {_pack.Summary}");
         summary.Margin = new Thickness(8, 4, 8, 4);
         summary.TextWrapping = TextWrapping.Wrap;
         AutomationProperties.SetName(_list, "Textures");

@@ -12,7 +12,7 @@ namespace Cairn.Vbm.Ui.Documents;
 /// selected frames and whether it plays. A file that cannot be read at all still opens, read-only, with the reason in
 /// the Problems tab.
 /// </summary>
-public sealed class VbmDocument : SnapshotDocument<VbmFile>
+public sealed class VbmDocument : SnapshotDocument<VbmFile>, IDocumentContent
 {
     private VbmProblem? _unreadable; // cleared when a reload reads the file after all
     private VbmReadResult? _read;
@@ -39,6 +39,8 @@ public sealed class VbmDocument : SnapshotDocument<VbmFile>
 
     /// <summary>The packfile an entry opened directly (not through a work copy) came from, or null.</summary>
     public string? ArchivePath { get; internal set; }
+
+    string? IDocumentContent.ArchivePath => FilePath is null ? ArchivePath : null;
 
     /// <summary>True when the file could not be read; the document then shows only its problem.</summary>
     public bool IsBroken => _unreadable is not null;
@@ -176,6 +178,13 @@ public sealed class VbmDocument : SnapshotDocument<VbmFile>
     protected override byte[] Write(VbmFile snapshot) => snapshot.Write();
 
     public override byte[]? CaptureRecovery() => IsBroken ? null : base.CaptureRecovery();
+
+    /// <summary>The name with .vbm (Convert to… names the outputs after it).</summary>
+    public string FileName => DisplayName.EndsWith(".vbm", StringComparison.OrdinalIgnoreCase) ? DisplayName : DisplayName + ".vbm";
+
+    /// <summary>The bitmap as Save would write it, unsaved edits included.</summary>
+    /// <exception cref="InvalidOperationException">The file could not be read, so there is nothing to convert.</exception>
+    public byte[] CurrentBytes() => IsBroken ? throw new InvalidOperationException($"{DisplayName} could not be read, so it cannot be converted.") : Serialize();
 
     public override bool ConfirmSave()
     {

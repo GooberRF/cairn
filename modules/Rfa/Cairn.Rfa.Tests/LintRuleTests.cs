@@ -74,8 +74,10 @@ public class LintRuleTests
     [Fact]
     public void Rfa001Version()
     {
-        Fires(ClipRules.UnsupportedVersion, Lint(Good() with { Version = 9 }));
+        Fires(ClipRules.UnsupportedVersion, Lint(Good() with { Version = 10 }));
         Quiet(ClipRules.UnsupportedVersion, Lint(Good() with { Version = 7 }));
+        // a Red Faction II clip opens read-only with its conversion offered; its version is not a defect
+        Quiet(ClipRules.UnsupportedVersion, Lint(Good() with { Version = RfaClip.Rf2Version }));
     }
 
     [Fact]
@@ -292,7 +294,7 @@ public class LintRuleTests
     [Fact]
     public void ResultsAreOrderedErrorsFirst()
     {
-        var clip = Good() with { RampIn = 400, RampOut = 400, Version = 9 };
+        var clip = Good() with { RampIn = 400, RampOut = 400, Version = 10 };
         var results = Lint(clip);
         Assert.Equal(DiagnosticSeverity.Error, results[0].Severity);
         Assert.True(results.Zip(results.Skip(1)).All(p => p.First.Severity >= p.Second.Severity));

@@ -11,13 +11,16 @@ namespace Cairn.Formats.Rfl;
 /// or whose header is cut short throws <see cref="AssetFormatException"/>; everything else is
 /// reported in <see cref="RflSummary.Notes"/> and the section list.
 /// </summary>
-public static class RflReader
+public static partial class RflReader
 {
     /// <summary>The level signature (bytes 55 DA BA D4).</summary>
     public const uint Magic = 0xD4BADA55;
 
     /// <summary>The newest Alpine Faction level version this reader knows by name.</summary>
     public const int NewestKnownVersion = 306;
+
+    /// <summary>The level version of Red Faction II (0x127, 295): its own section layouts are read (see RflReader.Rf2.cs).</summary>
+    public const int Rf2Version = 0x127;
 
     // The longest possible header: fixed fields plus two strings of at most 65,535 bytes.
     private const int MaxHeaderBytes = 4 * 7 + 2 * (2 + ushort.MaxValue);
@@ -127,7 +130,7 @@ public static class RflReader
             >= 0x28 and < 0xC8 => (RflEra.PreRelease, $"pre-release ({version})"),
             >= 300 and <= NewestKnownVersion => (RflEra.Alpine, $"Alpine {AlpineReleases[version - 300]} ({version})"),
             > NewestKnownVersion => (RflEra.Alpine, $"Alpine, newer than 1.5.0 ({version})"),
-            0x127 => (RflEra.Unknown, "Red Faction II (295), unsupported"),
+            0x127 => (RflEra.Unknown, "Red Faction II (295)"),
             _ => (RflEra.Unknown, $"unsupported ({version})"),
         };
     }
@@ -168,7 +171,8 @@ public static class RflReader
             r.Skip(8); // player start and level info offsets: never used, the stream is walked instead
             if (version >= 0xA0) r.Skip(8); // section count and total size: wrong in many files
             if (version >= 0xAA) levelName = r.Str();
-            if (version >= 0xB2) modName = r.Str();
+            // Red Faction II levels (0x127) store no mod name: their first section follows the level name.
+            if (version >= 0xB2 && version != Rf2Version) modName = r.Str();
         }
         catch (RflBodyException e)
         {
@@ -180,7 +184,7 @@ public static class RflReader
     }
 
     /// <summary>Collects the summary as sections arrive; shared by the span and stream entry points.</summary>
-    private sealed class Walker
+    private sealed partial class Walker
     {
         private readonly string _name;
         private readonly Header _header;
@@ -215,7 +219,9 @@ public static class RflReader
             _v = header.Version;
             // Pre-release record layouts are not known well enough to trust names read from them.
             _limited = _v < 0xB4 && _v != 0xAE && _v != 0xAF;
-            WalksSections = IsSupportedVersion(_v);
+            // A Red Faction II level is walked with its own section layouts (RflReader.Rf2.cs).
+            _rf2 = _v == Rf2Version;
+            WalksSections = IsSupportedVersion(_v) || _rf2;
             if (!WalksSections)
                 _notes.Add($"Unsupported level version {_v}: only the header was read.");
             else if (_limited)
@@ -247,6 +253,7 @@ public static class RflReader
         public bool SectionHeader(uint id, int length, long pos, long bodyLeft)
         {
             if (id == 0) return false; // end marker; its length and anything after it are ignored
+            if (_rf2 && !Rf2FirstSectionOk(id)) return false;
             if (length < 0 || length > bodyLeft)
             {
                 _sections.Add(new RflSectionInfo(id, SectionName(id), pos, length, RflSectionStatus.Truncated,
@@ -263,13 +270,16 @@ public static class RflReader
         {
             BodyPlan.Whole => length,
             BodyPlan.None => 0,
+            BodyPlan.Head => Math.Min(length, Rf2HeadBytes),
             _ => Math.Min(length, 4),
         };
 
-        private enum BodyPlan { Whole, CountOnly, AlpineCount, None }
+        /// <summary>Head: only the first <see cref="Rf2HeadBytes"/> bytes (Red Faction II's vertex lighting header).</summary>
+        private enum BodyPlan { Whole, CountOnly, AlpineCount, None, Head }
 
         private BodyPlan Plan(uint id)
         {
+            if (_rf2) return Rf2Plan(id);
             if (_limited)
             {
                 if (id == 0x01000000) return BodyPlan.Whole;
@@ -297,6 +307,11 @@ public static class RflReader
         /// <summary>Reads one section; <paramref name="body"/> is the whole body or, for count-only sections, its head.</summary>
         public void Section(uint id, long pos, int length, ReadOnlySpan<byte> body)
         {
+            if (_rf2)
+            {
+                Rf2Section(id, pos, length, body);
+                return;
+            }
             string name = SectionName(id);
             if ((id & 0xFFFF0000) == 0x5ED00000) _redPlus = true;
             if ((id & 0xFFFF0000) == 0x6ED00000) _glacier = true;
@@ -1148,6 +1163,7 @@ public static class RflReader
                 HasMovers = _hasMovers,
                 Properties = _props,
                 Alpine = _alpine,
+                Rf2Properties = _rf2Props,
                 DashLightmapsFullDepth = _dash,
                 HasAlpineLightmaps = _alpineLightmaps,
                 HasRedPlusData = _redPlus,
@@ -1172,7 +1188,7 @@ public static class RflReader
                 ClutterClasses = _clutterClasses,
                 EventClasses = _eventClasses,
                 References = references,
-                Preloads = new RflPreloads(Preload(0x7000), Preload(0x7001), Preload(0x7002), Preload(0x7003), Preload(0x7004)),
+                Preloads = new RflPreloads(Preload(0x7000), Preload(0x7001), Preload(0x7002), Preload(0x7003), Preload(0x7004)) { TexturePacks = Preload(0x7005) },
                 Sections = [.. _sections],
                 Notes = [.. _notes],
                 IsTruncated = _truncated,

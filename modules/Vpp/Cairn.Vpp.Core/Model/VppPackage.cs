@@ -98,7 +98,7 @@ public sealed class VppPackage
             for (int i = 0; i < items.Length && same; i++) same = ReferenceEquals(items[i], Items[i]) || items[i] == Items[i];
             if (same) return this;
         }
-        return new VppPackage(Path, items, Stamp) { OriginalCount = OriginalCount, HeaderArchiveSize = HeaderArchiveSize };
+        return new VppPackage(Path, items, Stamp) { OriginalCount = OriginalCount, HeaderArchiveSize = HeaderArchiveSize, Rf2 = Rf2 };
     }
 
     /// <summary>The size a packfile with these entry sizes occupies on disk.</summary>
@@ -149,6 +149,15 @@ public sealed class VppPackage
 
     /// <summary>The archive-size field of the header when the package was read (the game never checks it).</summary>
     public long? HeaderArchiveSize { get; init; }
+
+    /// <summary>
+    /// For a Red Faction II packfile group (<c>.toc_group</c>): what the group says and where its data is. Such a
+    /// package is read only (<see cref="IsReadOnly"/>); null for an RF1 packfile.
+    /// </summary>
+    public Rf2.Rf2GroupInfo? Rf2 { get; init; }
+
+    /// <summary>True when the package may not be edited or saved (a Red Faction II packfile group).</summary>
+    public bool IsReadOnly => Rf2 is not null;
 
     /// <summary>
     /// True when the entry list is exactly the packfile's on disk (same entries, names, sizes and order),

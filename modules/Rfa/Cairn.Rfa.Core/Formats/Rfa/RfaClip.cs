@@ -210,8 +210,17 @@ public sealed record RfaClip
     /// <summary>The bone limit the engine poses (and Alpine Faction checks).</summary>
     public const int MaxEngineBones = 50;
 
-    /// <summary>7 or 8. Version 8 stores morph keyframe times and quantised morph positions.</summary>
+    /// <summary>The version Red Faction II's clips carry: read, previewed and converted to 8, never written.</summary>
+    public const int Rf2Version = 9;
+
+    /// <summary>
+    /// 7 or 8. Version 8 stores morph keyframe times and quantised morph positions. 9 for a Red Faction II clip read
+    /// from its file (<see cref="RfaReader"/>), which <see cref="RfaWriter"/> refuses.
+    /// </summary>
     public int Version { get; init; } = 8;
+
+    /// <summary>True for a Red Faction II clip (version 9).</summary>
+    public bool IsRedFactionII => Version == Rf2Version;
 
     /// <summary>Exporter position tolerance; never read by the game.</summary>
     public float PosReduction { get; init; }

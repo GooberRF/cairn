@@ -35,8 +35,9 @@ internal sealed class RfaPreviewHost : ObservableObject, IViewportHost
 
 /// <summary>
 /// Read-only preview of a .v3m/.v3c mesh or an .rfa clip for other modules (the packfile preview pane): the
-/// module's viewport over a <see cref="RfaPreviewHost"/>. A clip plays on a fitting mesh beside it (same packfile)
-/// or else the mesh the clip documents would pick from the asset library, with a play button and a scrubber.
+/// module's viewport over a <see cref="RfaPreviewHost"/>. A clip plays on a fitting mesh beside it (same packfile; a
+/// Red Faction II clip on the Red Faction II character beside it that fits it best, converted on the fly) or else the
+/// mesh the clip documents would pick from the asset library, with a play button and a scrubber.
 /// Textures resolve among the files beside the asset first. Parsing and the mesh load run off the UI
 /// thread; failures show a one-line message. <see cref="Dispose"/> stops playback and detaches the viewport.
 /// </summary>
@@ -120,7 +121,8 @@ public sealed class RfaPreview : Grid, IDisposable
             if (parsed is RfaClip clip) ShowClip(host, clip);
             else
             {
-                host.Scene.SetMesh((V3dFile)parsed, fileName, _siblings.Layer(_assets?.Resolver));
+                // a Red Faction II mesh finds its textures inside the .peg entries beside it
+                host.Scene.SetMesh((V3dFile)parsed, fileName, ViewModels.LegacyMeshTextures.PreviewResolver(bytes, fileName, _siblings, _assets?.Resolver));
                 _meshLoaded.TrySetResult();
             }
         }
@@ -256,6 +258,14 @@ public sealed class RfaPreview : Grid, IDisposable
     /// </summary>
     private void ChooseMesh(RfaPreviewHost host, RfaClip clip)
     {
+        if (clip.IsRedFactionII)
+        {
+            // an RF1 mesh with the same bone count is a different skeleton, so the library is no fallback
+            if (_siblings is { } rf2Siblings && rf2Siblings.Names.Any(n => n.EndsWith(".rfc", StringComparison.OrdinalIgnoreCase)))
+                ChooseRf2Mesh(host, clip, rf2Siblings);
+            else NoRf2Mesh(host);
+            return;
+        }
         var siblings = _siblings;
         var names = siblings?.Names.Where(n => n.EndsWith(".v3c", StringComparison.OrdinalIgnoreCase)).Take(MaxSiblingMeshes).ToList();
         if (siblings is null || names is not { Count: > 0 }) { ChoosePreviewMesh(host, clip); return; }
@@ -276,6 +286,33 @@ public sealed class RfaPreview : Grid, IDisposable
             if (found is not { } f) { ChoosePreviewMesh(host, clip); return; }
             try { ShowMesh(host, clip, f.Mesh, f.Name, siblings.Layer(_assets?.Resolver)); }
             catch (Exception ex) when (ex is not OutOfMemoryException) { host.Scene.SetNotice($"{f.Name} could not be shown: {ex.Message}", warning: true); }
+            finally { _meshLoaded.TrySetResult(); }
+        }
+    }
+
+    /// <summary>
+    /// A Red Faction II clip plays on the Red Faction II character beside it that fits it best (by name and skeleton),
+    /// converted on the fly with its textures from the .peg entries beside it; without one, it plays on nothing.
+    /// </summary>
+    private void ChooseRf2Mesh(RfaPreviewHost host, RfaClip clip, IAssetSiblings siblings)
+    {
+        host.Scene.SetNotice("Looking for a Red Faction II character to play this clip on…");
+        var ct = _cts.Token;
+        var under = _assets?.Resolver;
+        _ = FindAsync();
+
+        async Task FindAsync()
+        {
+            ViewModels.Rf2PreviewMeshes.Pick? pick;
+            using (BusyTracker.Begin("Red Faction II preview mesh in " + siblings.Label))
+            {
+                try { pick = await Task.Run(() => ViewModels.Rf2PreviewMeshes.Find(clip, FileName, siblings, null, under, ct), ct); }
+                catch (OperationCanceledException) { _meshLoaded.TrySetResult(); return; }
+            }
+            if (_disposed || !ReferenceEquals(host, _host)) { _meshLoaded.TrySetResult(); return; }
+            if (pick is null) { NoRf2Mesh(host); return; }
+            try { ShowMesh(host, clip, pick.Mesh, pick.Name, pick.Textures); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { host.Scene.SetNotice($"{pick.Name} could not be shown: {ex.Message}", warning: true); }
             finally { _meshLoaded.TrySetResult(); }
         }
     }
@@ -313,6 +350,13 @@ public sealed class RfaPreview : Grid, IDisposable
         StopWaiting();
         // a clip stores no bone hierarchy of its own, so there is no skeleton to draw without a mesh
         host.Scene.SetNotice($"No mesh with {clip.BoneCount} bones was found to play this clip on ({clip.BoneCount} bones, {clip.Duration / (double)RfaClip.TicksPerFrame:0} frames).", warning: true);
+        _meshLoaded.TrySetResult();
+    }
+
+    private void NoRf2Mesh(RfaPreviewHost host)
+    {
+        StopWaiting();
+        host.Scene.SetNotice("No Red Faction II character found beside this clip; open it in Cairn to pick a mesh to preview it on.", warning: true);
         _meshLoaded.TrySetResult();
     }
 

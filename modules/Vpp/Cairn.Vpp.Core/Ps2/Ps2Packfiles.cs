@@ -112,10 +112,10 @@ public sealed record Ps2ConvertReport(
 public static class Ps2Packfiles
 {
     /// <summary>The banner above a PlayStation 2 packfile without .peg entries (left).</summary>
-    public const string Banner = "This packfile is from the PlayStation 2 version. Its levels (.rfl) are not compatible with the PC game; its meshes (.rfm, .rfc, .v3d, .vcm) convert to .v3m/.v3c with Convert meshes..., and its sounds (.vse, .vmu) to .wav or .ogg with Convert sounds... (right-click them, or the Packfile menu).";
+    public const string Banner = "This packfile is from the PlayStation 2 version. Its levels (.rfl) are not compatible with the PC game; its meshes (.rfm, .rfc, .v3d, .vcm) convert to .v3m/.v3c with Convert meshes and animations..., and its sounds (.vse, .vmu) to .wav or .ogg with Convert sounds... (right-click them, or the Packfile menu).";
 
     /// <summary>The banner above a PlayStation 2 packfile that holds .peg entries.</summary>
-    public const string PegBanner = "This packfile is from the PlayStation 2 version. To convert its PEG texture packs to .tga for the PC game, select .peg entries and use Convert to .tga... (right-click them, or the Packfile menu); Convert meshes... makes .v3m/.v3c from its meshes and Convert sounds... makes .wav or .ogg from its sounds. Levels (.rfl) are not compatible.";
+    public const string PegBanner = "This packfile is from the PlayStation 2 version. To convert its PEG texture packs to .tga for the PC game, select .peg entries and use Convert to .tga... (right-click them, or the Packfile menu); Convert meshes and animations... makes .v3m/.v3c from its meshes and Convert sounds... makes .wav or .ogg from its sounds. Levels (.rfl) are not compatible.";
 
     /// <summary>The banner above a PlayStation 2 packfile holding <paramref name="pegEntries"/> .peg entries.</summary>
     public static string BannerFor(int pegEntries) => pegEntries > 0 ? PegBanner : Banner;

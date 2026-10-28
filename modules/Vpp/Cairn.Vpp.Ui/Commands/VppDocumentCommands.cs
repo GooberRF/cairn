@@ -25,7 +25,8 @@ public sealed class VppDocumentCommands(VppDocument doc)
     private IReadOnlyList<VppItem> Selected => doc.SelectedItems;
     private IntPtr OwnerHandle => doc.Shell.MainWindow is { } w ? new WindowInteropHelper(w).Handle : IntPtr.Zero;
 
-    public bool CanEdit => !doc.IsBusy;
+    /// <summary>True when the packfile may be changed now (not busy, not a read-only Red Faction II group).</summary>
+    public bool CanEdit => !doc.IsBusy && !doc.IsReadOnly;
     public bool HasSelection => Selected.Count > 0 && !doc.IsBusy;
     public bool HasSingleSelection => Selected.Count == 1 && !doc.IsBusy;
 
@@ -47,6 +48,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
 
     public async Task AddFilesAsync()
     {
+        if (doc.RefuseReadOnly()) return;
         var files = Dialogs.OpenFiles(_lastAddFolder, "Add files to the packfile", "All files (*.*)|*.*", multiselect: true);
         if (files.Length == 0) return;
         _lastAddFolder = Path.GetDirectoryName(files[0]);
@@ -55,6 +57,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
 
     public async Task AddFolderAsync()
     {
+        if (doc.RefuseReadOnly()) return;
         var folder = Dialogs.PickFolder(_lastAddFolder, "Add a folder's files to the packfile (sub-folders included, flattened)");
         if (folder is null) return;
         _lastAddFolder = folder;
@@ -68,7 +71,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     /// </summary>
     public async Task<VppAddReport?> AddPathsAsync(IReadOnlyList<string> paths, VppClashPolicy? policy = null)
     {
-        if (paths.Count == 0 || doc.IsBusy) return null;
+        if (paths.Count == 0 || doc.IsBusy || doc.RefuseReadOnly()) return null;
         var failures = new List<(string, string)>();
         List<(string Name, VppSource Source)> entries = [];
         await doc.RunOperationAsync("Reading files to add", async op =>
@@ -219,7 +222,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     public void RemoveSelected()
     {
         var names = Selected.Select(s => s.Name).ToList();
-        if (names.Count == 0 || doc.IsBusy) return;
+        if (names.Count == 0 || doc.IsBusy || doc.RefuseReadOnly()) return;
         if (doc.Module.Settings.ConfirmRemove &&
             !Dialogs.Confirm(names.Count == 1 ? $"Remove {names[0]}?" : $"Remove {names.Count} entries?", "You can undo this with Ctrl+Z until the packfile is saved.", "Remove"))
             return;
@@ -234,7 +237,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     /// <summary>Starts the inline rename of the selected entry (F2); without a view, nothing happens.</summary>
     public void BeginRename()
     {
-        if (HasSingleSelection) doc.BeginRenameHandler?.Invoke(Selected[0]);
+        if (HasSingleSelection && !doc.RefuseReadOnly()) doc.BeginRenameHandler?.Invoke(Selected[0]);
     }
 
     /// <summary>Renames one entry as an undo step. Returns null when done, else why not (also shown in the status bar).</summary>
@@ -242,6 +245,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     {
         newName = newName.Trim();
         if (doc.IsBusy) return "Wait for the current operation to finish.";
+        if (doc.RefuseReadOnly()) return VppDocument.ReadOnlyReason;
         if (string.Equals(oldName, newName, StringComparison.Ordinal)) return null;
         // checked here, before the core's normalising (which would quietly keep only the part after a '/')
         if (VppNames.Validate(newName) is { } invalid) { doc.ShowStatus("Not renamed: " + invalid); return invalid; }
@@ -260,7 +264,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     }
 
     /// <summary>True when an entry of the selection has a name the game cuts off (VPP027).</summary>
-    public bool CanRenameToFit => HasSelection && Selected.Any(i => VppValidator.IsNameTooLongForGame(i.Name));
+    public bool CanRenameToFit => HasSelection && !doc.IsReadOnly && Selected.Any(i => VppValidator.IsNameTooLongForGame(i.Name));
 
     /// <summary>
     /// "Rename to fit...": gives every selected entry (or <paramref name="names"/>) whose name is too long for the game
@@ -269,7 +273,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     /// </summary>
     public IReadOnlyList<(string OldName, string NewName)> RenameToFit(IReadOnlyList<string>? names = null, bool confirm = true)
     {
-        if (doc.IsBusy) return [];
+        if (doc.IsBusy || doc.RefuseReadOnly()) return [];
         var targets = (names ?? Selected.Select(i => i.Name).ToList()).Where(VppValidator.IsNameTooLongForGame).ToList();
         if (targets.Count == 0)
         {
@@ -314,7 +318,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
 
     public void ReplaceSelected()
     {
-        if (!HasSingleSelection) return;
+        if (!HasSingleSelection || doc.RefuseReadOnly()) return;
         var name = Selected[0].Name;
         var ext = Path.GetExtension(name);
         var files = Dialogs.OpenFiles(_lastAddFolder, $"Replace {name}", (ext.Length > 0 ? $"{ext} files (*{ext})|*{ext}|" : string.Empty) + "All files (*.*)|*.*", multiselect: false);
@@ -340,6 +344,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     public void SortPackfile(VppSortKey key, bool descending = false)
     {
         string what = key switch { VppSortKey.Name => "name", VppSortKey.Type => "type", VppSortKey.Size => "size", _ => "original order" };
+        if (doc.RefuseReadOnly()) return;
         if (!doc.ApplyEdit($"Sort entries by {what}", p => VppEdit.Sort(p, key, descending))) doc.ShowStatus($"The entries are already in {what} order");
     }
 
@@ -361,8 +366,9 @@ public sealed class VppDocumentCommands(VppDocument doc)
     /// <summary>Validates now (including whether added files changed on disk) and shows the result.</summary>
     public IReadOnlyList<VppProblem> Validate()
     {
-        var problems = Writing.VppSaver.CheckBeforeSave(doc.Current).ToList();
-        if (doc.FilePath is { } path) problems.AddRange(VppValidator.ValidateTargetPath(path));
+        // a read-only Red Faction II group is never saved: only its own rules apply
+        var problems = doc.IsReadOnly ? VppValidator.Validate(doc.Current).ToList() : Writing.VppSaver.CheckBeforeSave(doc.Current).ToList();
+        if (doc.FilePath is { } path && !doc.IsReadOnly) problems.AddRange(VppValidator.ValidateTargetPath(path));
         if (!doc.Shell.IsDiagnosticRun) Cairn.Vpp.Ui.Dialogs.VppProblemsWindow.Show(doc, problems);
         doc.ShowStatus(problems.Count == 0 ? "No problems found" : $"{problems.Count} problem(s) found");
         return problems;
@@ -406,9 +412,20 @@ public sealed class VppDocumentCommands(VppDocument doc)
         var renamedOnDisk = new List<string>();
         var targets = new List<(VppItem Item, string Path)>();
         var clashes = new List<(VppItem Item, string File, bool InBatch)>();
+        // A Red Faction II group may list a file it does not have (skipped and reported), and one file twice under names
+        // that differ only in case (one file on Windows: written once, and the status says so).
+        var missing = new List<string>();
+        var sameData = new Dictionary<string, string>(StringComparer.Ordinal);
+        int writtenOnce = 0;
         foreach (var i in items)
         {
+            if (i.Source is MissingFileSource) { missing.Add(i.Name); continue; }
             string file = VppWorkFolder.SafeFileName(i.Name);
+            if (DataKey(i.Source) is { } key)
+            {
+                if (sameData.TryGetValue(key, out var earlier) && string.Equals(earlier, file, StringComparison.OrdinalIgnoreCase)) { writtenOnce++; continue; }
+                sameData.TryAdd(key, file);
+            }
             bool inBatch = taken.Contains(file);
             if (inBatch || File.Exists(Path.Combine(folder, file))) { clashes.Add((i, file, inBatch)); continue; }
             taken.Add(file);
@@ -492,9 +509,19 @@ public sealed class VppDocumentCommands(VppDocument doc)
             : $" ({renamedOnDisk.Count:N0} saved under another name: {string.Join(", ", renamedOnDisk.Take(3))}{(renamedOnDisk.Count > 3 ? ", ..." : "")})";
         if (overwritten > 0) renamedNote += $"; {overwritten:N0} overwritten";
         if (skipped > 0) renamedNote += $"; {skipped:N0} skipped";
+        if (writtenOnce > 0) renamedNote += $"; {writtenOnce:N0} listed twice under names that differ only in case, written once";
+        if (missing.Count > 0) renamedNote += $"; {missing.Count:N0} not on disk ({string.Join(", ", missing.Take(3))}{(missing.Count > 3 ? ", ..." : "")})";
         if (!quiet || renamedNote.Length > 0) doc.ShowStatus((written.Count == 1 ? $"Extracted {Path.GetFileName(written[0])} to {folder}" : $"Extracted {written.Count:N0} files to {folder}") + renamedNote);
         return written;
     }
+
+    /// <summary>Where an entry's data is, compared ignoring case (a file, or a range of an archive); null for data in memory.</summary>
+    private static string? DataKey(VppSource source) => source switch
+    {
+        FileSource f => "file|" + Path.GetFullPath(f.FilePath).ToUpperInvariant(),
+        ArchiveSource a => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"archive|{Path.GetFullPath(a.ArchivePath).ToUpperInvariant()}|{a.Offset}|{a.Length}"),
+        _ => null,
+    };
 
     /// <summary>Extracts the selection into a fresh staging folder (for the clipboard and drag-out); null when cancelled.</summary>
     public Task<IReadOnlyList<string>?> StageSelectionAsync() =>
@@ -543,7 +570,13 @@ public sealed class VppDocumentCommands(VppDocument doc)
     }
 
     /// <summary>True when a Cairn module opens the selected entry's type.</summary>
-    public bool CanOpenInCairn => HasSingleSelection && doc.Module.CairnOpens(Selected[0].Name);
+    public bool CanOpenInCairn => HasSingleSelection && OpensInCairn(Selected[0]);
+
+    /// <summary>
+    /// True when a Cairn module opens <paramref name="item"/>'s type; in a Red Faction II group not a file missing on disk.
+    /// </summary>
+    private bool OpensInCairn(VppItem item) => doc.Module.CairnOpens(item.Name)
+        && !(doc.IsReadOnly && item.Source is MissingFileSource);
 
     /// <summary>Opens the selected entry's work copy in a Cairn tab; saving that tab offers to update the packfile.</summary>
     public Task OpenInCairnAsync() => CanOpenInCairn ? OpenInCairnAsync(Selected[0]) : Task.CompletedTask;
@@ -551,7 +584,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     /// <summary>Opens <paramref name="item"/>'s work copy in a Cairn tab (also how the Recent list reopens an entry).</summary>
     public async Task OpenInCairnAsync(VppItem item)
     {
-        if (doc.IsBusy || !doc.Module.CairnOpens(item.Name) || !doc.EnsureReadable([item])) return;
+        if (doc.IsBusy || !OpensInCairn(item) || !doc.EnsureReadable([item])) return;
         var path = await doc.Work.PrepareAsync(item);
         doc.Shell.OpenFile(path);
     }
@@ -559,7 +592,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     /// <summary>"Update packfile" on the work-copy bar: the changed copies replace their entries (one undo step).</summary>
     public bool UpdateFromWorkCopies(IReadOnlyList<VppWorkChange>? only = null)
     {
-        if (doc.IsBusy || !doc.HasWorkFolder) return false;
+        if (doc.IsBusy || !doc.HasWorkFolder || doc.RefuseReadOnly()) return false;
         IReadOnlyList<(string EntryName, string SnapshotPath, string CopyPath)> taken;
         doc.Work.Follow(doc.Current);
         try { taken = doc.Work.TakeChanges(only); }

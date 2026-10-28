@@ -99,6 +99,33 @@ public static class VppFileTypes
         return ext.Length > 0 && ByExtension.TryGetValue(ext, out var type) ? type : null;
     }
 
+    // Red Faction II's own types and the names its shared extensions go by in an RF2 packfile group (the game is
+    // RF2, so "loaded by the game" and the PS2 names do not apply there). CairnOpens follows what the modules read.
+    private static readonly Dictionary<string, VppFileType> Rf2ByExtension = new VppFileType[]
+    {
+        new(".peg", "RF2 texture pack", VppFileCategory.Image, true, No),
+        new(".rfm", "RF2 static mesh", VppFileCategory.Mesh, true, No),
+        new(".rfc", "RF2 character mesh", VppFileCategory.Mesh, true, No),
+        new(".rfa", "RF2 animation", VppFileCategory.Animation, true, No),
+        new(".rfe", "RF2 effect", VppFileCategory.Effect, true, No),
+        new(".rfl", "RF2 level", VppFileCategory.Level, false, No),
+        new(".tbl", "RF2 table", VppFileCategory.Table, false, No),
+        new(".vmu", "RF2 music", VppFileCategory.Audio, true, No),
+        new(".csc", "RF2 cutscene script", VppFileCategory.Text, false, No),
+        new(".bik", "Bink video", VppFileCategory.Other, false, No),
+        new(".scc", "SourceSafe file", VppFileCategory.Other, false, No),
+    }.ToDictionary(t => t.Extension, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The type for a name in a Red Faction II packfile group when <paramref name="rf2"/> (RF2's own names for its
+    /// types), else as <see cref="Describe(string)"/>.
+    /// </summary>
+    public static VppFileType Describe(string name, bool rf2)
+    {
+        if (rf2 && Editing.VppNames.ExtensionOf(name) is { Length: > 0 } ext && Rf2ByExtension.TryGetValue(ext, out var type)) return type;
+        return Describe(name);
+    }
+
     /// <summary>The type for a name, or a generic "EXT file" of category Other.</summary>
     public static VppFileType Describe(string name)
     {

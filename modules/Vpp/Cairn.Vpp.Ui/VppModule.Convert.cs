@@ -16,12 +16,15 @@ public sealed partial class VppModule
     /// <summary>Adds "Convert images to DDS..." to the Packfile menu and its shortcut (Ctrl+Shift+D).</summary>
     private void InitializeConvert()
     {
-        var command = Cmd(d => d.Commands.Fire(() => ConvertToDdsAsync(d)), d => d.Current.Count > 0);
+        // a read-only Red Faction II group cannot take the .dds files (its entries' Convert to submenu writes to a folder)
+        var command = Cmd(d => d.Commands.Fire(() => ConvertToDdsAsync(d)), d => !d.IsReadOnly && d.Current.Count > 0);
         var item = new MenuItem
         {
             Header = "Con_vert images to DDS...", InputGestureText = "Ctrl+Shift+D", Command = command,
             ToolTip = "Convert the selected TGA/PNG/JPG images (or all of them when none is selected) to DDS for Alpine Faction",
         };
+        ToolTipService.SetShowOnDisabled(item, true);
+        _editItems.Add((item, (string)item.ToolTip));
         if (_menus.FirstOrDefault(m => m.Slot == MenuSlot.TopLevel && m.Item is MenuItem { Name: "PackfileMenu" })?.Item is MenuItem menu)
         {
             // Before the separator that precedes Validate.
@@ -37,6 +40,7 @@ public sealed partial class VppModule
     /// </summary>
     public async Task ConvertToDdsAsync(VppDocument doc)
     {
+        if (doc.RefuseReadOnly()) return;
         var selection = doc.SelectedItems.Count > 0 ? doc.SelectedItems : doc.Current.Items.ToList();
         var (images, skipped) = DdsConversion.Split(selection);
         if (images.Count == 0)

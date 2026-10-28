@@ -93,6 +93,39 @@ public sealed class GltfCommands
         GltfExportWindow.ShowModal(_shell.Dialogs.Owner, model);
     }
 
+    /// <summary>
+    /// File › Convert to… glTF or GLB for <paramref name="document"/>: the export window with that format chosen, or with
+    /// <paramref name="interactive"/> false the window's defaults written into <paramref name="outputFolder"/> (else
+    /// the folder it offers). Returns the path written, or null when cancelled or refused (reported).
+    /// </summary>
+    internal async Task<string?> ExportDocumentAsync(DocumentViewModel document, bool glb, bool interactive, string? outputFolder)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        _shell.CommitPendingEdits();
+        GltfExportViewModel model;
+        try
+        {
+            model = new GltfExportViewModel(_shell, document) { IsGlb = glb };
+        }
+        catch (ArgumentException ex)
+        {
+            _shell.Dialogs.ShowError($"{document.DisplayName} cannot be exported yet.", GltfText.UserMessage(ex));
+            return null;
+        }
+        if (interactive)
+        {
+            GltfExportWindow.ShowModal(_shell.Dialogs.Owner, model);
+            return model.LastResult is null ? null : Path.GetFullPath(model.OutputPath);
+        }
+        if (outputFolder is not null) model.OutputPath = Path.Combine(outputFolder, Path.GetFileName(model.OutputPath));
+        if (await model.ExportAsync().ConfigureAwait(true) is null)
+        {
+            _shell.Dialogs.ShowError($"{document.DisplayName} was not exported.", model.Error ?? model.ProgressText);
+            return null;
+        }
+        return Path.GetFullPath(model.OutputPath);
+    }
+
     private void PickAndImport(bool animation)
     {
         string? folder = _shell.Settings.Get<string>(ImportFolderKey);

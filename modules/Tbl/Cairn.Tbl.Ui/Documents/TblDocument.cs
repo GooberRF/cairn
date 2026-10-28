@@ -24,7 +24,7 @@ namespace Cairn.Tbl.Ui.Documents;
 /// history; everything else (<see cref="Model"/>: parse, token classes, diagnostics) is derived from the text after a
 /// short pause, off the UI thread for big tables. The file's encoding, BOM and line endings are kept on save.
 /// </summary>
-public sealed class TblDocument : DocumentBase
+public sealed class TblDocument : DocumentBase, IDocumentContent
 {
     /// <summary>Tables at least this long are parsed and linted on a pool thread.</summary>
     internal const int BackgroundThreshold = 64 * 1024;
@@ -421,6 +421,12 @@ public sealed class TblDocument : DocumentBase
     }
 
     protected override bool MatchesSaved(byte[] bytes) => bytes.AsSpan().SequenceEqual(_savedBytes);
+
+    /// <summary>The name with .tbl (Convert to… names the outputs after it).</summary>
+    public string FileName => DisplayName.EndsWith(".tbl", StringComparison.OrdinalIgnoreCase) ? DisplayName : DisplayName + ".tbl";
+
+    /// <summary>The table as Save would write it (its encoding), unsaved edits included.</summary>
+    public byte[] CurrentBytes() => TblTextFiles.Encode(Text.Text, _encoding);
 
     protected override void LoadBytes(byte[] bytes, bool keepDirty)
     {

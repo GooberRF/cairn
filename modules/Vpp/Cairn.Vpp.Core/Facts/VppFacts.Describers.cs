@@ -153,7 +153,7 @@ public static partial class VppFacts
         if (!mesh.StructureReadable) sheet.Warn("The mesh's section list could not be walked completely; counts cover only what was read.");
     }
 
-    /// <summary>An exporter (.v3d/.vcm) or PS2 (.rfm/.rfc) mesh: what it holds and what converting it makes.</summary>
+    /// <summary>An exporter (.v3d/.vcm), PS2 or Red Faction II (.rfm/.rfc) mesh: what it holds and what converting it makes.</summary>
     private static void DescribeLegacyMesh(VppFactInput input, byte[] bytes, VppFactSheetBuilder sheet)
     {
         if (!LegacyMeshSupport.TryRead(bytes, input.Name, out var legacy, out var error))
@@ -162,7 +162,7 @@ public static partial class VppFacts
             return;
         }
         var d = legacy!.Description;
-        string format = LegacyMeshSupport.FormatName(legacy.SourceFormat);
+        string format = LegacyMeshSupport.FormatName(legacy);
         sheet.Add("Kind", char.ToUpperInvariant(format[0]) + format[1..]);
         sheet.Add("Submeshes", d.Submeshes.Length);
         if (d.Submeshes.Length > 0)
@@ -181,6 +181,7 @@ public static partial class VppFacts
         var clip = RfaProbe.Probe(input.ReadAll(), input.Name);
         const double TicksPerSecond = 4800;
         sheet.Add("Version", clip.Version);
+        if (clip.IsRedFactionII) sheet.Add("Kind", "Red Faction II clip (read-only in Cairn; converts to a version 8 Red Faction clip)");
         sheet.Add("Bones", clip.BoneCount);
         sheet.Add("Frames", $"{clip.Duration / 160.0:0.#} at 30 fps ({N(clip.Duration)} ticks)");
         sheet.Add("Duration", FormatDuration(TimeSpan.FromSeconds(clip.Duration / TicksPerSecond)));
@@ -223,6 +224,25 @@ public static partial class VppFacts
         {
             sheet.Add("Problems", $"not checked: {ex.Message}");
         }
+    }
+
+    /// <summary>A Red Faction II effect (.rfe): what it holds, or why Cairn cannot read it (the older layout).</summary>
+    private static void DescribeRf2Effect(VppFactInput input, VppFactSheetBuilder sheet)
+    {
+        var bytes = input.ReadAll();
+        if (Cairn.Vfx.Rfe.RfeReader.RefusalFor(bytes, input.Name) is { } refusal)
+        {
+            sheet.Add("Kind", "Red Faction II effect, older layout");
+            sheet.Warn(refusal);
+            return;
+        }
+        var effect = Cairn.Vfx.Rfe.RfeReader.Read(bytes, input.Name);
+        foreach (var fact in Cairn.Vfx.Rfe.RfeFacts.Describe(effect).Where(f => f.Section == "Effect")) sheet.Add(fact.Label, fact.Value);
+        if (effect.Meshes.Length > 0)
+            sheet.Add("Mesh facing", string.Join(", ", effect.Meshes.GroupBy(m => m.Facing).OrderBy(g => g.Key).Select(g => $"{g.Count()} × {g.Key}")));
+        if (effect.Emitters.Length > 0)
+            sheet.Add("Emitters", string.Join(", ", effect.Emitters.GroupBy(e => e.Shape switch { 1 => "rectangle", 0 => "sphere", _ => "other" }).Select(g => $"{g.Count()} {g.Key}")));
+        sheet.Add("Textures", string.Join(", ", effect.Textures.Where(t => t.Length > 0).Take(8)) + (effect.Textures.Length > 8 ? ", ..." : ""));
     }
 
     private static void DescribeAtx(VppFactInput input, VppFactSheetBuilder sheet)
@@ -388,12 +408,19 @@ public static partial class VppFacts
     /// are skipped), as rows labelled "Group: label" outside the identity group, with referenced files
     /// checked against this packfile and the game data. Missing files and reader notes become warnings.
     /// </summary>
+    /// <summary>The format version of Red Faction II levels (0x127).</summary>
+    private const int Rf2LevelVersion = 0x127;
+
     private static void DescribeLevel(VppFactInput input, VppFactSheetBuilder sheet)
     {
         Formats.Rfl.RflSummary summary;
         using (var stream = input.Open()) summary = Formats.Rfl.RflReader.ReadSummary(stream, input.Name);
         var missing = new List<string>();
-        foreach (var row in Formats.Rfl.RflFacts.Rows(summary, LevelPresence(input.Context)))
+        // A Red Faction II level's files are in RF2's packfiles, not RF1's game data: only its textures are looked up, in
+        // the .peg packs of its own packfile group.
+        bool rf2 = summary.Version == Rf2LevelVersion;
+        var presence = rf2 ? Rf2LevelPresence(input.Name, input.Context) : LevelPresence(input.Context);
+        foreach (var row in Formats.Rfl.RflFacts.Rows(summary, presence))
         {
             sheet.Add(row.Section == "Level" ? row.Label : $"{row.Section}: {row.Label}", row.Value);
             if (!row.Flagged) continue;
@@ -406,6 +433,30 @@ public static partial class VppFacts
                 + " not in this packfile or the game data: "
                 + string.Join(", ", missing.Take(10)) + (missing.Count > 10 ? ", ..." : "."));
         }
+    }
+
+    /// <summary>
+    /// Where a texture a Red Faction II level names is found: in a <c>.peg</c> pack of this packfile (the level's own pack
+    /// first, as <see cref="Cairn.Assets.PegTextureSet.SearchOrder"/> orders them), else no location; any other file is
+    /// not checked. Null when the packfile has no packs.
+    /// </summary>
+    internal static Func<string, Formats.Rfl.AssetPresence>? Rf2LevelPresence(string levelName, VppFactsContext context)
+    {
+        if (context.Package is not { } package) return null;
+        var pegs = new Dictionary<string, Model.VppItem>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in package.Items)
+        {
+            if (item.Size > 0 && item.Name.EndsWith(".peg", StringComparison.OrdinalIgnoreCase) && item.Source is not Model.MissingFileSource) pegs.TryAdd(item.Name, item);
+        }
+        var order = Cairn.Assets.PegTextureSet.SearchOrder(levelName, pegs.Keys, [""]);
+        if (order.Count == 0) return null;
+        var packs = new Cairn.Assets.PegTextureSet(package.Path ?? "this packfile", order.Select(n => new Cairn.Assets.PegPack(n, () => pegs[n].Source.ReadAll())));
+        return reference =>
+        {
+            string bare = Path.GetFileName(reference.Trim());
+            return bare.Length > 0 && Cairn.Assets.AssetResolver.IsTextureName(bare) && packs.Contains(bare)
+                ? Formats.Rfl.AssetPresence.SamePackfile : Formats.Rfl.AssetPresence.Unknown;
+        };
     }
 
     /// <summary>Where a name a level references is found: this packfile, the game data, or nowhere; null when nothing can be checked.</summary>
@@ -484,7 +535,10 @@ public static partial class VppFacts
         if (pack.Mpeg2Count > 0) sheet.Add("MPEG-2 backgrounds", pack.Mpeg2Count);
         int broken = pack.Textures.Count(t => t.Problem is not null);
         if (broken > 0) sheet.Warn($"{N(broken)} texture(s) cannot be decoded.");
-        sheet.Add("PC game", "Not loaded: Convert to .tga... on the selected .peg entry (or opening the .peg in Cairn) turns the textures into .tga files");
+        sheet.Add("PC game", input.Context.Package?.Rf2 is not null
+            // a read-only Red Faction II group: its entry menu's Convert to writes the .tga files into a folder
+            ? "Not loaded by Red Faction: Convert to > Texture files (.tga) writes the textures as .tga files into a folder"
+            : "Not loaded: Convert to .tga... on the selected .peg entry (or opening the .peg in Cairn) turns the textures into .tga files");
         foreach (var t in pack.Textures.Take(MaxListedTextures))
         {
             string value = t.Describe() + (t.Problem is { } p ? $"; cannot be decoded: {p}" : t.IsMpeg2 ? "; no alpha" : string.Empty);

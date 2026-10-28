@@ -117,8 +117,9 @@ public sealed class VppFileList : ObservableObject
             .GroupBy(p => p.EntryName!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<VppProblem>)g.ToList(), StringComparer.OrdinalIgnoreCase);
         var rows = new VppEntryRow[package.Items.Length];
+        bool rf2 = package.Rf2 is not null;
         for (int i = 0; i < rows.Length; i++)
-            rows[i] = new VppEntryRow(package.Items[i], i, byName.GetValueOrDefault(package.Items[i].Name));
+            rows[i] = new VppEntryRow(package.Items[i], i, byName.GetValueOrDefault(package.Items[i].Name), rf2);
         _all = rows;
         RebuildOptions();
         LongNameOption.Count = rows.Count(r => r.NameTooLong);

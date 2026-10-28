@@ -138,6 +138,12 @@ public sealed class AssetServices
 
     private async Task<T> LoadAsync<T>(AssetLocation location, string name, Func<byte[], T> parse, CancellationToken cancellationToken) where T : class
     {
+        // an open packfile's entry (an overlay location) has no file stamp to key a cache with: it is read every time
+        if (location.Origin is not null)
+        {
+            using var reading = BusyTracker.Begin("load " + name);
+            return await Task.Run(() => parse(location.ReadAllBytes()), cancellationToken).ConfigureAwait(true);
+        }
         var stamp = location.Stamp();
         string key = $"{location.ArchivePath}|{location.FilePath}|{location.ResolvedName}|{location.Entry?.Offset}|{stamp.Time.Ticks}|{stamp.Size}";
         lock (_loadGate)
@@ -338,5 +344,31 @@ public sealed class AssetServices
         ProgressText = text;
         ProgressFraction = fraction;
         ProgressChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Self-tests: shows an empty library that is still loading, as at startup, until the result is disposed, which
+    /// brings the real one back; <see cref="LibraryChanged"/> is raised both times. UI thread.
+    /// </summary>
+    internal IDisposable SimulateStartupForTest()
+    {
+        var real = Snapshot;
+        bool wasLoading = IsLoading;
+        Snapshot = LibrarySnapshot.Empty;
+        IsLoading = true;
+        LibraryChanged?.Invoke(this, EventArgs.Empty);
+        return new Restore(() =>
+        {
+            Snapshot = real;
+            IsLoading = wasLoading;
+            LibraryChanged?.Invoke(this, EventArgs.Empty);
+        });
+    }
+
+    private sealed class Restore(Action restore) : IDisposable
+    {
+        private Action? _restore = restore;
+
+        public void Dispose() => Interlocked.Exchange(ref _restore, null)?.Invoke();
     }
 }

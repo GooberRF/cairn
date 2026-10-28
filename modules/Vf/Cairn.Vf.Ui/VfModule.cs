@@ -15,7 +15,7 @@ namespace Cairn.Vf.Ui;
 /// The fonts (.vf) module: opens VFNT bitmap fonts in tabs (glyph grid, sample text drawn as the game draws it,
 /// inspector, problems) and previews them for other modules (packfile entries).
 /// </summary>
-public sealed partial class VfModule : ModuleBase, IAssetPreviewProvider
+public sealed partial class VfModule : ModuleBase, IAssetPreviewProvider, IAssetConverter
 {
     /// <summary>The bottom Problems tab's id.</summary>
     public const string ProblemsPanelId = "vf.problems";

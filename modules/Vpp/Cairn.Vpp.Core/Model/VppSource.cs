@@ -90,6 +90,22 @@ public sealed record FileSource(string FilePath, long Length, DateTime LastWrite
     }
 }
 
+/// <summary>
+/// A file a Red Faction II packfile group lists but that is not on disk (the stock Common_sounds group lists one).
+/// It keeps the listed size so the list shows it; opening it fails with a message saying the file is missing.
+/// </summary>
+/// <param name="FilePath">Where the group says the file is.</param>
+/// <param name="Length">The size the group lists.</param>
+public sealed record MissingFileSource(string FilePath, long Length) : VppSource
+{
+    public override long Size => Length;
+
+    public override string Describe() => FilePath + " (missing)";
+
+    public override Stream Open() =>
+        throw new FileNotFoundException($"'{Path.GetFileName(FilePath)}' is listed by its packfile group but is not on disk ({FilePath}).", FilePath);
+}
+
 /// <summary>Bytes held in memory (pasted, generated or recovered).</summary>
 public sealed record MemorySource(byte[] Bytes) : VppSource
 {

@@ -16,7 +16,7 @@ namespace Cairn.Vf.Ui.Documents;
 /// through <see cref="VfWriter"/>, so an unchanged font is saved byte for byte. View state (selected glyph, sample
 /// text, zooms, backdrop) lives here too and is never saved.
 /// </summary>
-public sealed class VfDocument : SnapshotDocument<VfFont>
+public sealed class VfDocument : SnapshotDocument<VfFont>, IDocumentContent
 {
     /// <summary>The default sample text.</summary>
     public const string DefaultSample = "The quick brown fox jumps over the lazy dog";
@@ -307,6 +307,12 @@ public sealed class VfDocument : SnapshotDocument<VfFont>
         _module.Forget(this);
         base.Dispose();
     }
+
+    /// <summary>The name with .vf (Convert to… names the outputs after it).</summary>
+    public string FileName => DisplayName.EndsWith(".vf", StringComparison.OrdinalIgnoreCase) ? DisplayName : DisplayName + ".vf";
+
+    /// <summary>The font as Save would write it, unsaved edits included.</summary>
+    public byte[] CurrentBytes() => Serialize();
 
     protected override FrameworkElement CreateView() => new VfDocumentView(this);
 }

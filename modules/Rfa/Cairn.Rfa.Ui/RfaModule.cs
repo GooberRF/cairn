@@ -5,12 +5,13 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Cairn.Rfa.Ui.ViewModels;
 using Cairn.Rfa.Ui.Views;
+using Cairn.Rfa.Ui.Views.Dialogs;
 using ModuleShortcut = Cairn.Ui.Modules.ShortcutInfo;
 
 namespace Cairn.Rfa.Ui;
 
 /// <summary>The animations and meshes module hosted by the Cairn shell.</summary>
-public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatchConverter
+public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatchConverter, IAssetConverter
 {
     /// <inheritdoc/>
     public bool CanPreview(string fileName) =>
@@ -53,6 +54,9 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
     /// <summary>The module's workspace (the old app's main view model, RFA half).</summary>
     public static RfaWorkspace Workspace { get; private set; } = null!;
 
+    /// <summary>File › Import › Mesh from OBJ…, File › Export › OBJ… and the OBJ conversions.</summary>
+    internal static ViewModels.ObjTools.ObjCommands Obj { get; private set; } = null!;
+
     private readonly List<MenuContribution> _menus = [];
     private readonly List<ModuleShortcut> _shortcuts = [];
     private readonly List<PanelContribution> _panels = [];
@@ -77,7 +81,7 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
     public override string DisplayName => "Animations and meshes";
 
     public override IReadOnlyList<IDocumentKind> DocumentKinds => [ClipKind, MeshKind, LegacyMeshKind];
-    public override IReadOnlyList<IFileImporter> Importers { get; } = [new GltfImporter()];
+    public override IReadOnlyList<IFileImporter> Importers { get; } = [new GltfImporter(), new ObjImporter()];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     public override IReadOnlyList<ModuleShortcut> Shortcuts => _shortcuts;
     public override IReadOnlyList<PanelContribution> Panels => _panels;
@@ -102,6 +106,7 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         var ws = new RfaWorkspace(shell.Dispatcher, shell.Dialogs, shell.Settings, shell.Theme, shell.IsDiagnosticRun);
         ws.AttachShell(shell);
         Workspace = ws;
+        Obj = new ViewModels.ObjTools.ObjCommands(ws);
         ws.ApplyAssetSettings();
 
         var menus = new RfaMenus();
@@ -120,7 +125,9 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         _settingsPages.Add(new RfaSettingsPage(ws));
         _menus.Add(new MenuContribution(MenuSlot.FileImport, 100, Item("Animation from glTF…", "Import a glTF animation as a new clip", ws.Gltf.ImportAnimationCommand)));
         _menus.Add(new MenuContribution(MenuSlot.FileImport, 110, Item("Mesh from glTF…", "Import a glTF mesh as a new mesh", ws.Gltf.ImportMeshCommand)));
+        _menus.Add(new MenuContribution(MenuSlot.FileImport, 120, Item("Mesh from OBJ…", "Import a Wavefront OBJ (with its .mtl) as a new static or character mesh, with a pre-flight report", Obj.ImportMeshCommand)));
         _menus.Add(new MenuContribution(MenuSlot.FileExport, 100, Item("glTF…", "Export the clip or mesh in front as glTF", ws.Gltf.ExportCommand), IsRfa));
+        _menus.Add(new MenuContribution(MenuSlot.FileExport, 102, Item("OBJ…", "Export the mesh in front as Wavefront OBJ with a .mtl and PNG textures (one LOD, static pose)", Obj.ExportCommand), IsMesh));
         _menus.Add(new MenuContribution(MenuSlot.FileExport, 105, Item("Convert to .v3m/.v3c…", "Convert the exporter or PS2 mesh in front to the PC format, with a report of what was approximated",
             new RelayCommand(() => { if (shell.ActiveDocument is MeshDocumentViewModel { IsLegacy: true } m) ws.Legacy.ConvertDocument(m); },
                 () => shell.ActiveDocument is MeshDocumentViewModel { Legacy.Mesh: not null })), IsLegacyMesh));
@@ -144,19 +151,170 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         _panels.Add(new PanelContribution("rfa.tables", "Table usage", PanelSide.Bottom, 120, d => d is DocumentViewModel r ? TableUsageViewModel.For(r) : null));
     }
 
-    // ── "Convert meshes..." for packfile entries (IArchiveBatchConverter) ───────────────────────────────────────
+    // ── "Convert meshes and animations..." for packfile entries (IArchiveBatchConverter) ────────────────────────
 
     /// <inheritdoc/>
-    public string CommandText => "Convert _meshes...";
+    public string CommandText => "Convert _meshes and animations...";
 
     /// <inheritdoc/>
-    public string CommandToolTip => "Convert the selected exporter and PS2 meshes (.v3d, .vcm, .rfm, .rfc) to .v3m/.v3c: into the packfile as new entries (one undo step) or into a folder";
+    public string CommandToolTip => "Convert the selected exporter, PS2 and Red Faction II meshes (.v3d, .vcm, .rfm, .rfc) to .v3m/.v3c and the Red Faction II animations (.rfa) to Red Faction clips: into the packfile as new entries (one undo step) or into a folder";
 
     /// <inheritdoc/>
-    public bool CanConvert(string entryName) => Formats.Legacy.LegacyMeshSupport.IsLegacyName(entryName);
+    /// <remarks>Any .rfa by its name: which are Red Faction II clips (the only ones to convert) shows when they are read.</remarks>
+    public bool CanConvert(string entryName) => Formats.Legacy.LegacyMeshSupport.IsLegacyName(entryName) || IsClipName(entryName);
+
+    private static bool IsClipName(string name) => name.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc/>
     public Task<string?> ConvertAsync(ArchiveBatchRequest request) => Workspace.Legacy.ConvertBatchAsync(request);
+
+    // ── Convert to… (IAssetConverter): glTF for clips and meshes, .v3m/.v3c for exporter, PS2 and Red Faction II meshes,
+    //    .rfa for Red Faction II clips ─────────────────────────────────────────────────────────────────────────────
+
+    private static bool IsGltfExtension(string extension) =>
+        string.Equals(extension, ".gltf", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".glb", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRfaName(string name) =>
+        name.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".v3m", StringComparison.OrdinalIgnoreCase)
+        || name.EndsWith(".v3c", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The PC format a legacy mesh named <paramref name="name"/> converts to, by its name (the content decides in the end).</summary>
+    private static string LegacyOutputByName(string name) =>
+        name.EndsWith(".vcm", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".rfc", StringComparison.OrdinalIgnoreCase) ? ".v3c" : ".v3m";
+
+    private static bool IsMeshName(string name) =>
+        name.EndsWith(".v3m", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".v3c", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsMeshExtension(string extension) =>
+        string.Equals(extension, ".v3m", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".v3c", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsObjExtension(string extension) => string.Equals(extension, ".obj", StringComparison.OrdinalIgnoreCase);
+
+    /// <inheritdoc/>
+    public bool CanConvert(string sourceName, string targetExtension)
+    {
+        // a Red Faction II clip to a Red Faction one (the content decides in the end)
+        if (string.Equals(targetExtension, ".rfa", StringComparison.OrdinalIgnoreCase)) return IsClipName(sourceName);
+        // OBJ: a mesh or a glTF to .obj; an .obj to a mesh or glTF.
+        if (IsObjExtension(targetExtension)) return IsMeshName(sourceName) || RfaWorkspace.IsGltf(sourceName);
+        if (ViewModels.ObjTools.ObjCommands.IsObj(sourceName)) return IsGltfExtension(targetExtension) || IsMeshExtension(targetExtension);
+        bool legacy = Formats.Legacy.LegacyMeshSupport.IsLegacyName(sourceName);
+        if (IsGltfExtension(targetExtension)) return legacy || IsRfaName(sourceName);
+        return legacy && IsMeshExtension(targetExtension);
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName)
+    {
+        if (ViewModels.ObjTools.ObjCommands.IsObj(sourceName))
+        {
+            const string preflight = "with the import's pre-flight report first";
+            return
+            [
+                new(".v3m", "Static mesh (.v3m)", $"Build a static mesh from the OBJ's objects ({preflight}), then choose where to save it", false),
+                new(".v3c", "Character mesh (.v3c)", $"Build a character mesh on the skeleton of an open character ({preflight}); OBJ has no bones or weights", false),
+                new(".gltf", "glTF (.gltf + .bin)", $"Build the mesh from the OBJ ({preflight}), then export it as glTF with its textures as PNG files", false),
+                new(".glb", "glTF binary (.glb)", $"Build the mesh from the OBJ ({preflight}), then export it as one .glb file", false),
+            ];
+        }
+        if (RfaWorkspace.IsGltf(sourceName))
+            return [new(".obj", "Wavefront OBJ (.obj + .mtl)", "Build the glTF's mesh (the glTF mesh import with its pre-flight report), then write it as OBJ with a .mtl and PNG textures; a skeleton, weights and animations are not kept", true)];
+        bool legacy = Formats.Legacy.LegacyMeshSupport.IsLegacyName(sourceName);
+        if (!legacy && !IsRfaName(sourceName)) return [];
+        bool clip = sourceName.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase);
+        string what = clip ? "the clip on its preview mesh" : "the mesh";
+        var targets = new List<ConversionTarget>();
+        if (legacy)
+        {
+            string ext = LegacyOutputByName(sourceName);
+            targets.Add(new(ext, ext == ".v3c" ? "Character mesh (.v3c)" : "Static mesh (.v3m)",
+                "Convert to the PC format the game loads, with a report of what was approximated: into its packfile, next to it or into a folder", true));
+        }
+        // Converting a legacy mesh approximates it, so its glTF is lossy too; an RFA clip or mesh round-trips.
+        targets.Add(new(".gltf", "glTF (.gltf + .bin)", $"Export {what} as glTF with its textures as PNG files (the export window)", legacy));
+        targets.Add(new(".glb", "glTF binary (.glb)", $"Export {what} as one .glb file with the textures inside (the export window)", legacy));
+        // One LOD in its static pose: other LODs, a skeleton and weights stay behind (Cairn's metadata lines keep the rest).
+        if (IsMeshName(sourceName))
+            targets.Add(new(".obj", "Wavefront OBJ (.obj + .mtl)", "Export one LOD of the mesh in its static pose as OBJ with a .mtl and PNG textures (the export window); Cairn's metadata lines keep render flags, LODs and prop points for importing back", true));
+        return targets;
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// A Red Faction II clip (version 9, by its first bytes) also converts to a Red Faction clip; its glTF is lossy, as the
+    /// clip's interpolation is inferred.
+    /// </remarks>
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName, ReadOnlySpan<byte> head)
+    {
+        var targets = TargetsFor(sourceName);
+        if (!IsClipName(sourceName) || !Formats.Legacy.Rf2AnimationConverter.IsRedFactionII(head)) return targets;
+        return
+        [
+            new(".rfa", "Red Faction clip (.rfa)", "Convert to the version 8 clip Red Faction plays, keeping every key, with a report of what was approximated; the window asks where to write it", true),
+            .. targets.Select(t => t.Extension is ".gltf" or ".glb" ? t with { Lossy = true } : t),
+        ];
+    }
+
+    /// <summary>
+    /// A tab through its own tools (the glTF export window, the legacy Convert window); a packfile entry's legacy mesh or
+    /// Red Faction II clip through the "Convert meshes and animations..." path with that one entry, and an entry's glTF by
+    /// opening it in a tab first (the
+    /// export works on a tab: its preview mesh, its textures). Without a dialog the defaults go to
+    /// <see cref="AssetConversionRequest.OutputFolder"/>. Anything to or from OBJ goes through
+    /// <see cref="ViewModels.ObjTools.ObjCommands.ConvertAsync"/>. Returns the first path or entry name written.
+    /// </summary>
+    public async Task<string?> ConvertAsync(AssetConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!CanConvert(request.FileName, request.TargetExtension)) return null;
+        var ws = Workspace;
+        if (IsObjExtension(request.TargetExtension) || ViewModels.ObjTools.ObjCommands.IsObj(request.FileName))
+            return await Obj.ConvertAsync(request, MeshKind).ConfigureAwait(true);
+        if (!IsGltfExtension(request.TargetExtension))
+        {
+            LegacyConvertChoice? choice = request.Interactive ? null
+                : new LegacyConvertChoice(request.AddToArchive is not null && request.OutputFolder is null ? LegacyConvertTarget.IntoPackfile : LegacyConvertTarget.Folder,
+                    request.OutputFolder ?? ws.DefaultOutputFolder(ws.Legacy.Defaults.Folder), Replace: false);
+            if (request.Document is MeshDocumentViewModel { IsLegacy: true } tab)
+                return (await ws.Legacy.ConvertDocumentAsync(tab, choice).ConfigureAwait(true))?.FirstOrDefault();
+            // a Red Faction II clip's tab converts what it shows; an entry goes through the batch below
+            if (request.Document is ClipDocumentViewModel { IsRedFactionII: true } clipTab)
+                return (await ws.Legacy.ConvertClipDocumentAsync(clipTab, choice).ConfigureAwait(true))?.FirstOrDefault();
+            var bytes = request.Bytes;
+            string? archive = request.ArchivePath;
+            var read = request.ReadSibling;
+            var batch = new ArchiveBatchRequest(archive is null ? request.FileName : Path.GetFileName(archive), archive is null ? null : Path.GetDirectoryName(archive),
+                [new ArchiveBatchEntry(request.FileName, bytes.LongLength, () => bytes)])
+            {
+                Interactive = request.Interactive,
+                Options = choice,
+                AddFiles = request.AddToArchive is { } add ? (label, files, replace) => add(label, files, replace) ?? [] : null,
+                // the exporter twin of a PS2 mesh is read from the rest of the packfile when it can be
+                AllEntries = read is null ? [] : [.. request.ArchiveEntryNames.Select(n => new ArchiveBatchEntry(n, 0, () => read(n) ?? throw new IOException($"{n} could not be read.")))],
+            };
+            if (await ws.Legacy.ConvertBatchAsync(batch).ConfigureAwait(true) is null) return null;
+            if (ws.Legacy.LastBatch is { Converted.Count: 0, Clips.Count: 0, Failed: [var why, ..] }) Shell.Dialogs.ShowError($"Could not convert {request.FileName}", why);
+            return ws.Legacy.LastBatch?.Converted.FirstOrDefault()?.OutputName ?? ws.Legacy.LastBatch?.Clips.FirstOrDefault()?.OutputName;
+        }
+        bool glb = string.Equals(request.TargetExtension, ".glb", StringComparison.OrdinalIgnoreCase);
+        if (request.Document is not DocumentViewModel document)
+        {
+            string extension = Path.GetExtension(request.FileName);
+            if (DocumentKinds.FirstOrDefault(k => k.Extensions.Contains(extension, StringComparer.OrdinalIgnoreCase)) is not { } kind) return null;
+            string origin = request.ArchivePath is { } archive ? $"{request.FileName} in {Path.GetFileName(archive)}" : request.FileName;
+            try
+            {
+                document = (DocumentViewModel)kind.OpenBytes(request.Bytes, request.FileName, origin);
+            }
+            catch (Exception ex) when (RfaWorkspace.IsReadFailure(ex))
+            {
+                Shell.Dialogs.ShowError($"Could not convert {request.FileName}", ex.Message);
+                return null;
+            }
+            Shell.AddDocument(document);
+        }
+        return await ws.Gltf.ExportDocumentAsync(document, glb, request.Interactive, request.OutputFolder).ConfigureAwait(true);
+    }
 
     public override IReadOnlyList<HelpTopic> HelpTopics { get; } =
         [new HelpTopic(FormatHelpTopicId, "RFA & V3C format reference", HelpDocuments.FormatReference),
@@ -210,7 +368,14 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         if (options.TryGetValue("preview", out var preview) && ws.ActiveDocument is { } target)
         {
             var snapshot = ws.Assets.Snapshot;
-            if (target is ClipDocumentViewModel clip && snapshot.FindMesh(preview) is { } mesh) clip.UsePreviewMesh(mesh);
+            // a Red Faction II clip takes a Red Faction II character by name (beside it, or of its install)
+            if (target is ClipDocumentViewModel { IsRedFactionII: true } rf2 && preview.EndsWith(".rfc", StringComparison.OrdinalIgnoreCase))
+            {
+                rf2.UseRf2PreviewMesh(preview);
+                for (int i = 0; i < 1200 && (rf2.Rf2PreviewMeshName is null || !string.Equals(rf2.Rf2PreviewMeshName, preview, StringComparison.OrdinalIgnoreCase)) && rf2.Scene.NoticeIsWarning is false; i++)
+                    await Task.Delay(50);
+            }
+            else if (target is ClipDocumentViewModel clip && snapshot.FindMesh(preview) is { } mesh) clip.UsePreviewMesh(mesh);
             else if (target is MeshDocumentViewModel meshDoc && snapshot.FindClip(preview) is { } c) meshDoc.UsePreviewClip(c);
             else Console.WriteLine($"[rfa] preview '{preview}' not found in the library");
             await SettleAsync();
@@ -434,5 +599,18 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         }
 
         public void Import(string path) => Workspace.Gltf.ImportFile(path);
+    }
+
+    /// <summary>Wavefront OBJ files: mesh import through the OBJ dialog (the file is read there, with its .mtl).</summary>
+    private sealed class ObjImporter : IFileImporter
+    {
+        public string DisplayName => "OBJ as mesh";
+        public IReadOnlyList<string> Extensions { get; } = [".obj"];
+        public string FileFilter => "Wavefront OBJ (*.obj)|*.obj";
+
+        // By the name only: an .obj can be hundreds of megabytes, and the dialog reports a damaged one.
+        public int Probe(string path) => ViewModels.ObjTools.ObjCommands.IsObj(path) ? 10 : 0;
+
+        public void Import(string path) => Obj.ImportFile(path);
     }
 }

@@ -3,7 +3,7 @@ using System.Numerics;
 namespace Cairn.Rfa.Formats.Rfa;
 
 /// <summary>The header facts of a clip, read without touching its keys.</summary>
-/// <param name="Version">7 or 8.</param>
+/// <param name="Version">7 or 8; 9 for a Red Faction II clip.</param>
 /// <param name="PosReduction">Exporter position tolerance.</param>
 /// <param name="RotReduction">Exporter rotation tolerance.</param>
 /// <param name="StartTime">Ticks.</param>
@@ -34,6 +34,9 @@ public sealed record RfaProbeResult(
 
     /// <summary>True when the clip carries morph (vertex) animation.</summary>
     public bool HasMorph => MorphVertexCount > 0;
+
+    /// <summary>True for a Red Faction II clip (version 9).</summary>
+    public bool IsRedFactionII => Version == RfaClip.Rf2Version;
 }
 
 /// <summary>
@@ -43,7 +46,7 @@ public sealed record RfaProbeResult(
 public static class RfaProbe
 {
     /// <summary>Probes a file on disk, reading only its header.</summary>
-    /// <exception cref="AssetFormatException">The file is not a version 7 or 8 clip.</exception>
+    /// <exception cref="AssetFormatException">The file is not a version 7, 8 or 9 clip.</exception>
     public static RfaProbeResult ProbeFile(string path)
     {
         using var stream = File.OpenRead(path);
@@ -70,8 +73,8 @@ public static class RfaProbe
         if (signature != RfaClip.Signature)
             throw new AssetFormatException($"'{r.Name}' is not an RFA clip (signature 0x{signature:X8}, expected \"VMVF\").");
         int version = r.ReadInt32();
-        if (version is not (7 or 8))
-            throw new AssetFormatException($"'{r.Name}' is RFA version {version}; only versions 7 and 8 are supported.");
+        if (version is not (7 or 8 or RfaClip.Rf2Version))
+            throw new AssetFormatException($"'{r.Name}' is RFA version {version}; only versions 7 and 8 (Red Faction) and 9 (Red Faction II) are read.");
         float posReduction = r.ReadSingle();
         float rotReduction = r.ReadSingle();
         int start = r.ReadInt32();

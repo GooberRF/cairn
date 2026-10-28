@@ -62,6 +62,7 @@ public sealed partial class RfaWorkspace : ObservableObject
         Recent = new RecentFilesList(settings.RecentFiles, settings.MaxRecentFiles);
         Recovery = new RecoveryStore();
         Assets = new AssetServices(dispatcher);
+        Packfiles = new PackfileSources(dispatcher);
         Textures.WaitForIndex = () => Assets.ArchivesIndexed;
         Display.Load(settings);
         Display.Changed += (_, _) =>
@@ -160,6 +161,10 @@ public sealed partial class RfaWorkspace : ObservableObject
         {
             foreach (var d in Documents) d.OnLibraryChanged();
         };
+        Packfiles.Changed += (_, _) =>
+        {
+            foreach (var d in Documents) d.OnPackfileSourcesChanged();
+        };
         Assets.ProgressChanged += (_, _) =>
         {
             RaiseAll(nameof(LibraryStatusText), nameof(IsLibraryLoading), nameof(StatusMessage));
@@ -184,6 +189,9 @@ public sealed partial class RfaWorkspace : ObservableObject
 
     /// <summary>Resolver, library and tables for the current settings.</summary>
     public AssetServices Assets { get; }
+
+    /// <summary>The packfiles open in Cairn as session sources of clips and meshes (library groups, preview pickers).</summary>
+    public PackfileSources Packfiles { get; }
 
     /// <summary>Decoded textures, shared by every viewport.</summary>
     public TextureService Textures { get; } = new();
@@ -771,8 +779,9 @@ public sealed partial class RfaWorkspace : ObservableObject
 
     private DocumentViewModel CreateDocument(byte[] bytes, string name, string? path, AssetLocation? origin)
     {
+        // a Red Faction II clip (version 9) opens read-only and gives back these bytes, never a rewrite
         if (name.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase))
-            return new ClipDocumentViewModel(this, RfaReader.Read(bytes, name), name, path, origin);
+            return new ClipDocumentViewModel(this, RfaReader.Read(bytes, name), name, path, origin, bytes);
         if (IsLegacyMesh(bytes, name)) return CreateLegacyDocument(bytes, name, path, origin);
         return new MeshDocumentViewModel(this, V3dReader.Read(bytes, name), name, path, origin);
     }

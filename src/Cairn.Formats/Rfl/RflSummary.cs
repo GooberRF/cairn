@@ -80,6 +80,20 @@ public sealed record RflLevelProperties(
 }
 
 /// <summary>
+/// The Red Faction II fields that follow the stock ones in a Red Faction II level's properties section: the sun of the
+/// editor's light bake, the hardlight (a full-screen tint) and the lightmap multiplier, as stored.
+/// </summary>
+public sealed record RflRf2Properties(
+    RflColor SunColor,
+    float SunYaw,
+    float SunPitch,
+    float SunIntensity,
+    float SunSpread,
+    RflColor HardlightColor,
+    int HardlightIntensity,
+    float LightmapMultiplier);
+
+/// <summary>
 /// Alpine Faction's level properties. The chunk grew fields without always raising its version, so
 /// every field is null when the file stops before it; the game then uses the default named in each
 /// property's documentation.
@@ -153,7 +167,10 @@ public sealed record RflPreloads(
 {
     public static RflPreloads Empty { get; } = new([], [], [], [], []);
 
-    public int Total => Bitmaps.Count + CharacterMeshes.Count + Animations.Count + StaticMeshes.Count + Effects.Count;
+    /// <summary>Red Faction II only: the texture packs (<c>.peg</c>) the level loads (section 0x7005).</summary>
+    public IReadOnlyList<string> TexturePacks { get; init; } = [];
+
+    public int Total => Bitmaps.Count + CharacterMeshes.Count + Animations.Count + StaticMeshes.Count + Effects.Count + TexturePacks.Count;
 }
 
 /// <summary>One section of the level's section stream.</summary>
@@ -187,6 +204,8 @@ public sealed record RflSummary
     public bool? HasMovers { get; init; }
     public RflLevelProperties? Properties { get; init; }
     public AlpineLevelProperties? Alpine { get; init; }
+    /// <summary>The Red Faction II fields of the level properties (Red Faction II levels only).</summary>
+    public RflRf2Properties? Rf2Properties { get; init; }
     /// <summary>Dash Faction's "full-depth lightmaps" flag, when the level carries Dash Faction properties.</summary>
     public int? DashLightmapsFullDepth { get; init; }
     public bool HasAlpineLightmaps { get; init; }
@@ -200,6 +219,7 @@ public sealed record RflSummary
     public int? Faces { get; init; }
     public int? Vertices { get; init; }
     public int? Portals { get; init; }
+    /// <summary>Sky and liquid rooms; null for a Red Faction II level, whose room records store neither as RF1 does.</summary>
     public int? SkyRooms { get; init; }
     public int? LiquidRooms { get; init; }
     public int? GeometryTextures { get; init; }

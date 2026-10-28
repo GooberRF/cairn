@@ -40,8 +40,11 @@ public sealed partial class VppModule : IAssetPreviewProvider
         {
             Header = ConvertPegsHeader,
             ToolTip = ConvertPegsTip,
-            Command = Cmd(d => d.Commands.Fire(() => ConvertSelectedPegsAsync(d)), HasSelectedPegs),
+            // it replaces the .peg entries in the packfile: not in a read-only Red Faction II group (Convert to writes to a folder)
+            Command = Cmd(d => d.Commands.Fire(() => ConvertSelectedPegsAsync(d)), d => !d.IsReadOnly && HasSelectedPegs(d)),
         };
+        ToolTipService.SetShowOnDisabled(convert, true);
+        _editItems.Add((convert, ConvertPegsTip));
         var png = new MenuItem
         {
             Header = "Extract as P_NG...",
@@ -78,7 +81,7 @@ public sealed partial class VppModule : IAssetPreviewProvider
         var result = task.GetAwaiter().GetResult();
         if (result.Error is { } error) throw new AssetFormatException(error);
         var items = result.Files.Select(f => new VppItem(f.Name, new MemorySource(f.Bytes), VppItemState.Added)).ToImmutableArray();
-        var doc = new VppDocument(this, new VppPackage(null, items), name, null, "Converted from " + originText) { PegSource = result };
+        var doc = new VppDocument(this, new VppPackage(null, items), name, null, "Converted from " + originText) { PegSource = result, PegBytes = bytes };
         if (items.Length > 0) doc.SelectNames([items[0].Name]);
         return doc;
     }
@@ -118,7 +121,7 @@ public sealed partial class VppModule : IAssetPreviewProvider
     public async Task<Ps2ConvertReport?> ConvertSelectedPegsAsync(VppDocument doc, IReadOnlyList<VppItem>? pegs = null)
     {
         ArgumentNullException.ThrowIfNull(doc);
-        if (doc.IsBusy) return null;
+        if (doc.IsBusy || doc.RefuseReadOnly()) return null;
         pegs ??= [.. doc.SelectedItems.Where(i => Ps2Packfiles.IsPeg(i.Name))];
         if (pegs.Count == 0) { doc.ShowStatus("Select .peg entries to convert them to .tga."); return null; }
         if (!doc.EnsureReadable(pegs)) return null;
@@ -172,7 +175,7 @@ public sealed partial class VppModule : IAssetPreviewProvider
     {
         ArgumentNullException.ThrowIfNull(doc);
         ArgumentNullException.ThrowIfNull(choice);
-        if (doc.IsBusy) return null;
+        if (doc.IsBusy || doc.RefuseReadOnly()) return null;
         var package = doc.Current;
         var chosen = choice.Entries.Where(e => e.Index >= 0 && e.Index < package.Count && Ps2Packfiles.IsPeg(package.Items[e.Index].Name)).ToList();
         var pegs = chosen.Select(e => package.Items[e.Index]).ToList();

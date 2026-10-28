@@ -42,6 +42,12 @@ public static class LocalPaths
     /// <summary>A Red Faction II install or extract (its <c>.rfm</c> / <c>.rfc</c> are used only to test that they are refused), only ever read.</summary>
     public const string Rf2DirectoryVariable = "CAIRN_RF2_DIR";
 
+    /// <summary>REDUX's level research data (RF1, Alpine and RF2 <c>.rfl</c>/<c>.rfg</c> samples with their <c>.peg</c> packs), only ever read.</summary>
+    public const string ReduxResearchDataVariable = "CAIRN_REDUX_RESEARCH_DATA";
+
+    /// <summary>A Red Faction II install (the folder holding <c>pc_media</c> and its <c>.toc_group</c> files), only ever read.</summary>
+    public const string Rf2GameDirectoryVariable = "CAIRN_RF2_GAME_DIR";
+
     /// <summary>The optional local file in the research folder.</summary>
     public const string FileName = "local-paths.json";
 
@@ -81,6 +87,12 @@ public static class LocalPaths
 
     /// <summary>A Red Faction II folder (<c>CAIRN_RF2_DIR</c> / <c>rf2Directory</c>), or null. Tests only read it.</summary>
     public static string? Rf2Directory { get; } = Resolve(Rf2DirectoryVariable, "rf2Directory");
+
+    /// <summary>REDUX's level research data (<c>CAIRN_REDUX_RESEARCH_DATA</c> / <c>reduxResearchData</c>: <c>rf2_rfls</c>, <c>rf1_rfls</c>, ...), or null. Tests only read it.</summary>
+    public static string? ReduxResearchData { get; } = Resolve(ReduxResearchDataVariable, "reduxResearchData");
+
+    /// <summary>A Red Faction II install (<c>CAIRN_RF2_GAME_DIR</c> / <c>rf2GameDirectory</c>: <c>pc_media\*.toc_group</c>), or null. Tests only read it.</summary>
+    public static string? Rf2GameDirectory { get; } = Resolve(Rf2GameDirectoryVariable, "rf2GameDirectory");
 
     /// <summary>A corpus file's full path, or null when the corpus or the file is absent.</summary>
     public static string? CorpusFile(string name)

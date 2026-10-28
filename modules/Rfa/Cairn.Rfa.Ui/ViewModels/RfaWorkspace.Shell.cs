@@ -13,6 +13,7 @@ public sealed partial class RfaWorkspace
     public void AttachShell(IShellContext shell)
     {
         Host = shell ?? throw new ArgumentNullException(nameof(shell));
+        Packfiles.Attach(shell);
         shell.DocumentsChanged += (_, _) => SyncDocuments();
         shell.ActiveDocumentChanged += (_, _) =>
         {
@@ -81,10 +82,11 @@ public sealed partial class RfaWorkspace
     }
 
     /// <summary>
-    /// A recovered document: the disk copy with the recovered work as one unsaved step on top. A legacy mesh (a closed
-    /// tab opened from a packfile entry, captured as the file it showed) reopens as that read-only tab, unchanged.
+    /// A recovered document: the disk copy with the recovered work as one unsaved step on top. A legacy mesh or a Red
+    /// Faction II clip (a closed tab opened from a packfile entry, captured as the file it showed) reopens as that
+    /// read-only tab, unchanged.
     /// </summary>
     internal DocumentViewModel RestoreForShell(RecoverySnapshot snapshot) =>
         CreateRestoredDocument(snapshot.Data, snapshot.DisplayName, snapshot.OriginalPath, null,
-            wasDirty: !IsLegacyMesh(snapshot.Data, snapshot.DisplayName));
+            wasDirty: !IsLegacyMesh(snapshot.Data, snapshot.DisplayName) && !Formats.Legacy.Rf2AnimationConverter.IsRedFactionII(snapshot.Data));
 }

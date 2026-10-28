@@ -103,7 +103,8 @@ public static class ClipLinter
 
     private static void CheckHeader(List<Diagnostic> results, RfaClip clip)
     {
-        if (clip.Version is not (7 or 8))
+        // A Red Faction II clip (version 9) is read-only in Cairn and converts to version 8; its version is not a defect.
+        if (clip.Version is not (7 or 8 or RfaClip.Rf2Version))
         {
             results.Add(Make(ClipRules.UnsupportedVersion,
                 $"The clip says it is version {clip.Version}; the game only plays versions 7 and 8.",

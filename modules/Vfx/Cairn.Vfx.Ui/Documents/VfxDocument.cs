@@ -13,9 +13,15 @@ namespace Cairn.Vfx.Ui.Documents;
 /// An open .vfx file. Owns the snapshot history, the sampler/particle simulators built from the current
 /// snapshot, playback (VFX time base) and the selection. Views and the module read everything from here.
 /// </summary>
-public sealed class VfxDocument : SnapshotDocument<VfxFile>, Viewport.IVfxScene
+public sealed class VfxDocument : SnapshotDocument<VfxFile>, Viewport.IVfxScene, IDocumentContent
 {
     IReadOnlySet<int> Viewport.IVfxScene.HiddenSections => HiddenSections;
+
+    /// <summary>The name with .vfx (Convert to… names the outputs after it).</summary>
+    public string FileName => DisplayName.EndsWith(".vfx", StringComparison.OrdinalIgnoreCase) ? DisplayName : DisplayName + ".vfx";
+
+    /// <summary>The effect as Save would write it, unsaved edits included.</summary>
+    public byte[] CurrentBytes() => Serialize();
 
     /// <summary>4800 ticks per second, 320 ticks per frame (15 fps).</summary>
     public static readonly TimeBase VfxTimeBase = new(4800, 320);
@@ -104,6 +110,21 @@ public sealed class VfxDocument : SnapshotDocument<VfxFile>, Viewport.IVfxScene
         get => _problemStatus;
         set { _problemStatus = value; RaiseAll(nameof(StatusItems)); }
     }
+
+    private IReadOnlyList<Linting.VfxDiagnostic> _conversionNotes = [];
+
+    /// <summary>
+    /// The report of the conversion this effect came from (a Red Faction II effect), listed in Problems as information
+    /// next to the lint results; empty otherwise. Never saved.
+    /// </summary>
+    public IReadOnlyList<Linting.VfxDiagnostic> ConversionNotes
+    {
+        get => _conversionNotes;
+        set { _conversionNotes = value ?? []; ConversionNotesChanged?.Invoke(this, EventArgs.Empty); }
+    }
+
+    /// <summary>Raised when <see cref="ConversionNotes"/> changes.</summary>
+    public event EventHandler? ConversionNotesChanged;
 
     public void SetHidden(int section, bool hidden)
     {

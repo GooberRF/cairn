@@ -110,6 +110,8 @@ public static class VppValidator
     public static IReadOnlyList<VppProblem> Validate(VppPackage package)
     {
         ArgumentNullException.ThrowIfNull(package);
+        // a Red Faction II packfile group is read only and follows none of the RF1 packfile rules
+        if (package.Rf2 is not null) return Rf2.Rf2Packfiles.Validate(package);
         var problems = new List<VppProblem>();
         var seen = new Dictionary<string, string>(VppNames.Comparer);
         var identical = IdenticalDuplicates(package);

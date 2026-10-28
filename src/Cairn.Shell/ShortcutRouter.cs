@@ -23,10 +23,24 @@ public sealed class ShortcutRouter(ShellViewModel shell)
     {
         if (e.Handled) return;
         var key = e.Key switch { Key.System => e.SystemKey, Key.ImeProcessed => e.ImeProcessedKey, _ => e.Key };
-        if (IsModifierKey(key)) return;
         var focused = e.OriginalSource as DependencyObject ?? Keyboard.FocusedElement as DependencyObject;
-        if (IsMenuOrPopupActive(sender as Window, focused)) return;
-        if (TryExecute(key, Keyboard.Modifiers, focused)) e.Handled = true;
+        if (Route(sender as Window, key, Keyboard.Modifiers, focused, out _)) e.Handled = true;
+    }
+
+    /// <summary>
+    /// What a key press in <paramref name="window"/> does: true when a shortcut ran. False when none applies, or when
+    /// <paramref name="blockedBy"/> names the guard that let the key through untouched (a modifier key on its own, an
+    /// open menu or popup, a modal dialog, or movement keys claimed by the focused element, see
+    /// <see cref="KeyboardClaims"/>).
+    /// </summary>
+    public bool Route(Window? window, Key key, ModifierKeys modifiers, DependencyObject? focused, out string? blockedBy)
+    {
+        blockedBy = IsModifierKey(key) ? "a modifier key on its own"
+            : ComponentDispatcher.IsThreadModal ? "a modal dialog is running"
+            : IsMenuOrPopupActive(window, focused) ? "a menu or popup holds the keyboard"
+            : KeyboardClaims.ClaimsMovementKey(focused, key, modifiers) ? "the focused element claims its movement keys"
+            : null;
+        return blockedBy is null && TryExecute(key, modifiers, focused);
     }
 
     /// <summary>

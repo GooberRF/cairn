@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Cairn.Lvl.Ui</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Collections.Immutable" />
+    <Using Include="System.Numerics" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Cairn.Ui\Cairn.Ui.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Viewport\Cairn.Viewport.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Previews\Cairn.Previews.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Workspace\Cairn.Workspace.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Assets\Cairn.Assets.csproj" />
+    <ProjectReference Include="..\..\..\src\Cairn.Formats\Cairn.Formats.csproj" />
+    <ProjectReference Include="..\Cairn.Lvl.Core\Cairn.Lvl.Core.csproj" />
+  </ItemGroup>
+
+</Project>

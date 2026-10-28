@@ -67,7 +67,7 @@ public partial class LibraryView : UserControl
 
     private void OnClipKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && Model is { SelectedClipRow: { } row } model)
+        if (e.Key == Key.Enter && Model is { SelectedClipRow: LibraryClipRow row } model)
         {
             model.Activate(row.Clip, newTab: CtrlHeld);
             e.Handled = true;

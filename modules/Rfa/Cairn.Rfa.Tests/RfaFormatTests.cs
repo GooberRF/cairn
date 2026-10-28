@@ -142,7 +142,7 @@ public class RfaFormatTests
         { "empty", _ => [] },
         { "truncated header", b => b[..40] },
         { "bad signature", b => Patch(b, 0, 0x12345678) },
-        { "version 9", b => Patch(b, 4, 9) },
+        { "version 10", b => Patch(b, 4, 10) },
         { "negative bones", b => Patch(b, 0x18, -1) },
         { "huge bone count", b => Patch(b, 0x18, int.MaxValue) },
         { "bone offset past the end", b => Patch(b, 0x50, b.Length + 100) },

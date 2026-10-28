@@ -82,6 +82,9 @@ public static class ModuleCatalog
 #if CAIRN_MODULE_SND
         modules.Add(new Cairn.Snd.Ui.SndModule());
 #endif
+#if CAIRN_MODULE_LVL
+        modules.Add(new Cairn.Lvl.Ui.LvlModule());
+#endif
         if (includeProbe) { modules.Add(new Probe.ProbeModule()); modules.Add(new Probe.ProbeTwoModule()); }
         return modules;
     }

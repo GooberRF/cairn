@@ -101,6 +101,8 @@ public static class RfaWriter
     public static void Validate(RfaClip clip)
     {
         ArgumentNullException.ThrowIfNull(clip);
+        if (clip.Version == RfaClip.Rf2Version)
+            throw new ArgumentException("A Red Faction II clip (version 9) is never written; convert it to version 8.", nameof(clip));
         if (clip.Version is not (7 or 8))
             throw new ArgumentException($"RFA version {clip.Version} cannot be written; use 7 or 8.", nameof(clip));
         if (clip.Bones.IsDefault) throw new ArgumentException("The clip has no bone array.", nameof(clip));

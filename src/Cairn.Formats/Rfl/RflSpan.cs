@@ -92,6 +92,21 @@ internal ref struct RflSpan(ReadOnlySpan<byte> data)
 
     public void SkipStr() => Skip(U16());
 
+    /// <summary>A Red Faction II string: as <see cref="Str"/>, but a length of 0xFFFF is an empty string (REDUX reads it so).</summary>
+    public string Rf2Str()
+    {
+        Need(2);
+        if (BinaryPrimitives.ReadUInt16LittleEndian(_data[Position..]) == 0xFFFF)
+        {
+            Position += 2;
+            return "";
+        }
+        return Str();
+    }
+
+    /// <summary>The bytes from <paramref name="start"/> to the end of the body.</summary>
+    public readonly ReadOnlySpan<byte> From(int start) => _data[start..];
+
     /// <summary>
     /// A record count, proven to fit: each record takes at least <paramref name="minimumBytes"/>
     /// bytes, so a count the body cannot hold is rejected before anything loops on it.

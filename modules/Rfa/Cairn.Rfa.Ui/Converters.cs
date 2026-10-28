@@ -31,6 +31,21 @@ public sealed class TruthyToVisibilityConverter : IValueConverter
         Binding.DoNothing;
 }
 
+/// <summary>
+/// True when the value is a <see cref="System.Windows.Controls.ComboBoxItem"/>: bound to the templated parent of the
+/// presenter that shows a combo box item's template, it tells an entry of the drop-down list (a ComboBoxItem) from the
+/// closed box's selection (the ComboBox), without an ancestor search that fails, and logs a binding error, in the closed box.
+/// </summary>
+public sealed class IsComboBoxItemConverter : IValueConverter
+{
+    public static IsComboBoxItemConverter Instance { get; } = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value is System.Windows.Controls.ComboBoxItem;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        Binding.DoNothing;
+}
+
 /// <summary>Picks the theme brush for a diagnostic severity.</summary>
 public sealed class SeverityToBrushConverter : IValueConverter
 {

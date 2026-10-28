@@ -28,6 +28,9 @@ public static class RflFacts
     {
         ArgumentNullException.ThrowIfNull(summary);
         zone ??= TimeZoneInfo.Local;
+        // A Red Faction II level: RF2 is the game that loads it, its geomod hardness has no RF1 default, its properties
+        // carry RF2's sun and hardlight, and nothing it names is called missing (its files live in RF2's packfiles).
+        bool rf2 = summary.Version == RflReader.Rf2Version;
         var rows = new List<RflFactRow>();
         void Add(string section, string label, string? value, bool flagged = false)
         {
@@ -42,7 +45,7 @@ public static class RflFacts
         if (summary.SavedUtc is { } saved) Add(level, "Saved", FormatTime(saved, zone));
         Add(level, "Editor's date", summary.DateText);
         Add(level, "Format version", summary.VersionLabel);
-        Add(level, "Loads in", summary.Era switch
+        Add(level, "Loads in", rf2 ? "Red Faction II" : summary.Era switch
         {
             RflEra.Stock10 or RflEra.Stock12 => "Red Faction 1.2 and Alpine Faction",
             RflEra.Alpine => RflReader.AlpineReleaseFor(summary.Version) is { } since
@@ -68,9 +71,20 @@ public static class RflFacts
                 ? $"colour {p.FogColor}, from {Num(p.FogNear)} to {Num(p.FogFar)}"
                 : "none");
             Add(props, "Geomod texture", p.GeomodTexture.Length > 0 ? p.GeomodTexture : "(none)");
-            Add(props, "Geomod hardness", summary.Version < 304 && p.Hardness == 0
+            Add(props, "Geomod hardness", summary.Version < 304 && !rf2 && p.Hardness == 0
                 ? "0 (the game uses 55)"
                 : p.Hardness.ToString(Inv));
+        }
+        if (summary.Rf2Properties is { } r2)
+        {
+            // the sun is a setting of RF2's editor light bake; the hardlight a full-screen tint the game applies
+            Add(props, "Sun colour (light bake)", r2.SunColor.ToString());
+            Add(props, "Sun direction (light bake)", $"yaw {Num(r2.SunYaw)}, pitch {Num(r2.SunPitch)}");
+            Add(props, "Sun intensity (light bake)", Num(r2.SunIntensity));
+            Add(props, "Sun spread (light bake)", Num(r2.SunSpread));
+            Add(props, "Hardlight colour", r2.HardlightColor.ToString());
+            Add(props, "Hardlight intensity", r2.HardlightIntensity.ToString(Inv));
+            Add(props, "Lightmap multiplier", Num(r2.LightmapMultiplier));
         }
         if (summary.DashLightmapsFullDepth is { } dash) Add(props, "Dash Faction full-depth lightmaps", YesNo(dash != 0));
         if (summary.HasRedPlusData) Add(props, "Editor data", "contains RED+ editor data");
@@ -80,7 +94,9 @@ public static class RflFacts
         const string stats = "Statistics";
         if (summary.Rooms is { } rooms)
         {
-            Add(stats, "Rooms", $"{N(rooms)} ({N(summary.SkyRooms ?? 0)} sky, {N(summary.LiquidRooms ?? 0)} liquid)");
+            Add(stats, "Rooms", summary.SkyRooms is null && summary.LiquidRooms is null
+                ? N(rooms) // Red Faction II rooms store neither
+                : $"{N(rooms)} ({N(summary.SkyRooms ?? 0)} sky, {N(summary.LiquidRooms ?? 0)} liquid)");
             Add(stats, "Faces", N(summary.Faces ?? 0));
             Add(stats, "Vertices", N(summary.Vertices ?? 0));
             Add(stats, "Portals", N(summary.Portals ?? 0));
@@ -112,7 +128,7 @@ public static class RflFacts
             var found = summary.References.Select(r => (Ref: r, Where: presence?.Invoke(r.Name) ?? AssetPresence.Unknown)).ToList();
             int missing = found.Count(f => f.Where == AssetPresence.Missing);
             Add(refs, "Files referenced", N(found.Count));
-            if (presence is not null) Add(refs, "Missing", N(missing), flagged: missing > 0);
+            if (presence is not null && !rf2) Add(refs, "Missing", N(missing), flagged: missing > 0);
             // Missing files first, so they are seen without scrolling.
             foreach (var (r, where) in found.OrderBy(f => f.Where == AssetPresence.Missing ? 0 : 1))
             {
@@ -128,7 +144,7 @@ public static class RflFacts
         {
             ("Bitmaps", summary.Preloads.Bitmaps), ("Character meshes", summary.Preloads.CharacterMeshes),
             ("Animations", summary.Preloads.Animations), ("Static meshes", summary.Preloads.StaticMeshes),
-            ("Effects", summary.Preloads.Effects),
+            ("Effects", summary.Preloads.Effects), ("Texture packs", summary.Preloads.TexturePacks),
         };
         foreach (var (label, names) in lists)
         {

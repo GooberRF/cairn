@@ -57,12 +57,16 @@ public sealed class VppPreviewPane : AssetPreviewPane
             Siblings = package is null ? null : new VppSiblings(package),
             Origin = item.Source.Describe(),
             // the stored offsets are only valid in the file as it was opened: never preview bytes from a changed packfile
-            Unavailable = package is null ? null : Documents.VppDocument.StaleProblem(package, [item]),
+            Unavailable = package is null ? null : NotShown(item) ?? Documents.VppDocument.StaleProblem(package, [item]),
             OpenInCairn = OpenInCairnRequested is null ? null : _ => OpenInCairnRequested?.Invoke(this, item),
         };
         Show(source, force);
         Item = primary;
     }
+
+    /// <summary>Why an entry of a Red Faction II group is not previewed (a file missing on disk), or null.</summary>
+    private static string? NotShown(VppItem item) =>
+        item.Source is MissingFileSource m ? $"{item.Name} is listed by the group but is not on disk ({m.FilePath})." : null;
 
     private static byte[] ReadHead(VppItem item, int count)
     {

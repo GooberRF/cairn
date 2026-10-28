@@ -14,7 +14,13 @@ public readonly record struct VfxPlaybackState(float Frame, bool MeshesVisible, 
 public static class VfxPlayback
 {
     /// <summary>The state at <paramref name="seconds"/> since the effect started, for an effect of <paramref name="endFrame"/> frames.</summary>
-    public static VfxPlaybackState Evaluate(VfxPlaybackMode mode, double seconds, int endFrame)
+    public static VfxPlaybackState Evaluate(VfxPlaybackMode mode, double seconds, int endFrame) => Evaluate(mode, seconds, (double)endFrame);
+
+    /// <summary>
+    /// <see cref="Evaluate(VfxPlaybackMode, double, int)"/> for an effect whose length is not a whole number of frames
+    /// (a Red Faction II effect lasts whole 1/30 s).
+    /// </summary>
+    public static VfxPlaybackState Evaluate(VfxPlaybackMode mode, double seconds, double endFrame)
     {
         double frame = Math.Max(0, seconds) * VfxTime.FramesPerSecond;
         if (endFrame <= 0) return new((float)frame, mode != VfxPlaybackMode.OneShot, true, 0);
@@ -25,9 +31,9 @@ public static class VfxPlayback
                 int loop = (int)Math.Floor(frame / endFrame);
                 return new((float)(frame - (double)loop * endFrame), true, true, loop);
             case VfxPlaybackMode.HoldLastFrame:
-                return new(endFrame, true, false, 0);
+                return new((float)endFrame, true, false, 0);
             default:
-                return new(endFrame, false, false, 0);
+                return new((float)endFrame, false, false, 0);
         }
     }
 }

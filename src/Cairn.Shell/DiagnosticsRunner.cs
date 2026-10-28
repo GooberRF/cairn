@@ -153,7 +153,9 @@ public static class DiagnosticsRunner
         var moduleOrder = shell.Modules.Select(m => m.GetType().Assembly).Distinct().ToList();
         // Module tests first (in module order), the shell's probe tests last: those replace and close documents.
         var tests = registry.SelfTests
-            .Where(t => options.SelfTestOnly is null || t.Name.Equals(options.SelfTestOnly, StringComparison.OrdinalIgnoreCase))
+            .Where(t => options.SelfTestOnly is not { } only || t.Name.Equals(only, StringComparison.OrdinalIgnoreCase)
+                // "snd.*" runs every test whose name starts with "snd."
+                || only.EndsWith('*') && t.Name.StartsWith(only[..^1], StringComparison.OrdinalIgnoreCase))
             .OrderBy(t => t.Assembly == shellAssembly ? int.MaxValue : moduleOrder.IndexOf(t.Assembly))
             .ThenBy(t => t.Order)
             .ToList();
@@ -285,8 +287,26 @@ public static class DiagnosticsRunner
         static string Plain(object? header) => (header as string ?? string.Empty).Replace("_", string.Empty);
         FrameworkElement? target = null;
         Action close = () => { };
-        // "context:<automation name>" picks the element of that name (e.g. "context:Packfile entries")
+        // "context:<automation name>" picks the element of that name (e.g. "context:Packfile entries"); a "/<item>..." path
+        // after it opens submenus of the context menu ("context:Packfile entries/Convert to")
         string? contextOf = what.StartsWith("context:", StringComparison.OrdinalIgnoreCase) ? what["context:".Length..] : null;
+        string[] subPath = [];
+        if (contextOf?.IndexOf('/') is int slash and >= 0) { subPath = contextOf[(slash + 1)..].Split('/'); contextOf = contextOf[..slash]; }
+        var opened = new List<MenuItem>();
+        // Opens each item of path below parent, the capture target being the last submenu's popup.
+        async Task OpenPathAsync(ItemsControl? parent, IEnumerable<string> path)
+        {
+            foreach (var part in path)
+            {
+                if (parent?.Items.OfType<MenuItem>().FirstOrDefault(m => m.Visibility == Visibility.Visible && Plain(m.Header).Equals(part, StringComparison.OrdinalIgnoreCase)) is not { } item) { target = null; break; }
+                item.IsSubmenuOpen = true;
+                opened.Insert(0, item);
+                await ctx.SettleAsync();
+                await Task.Delay(500); // the theme slides a submenu in: capture it where it comes to rest
+                target = item.Template?.FindName("PART_Popup", item) is Popup { Child: FrameworkElement child } ? child : null;
+                parent = item;
+            }
+        }
         if (what.Equals("context", StringComparison.OrdinalIgnoreCase) || contextOf is not null)
         {
             if (Find<FrameworkElement>(ctx.MainWindow, e => e.IsVisible && e.ContextMenu is not null
@@ -296,23 +316,13 @@ public static class DiagnosticsRunner
                 menu.IsOpen = true;
                 await ctx.SettleAsync();
                 target = menu;
-                close = () => menu.IsOpen = false;
+                await OpenPathAsync(menu, subPath);
+                close = () => { foreach (var item in opened) item.IsSubmenuOpen = false; menu.IsOpen = false; };
             }
         }
         else
         {
-            var path = what.Split('/');
-            ItemsControl? parent = Find<Menu>(ctx.MainWindow, _ => true);
-            var opened = new List<MenuItem>();
-            foreach (var part in path)
-            {
-                if (parent?.Items.OfType<MenuItem>().FirstOrDefault(m => Plain(m.Header).Equals(part, StringComparison.OrdinalIgnoreCase)) is not { } item) { target = null; break; }
-                item.IsSubmenuOpen = true;
-                opened.Insert(0, item);
-                await ctx.SettleAsync();
-                target = item.Template?.FindName("PART_Popup", item) is Popup { Child: FrameworkElement child } ? child : null;
-                parent = item;
-            }
+            await OpenPathAsync(Find<Menu>(ctx.MainWindow, _ => true), what.Split('/'));
             close = () => { foreach (var item in opened) item.IsSubmenuOpen = false; };
         }
         if (target is null) { close(); throw new InvalidOperationException($"popup '{what}' not found"); }

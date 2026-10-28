@@ -158,18 +158,32 @@
                        MouseDoubleClick="OnClipDoubleClick" KeyDown="OnClipKeyDown" PreviewMouseUp="OnMiddleClick"
                        PreviewMouseLeftButtonDown="OnPreviewMouseDown" PreviewMouseMove="OnPreviewMouseMove"
                        AutomationProperties.Name="Clips">
-                <ListBox.Resources>
-                  <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
-                </ListBox.Resources>
                 <ListBox.ItemContainerStyle>
                   <Style TargetType="ListBoxItem" BasedOn="{StaticResource PaneListBoxItem}">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="Padding" Value="6,2" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
                     <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+                    <Style.Triggers>
+                      <!-- a group header (an open packfile, the library): not a clip to select -->
+                      <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="Padding" Value="6,6,6,2" />
+                      </DataTrigger>
+                    </Style.Triggers>
                   </Style>
                 </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
+                <ListBox.Resources>
+                  <Style TargetType="ScrollBar" BasedOn="{StaticResource PaneScrollBar}" />
+                  <DataTemplate DataType="{x:Type vm:LibraryClipGroupRow}">
+                    <DockPanel Background="Transparent">
+                      <TextBlock DockPanel.Dock="Left" Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="11" Width="18"
+                                 VerticalAlignment="Center" Foreground="{DynamicResource App.SecondaryText}" />
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"
+                                 Foreground="{DynamicResource App.SecondaryText}" />
+                      <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </DockPanel>
+                  </DataTemplate>
                   <DataTemplate DataType="{x:Type vm:LibraryClipRow}">
                     <Grid Background="Transparent" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
                       <Grid.ContextMenu>
@@ -216,7 +230,7 @@
                                  Foreground="{DynamicResource App.SecondaryText}" ToolTip="Format version" />
                     </Grid>
                   </DataTemplate>
-                </ListBox.ItemTemplate>
+                </ListBox.Resources>
               </ListBox>
             </DockPanel>
           </TabItem>

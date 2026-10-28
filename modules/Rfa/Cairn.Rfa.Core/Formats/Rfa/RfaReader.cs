@@ -9,10 +9,22 @@ namespace Cairn.Rfa.Formats.Rfa;
 /// bones out of order) load alike. Every count and offset is checked against the bytes actually
 /// present before anything is allocated; bad input raises <see cref="AssetFormatException"/>.
 /// </summary>
+/// <remarks>
+/// Red Faction II's clips (version 9) share the header, the offset table and the version 8 morph layout, but store
+/// shorter keys: a rotation key is the time and the four int16 components (no eases, no pad), a position key the time
+/// and the point (no control points). They read into the same model with zero eases and the control points a third
+/// of the way to the neighbouring keys, which makes each position segment the straight line between its keys.
+/// </remarks>
 public static class RfaReader
 {
+    /// <summary>Size of a stored Red Faction II rotation key: time and four int16 components.</summary>
+    internal const int Rf2RotKeySize = 12;
+
+    /// <summary>Size of a stored Red Faction II position key: time and the point.</summary>
+    internal const int Rf2PosKeySize = 16;
+
     /// <summary>Reads a clip from disk.</summary>
-    /// <exception cref="AssetFormatException">The file is not a readable version 7 or 8 clip.</exception>
+    /// <exception cref="AssetFormatException">The file is not a readable version 7, 8 or 9 clip.</exception>
     /// <exception cref="IOException">The file could not be opened.</exception>
     public static RfaClip ReadFile(string path) => Read(FileBytes.ReadFile(path), Path.GetFileName(path));
 
@@ -36,12 +48,13 @@ public static class RfaReader
         for (int i = 0; i < boneOffsets.Length; i++) boneOffsets[i] = r.ReadInt32();
 
         var bones = ImmutableArray.CreateBuilder<RfaBoneTrack>(h.BoneCount);
+        bool rf2 = h.Version == RfaClip.Rf2Version;
         long boneBytes = 0;
         for (int i = 0; i < boneOffsets.Length; i++)
         {
             r.Seek(boneOffsets[i], $"bone {i}'s offset");
             int start = r.Position;
-            bones.Add(ReadBone(r, i));
+            bones.Add(rf2 ? ReadRf2Bone(r, i) : ReadBone(r, i));
             // Offsets may point anywhere, so many bones could share one record and a small file would
             // expand into bones x keys keys. Real bone records never overlap: together they fit in the file.
             boneBytes += r.Position - start;
@@ -94,6 +107,44 @@ public static class RfaReader
             int time = r.ReadInt32();
             Vector3 p = r.ReadVector3(), tin = r.ReadVector3(), tout = r.ReadVector3();
             pos[k] = new RfaPosKey(time, p, tin, tout);
+        }
+        return new RfaBoneTrack(weight, [.. rot], [.. pos]);
+    }
+
+    /// <summary>A Red Faction II bone record: the same counts, the short keys (see the remarks on <see cref="RfaReader"/>).</summary>
+    private static RfaBoneTrack ReadRf2Bone(BinaryCursor r, int index)
+    {
+        string what = $"bone {index}";
+        float weight = r.ReadSingle(what);
+        short rotCount = r.ReadInt16(what);
+        short posCount = r.ReadInt16(what);
+        if (rotCount < 0 || posCount < 0)
+            throw r.Fail($"{what} has a negative key count ({rotCount} rotation, {posCount} position).");
+
+        r.EnsureCount(rotCount, Rf2RotKeySize, $"{what}'s rotation keys");
+        var rot = new RfaRotKey[rotCount];
+        for (int k = 0; k < rot.Length; k++)
+        {
+            int time = r.ReadInt32();
+            short x = r.ReadInt16(), y = r.ReadInt16(), z = r.ReadInt16(), w = r.ReadInt16();
+            rot[k] = new RfaRotKey(time, x, y, z, w);
+        }
+
+        r.EnsureCount(posCount, Rf2PosKeySize, $"{what}'s position keys");
+        var times = new int[posCount];
+        var points = new Vector3[posCount];
+        for (int k = 0; k < points.Length; k++)
+        {
+            times[k] = r.ReadInt32();
+            points[k] = r.ReadVector3();
+        }
+        var pos = new RfaPosKey[posCount];
+        for (int k = 0; k < pos.Length; k++)
+        {
+            var p = points[k];
+            var tin = k > 0 ? p + (points[k - 1] - p) / 3f : p;
+            var tout = k + 1 < points.Length ? p + (points[k + 1] - p) / 3f : p;
+            pos[k] = new RfaPosKey(times[k], p, tin, tout);
         }
         return new RfaBoneTrack(weight, [.. rot], [.. pos]);
     }

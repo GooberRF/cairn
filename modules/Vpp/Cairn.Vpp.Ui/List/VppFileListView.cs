@@ -289,7 +289,7 @@ public sealed class VppFileListView : Grid
 
     // ---- context menu ----------------------------------------------------------------------------------------
 
-    private MenuItem? _open, _openWith, _openInCairn, _extractTo, _extractHere, _copyName, _rename, _renameToFit, _replace, _remove, _selectType;
+    private MenuItem? _open, _openWith, _openInCairn, _extractTo, _extractHere, _copyName, _rename, _renameToFit, _replace, _remove, _selectType, _toDds;
 
     private void BuildContextMenu()
     {
@@ -317,27 +317,39 @@ public sealed class VppFileListView : Grid
         var toDds = Item("Con_vert to DDS...", "Ctrl+Shift+D", "Convert the selected TGA/PNG/JPG images to DDS for Alpine Faction (other entries are skipped)",
             () => c.Fire(() => _doc.Module.ConvertToDdsAsync(_doc)));
         _menu.Opened += (_, _) => toDds.IsEnabled = !_doc.IsBusy && _doc.SelectedItems.Any(i => Conversion.DdsConversion.IsConvertible(i.Name));
+        _toDds = toDds;
         // PlayStation 2 texture packs: shown only when the selection holds a .peg entry
         var toTga = Item(VppModule.ConvertPegsHeader, null, VppModule.ConvertPegsTip, () => c.Fire(() => _doc.Module.ConvertSelectedPegsAsync(_doc)));
         AutomationProperties.SetName(toTga, "Convert to .tga");
         _menu.Opened += (_, _) => UpdatePegItem(toTga);
-        ContextMenuPegItem = toTga;
-        // other modules' batch converters ("Convert sounds..."), enabled when the selection holds an entry they take
+        ContextMenuPegItem = toTga;        // other modules' batch converters ("Convert sounds..."), enabled when the selection holds an entry they take
         foreach (var converterItem in _doc.Module.BatchConverterMenuItems(_doc, _menu)) _menu.Items.Add(converterItem);
+        // Convert to: every module's targets for one selected entry (VppModule.ConvertTo.cs), filled as the menu opens
+        var convertTo = new MenuItem { Header = VppModule.ConvertToHeader, ToolTip = "Convert the selected entry to another format: what the modules offer for its type" };
+        AutomationProperties.SetName(convertTo, "Convert to");
+        _menu.Items.Add(convertTo);
+        _menu.Opened += (_, _) => _doc.Module.FillConvertToMenu(_doc, convertTo);
+        ContextMenuConvertToItem = convertTo;
         _remove = Item("_Remove", "Del", "Remove the selected entries (undoable)", c.RemoveSelected);
         _menu.Items.Add(new Separator());
         _selectType = Item("Select all of this _type", null, "Select every entry with the same extension", c.SelectAllOfType);
+        // a read-only Red Faction II group never shows what would change it (it stays read only while the tab is open)
+        if (_doc.IsReadOnly) foreach (var item in new[] { _rename, _renameToFit, _replace, _remove, toDds, toTga }) item.Visibility = Visibility.Collapsed;
     }
 
     /// <summary>The context menu's "Convert to .tga..." item (self-tests).</summary>
     internal MenuItem? ContextMenuPegItem { get; private set; }
+
+    /// <summary>The context menu's Convert to submenu (self-tests, captures).</summary>
+    public MenuItem? ContextMenuConvertToItem { get; private set; }
 
     /// <summary>The entry list's context menu (self-tests, captures).</summary>
     internal ContextMenu EntryMenu => _menu;
 
     private void UpdatePegItem(MenuItem item)
     {
-        bool pegs = VppModule.HasSelectedPegs(_doc);
+        // it replaces the .peg entries: never in a read-only Red Faction II group (its Convert to submenu writes to a folder)
+        bool pegs = VppModule.HasSelectedPegs(_doc) && !_doc.IsReadOnly;
         item.Visibility = pegs ? Visibility.Visible : Visibility.Collapsed;
         item.IsEnabled = pegs && !_doc.IsBusy;
     }
@@ -347,6 +359,7 @@ public sealed class VppFileListView : Grid
     {
         UpdateContextMenu();
         if (ContextMenuPegItem is { } peg) UpdatePegItem(peg);
+        if (ContextMenuConvertToItem is { } convertTo) _doc.Module.FillConvertToMenu(_doc, convertTo);
     }
 
     private void UpdateContextMenu()
@@ -359,6 +372,13 @@ public sealed class VppFileListView : Grid
         _renameToFit.Visibility = c.CanRenameToFit ? Visibility.Visible : Visibility.Collapsed;
         _extractHere!.IsEnabled = c.HasSelection && _doc.Folder is not null;
         _extractHere.ToolTip = _doc.Folder is { } f ? "Write the selected entries to " + f : "Save the packfile first: it has no folder yet";
+        // a read-only Red Faction II group: the commands that change it are hidden (the banner above the list says why)
+        bool readOnly = _doc.IsReadOnly;
+        foreach (var item in new[] { _rename, _replace, _remove, _toDds })
+            if (item is not null) item.Visibility = readOnly ? Visibility.Collapsed : Visibility.Visible;
+        if (readOnly) _renameToFit.Visibility = Visibility.Collapsed;
+        _openInCairn.ToolTip = readOnly ? "Open it in a Cairn tab (a work copy: the group itself is never changed)"
+            : "Open it in a Cairn tab; saving that tab offers to update the packfile";
     }
 
     // ---- drag out --------------------------------------------------------------------------------------------

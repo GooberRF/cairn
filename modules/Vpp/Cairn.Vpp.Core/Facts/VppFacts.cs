@@ -125,6 +125,7 @@ public static partial class VppFacts
         Describers[".rfa"] = DescribeClip;
         Describers[".mvf"] = DescribeMvf;
         Describers[".vfx"] = DescribeEffect;
+        Describers[".rfe"] = DescribeRf2Effect;
         Describers[".atx"] = DescribeAtx;
         foreach (string ext in new[] { ".tbl", ".txt", ".log", ".ini", ".gltf" }) Describers[ext] = DescribeText;
         Describers[".vf"] = DescribeFont;
@@ -148,6 +149,13 @@ public static partial class VppFacts
     public static VppFactSheet Describe(VppItem item, VppFactsContext? context = null)
     {
         ArgumentNullException.ThrowIfNull(item);
+        if (item.Source is MissingFileSource)
+        {
+            // a file a Red Faction II group lists but does not have: nothing to read (the group's problems say so once)
+            var type = VppFileTypes.Describe(item.Name, context?.Package?.Rf2 is not null);
+            return new VppFactSheetBuilder().Add("Type", type.DisplayName).Add("Size", FormatSize(item.Size) + " (as listed)")
+                .Add("Contents", "Not on disk").Build();
+        }
         var sheet = Describe(item.Name, item.Source.Open, item.Size, context ?? VppFactsContext.None);
         // an entry a PEG conversion made says where it came from
         if (item.Source is MemorySource memory && Ps2.PegConverter.NoteFor(memory.Bytes) is { } note)
@@ -162,13 +170,16 @@ public static partial class VppFacts
         ArgumentNullException.ThrowIfNull(open);
         var input = new VppFactInput(name, open, size, context ?? VppFactsContext.None);
         var sheet = new VppFactSheetBuilder();
-        var type = VppFileTypes.Describe(name);
+        var type = VppFileTypes.Describe(name, input.Context.Package?.Rf2 is not null);
         sheet.Add("Type", type.DisplayName);
         sheet.Add("Size", FormatSize(size));
         // Alpine Faction is the baseline: only whether the game loads the type at all (with the first Alpine version
         // when an Alpine-added type has a known one).
-        sheet.Add("Game", !type.GameLoads ? "Not loaded by the game"
+        if (input.Context.Package?.Rf2 is not null) sheet.Add("Game", "Red Faction II (read only in Cairn)");
+        else sheet.Add("Game", !type.GameLoads ? "Not loaded by the game"
             : type.AlpineSince is { } since ? $"Loaded by the game (Alpine Faction {since} or later)" : "Loaded by the game");
+        // nothing to read (Red Faction II ships 0-byte .peg placeholders): no type error for a file without content
+        if (size == 0) return sheet.Add("Contents", "Empty file (0 bytes)").Build();
 
         string ext = Editing.VppNames.ExtensionOf(name);
         byte[] head;

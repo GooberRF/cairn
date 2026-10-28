@@ -21,7 +21,7 @@ namespace Cairn.Vbm.Ui;
 /// hands a bitmap to whichever module converts .vbm to .atx (found through <see cref="IAssetConverter"/>, so this
 /// module does not depend on the animated textures module).
 /// </summary>
-public sealed class VbmModule : ModuleBase
+public sealed class VbmModule : ModuleBase, IAssetConverter
 {
     /// <summary>The Problems tab's id.</summary>
     public const string ProblemsPanelId = VbmProblemsPanel.PanelId;
@@ -301,24 +301,85 @@ public sealed class VbmModule : ModuleBase
         return Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
     }
 
-    private async Task ExportFramesAsync(VbmDocument document)
+    private Task ExportFramesAsync(VbmDocument document) => ExportFramesAsync(document, null);
+
+    /// <summary>The export window (starting at <paramref name="startFormat"/>, else the last format used), then the export. Returns the folder written to, or null.</summary>
+    private async Task<string?> ExportFramesAsync(VbmDocument document, VbmExportFormat? startFormat)
     {
         document.CommitPendingEdits();
         document.IsPlaying = false;
-        var format = Settings.Get("exportFormat", VbmExportFormat.Tga);
+        var format = startFormat ?? Settings.Get("exportFormat", VbmExportFormat.Tga);
         var window = new VbmExportWindow(Shell.Dialogs, document.DisplayName, document.Current.FrameCount, document.SelectedFrames, DefaultExportFolder(document), format)
         {
             Owner = Shell.MainWindow,
         };
         bool ok;
         using (ModalScope.Enter()) ok = window.ShowDialog() == true;
-        if (!ok || window.Result is not { } request) return;
+        if (!ok || window.Result is not { } request) return null;
         if (!Shell.IsDiagnosticRun)
         {
             Settings.Set("exportFolder", request.Folder);
             Settings.Set("exportFormat", request.Format);
         }
-        await ExportAsync(document, request, confirmReplace: true).ConfigureAwait(true);
+        return await ExportAsync(document, request, confirmReplace: true).ConfigureAwait(true) > 0 ? request.Folder : null;
+    }
+
+    // ── Convert to… (IAssetConverter): the frames as TGA or PNG images ───────────────────────────────────────
+
+    private static bool IsVbmName(string name) => name.EndsWith(".vbm", StringComparison.OrdinalIgnoreCase);
+
+    private static VbmExportFormat? FormatFor(string extension) => extension.ToLowerInvariant() switch
+    {
+        ".tga" => VbmExportFormat.Tga,
+        ".png" => VbmExportFormat.Png,
+        _ => null,
+    };
+
+    /// <inheritdoc/>
+    public bool CanConvert(string sourceName, string targetExtension) => IsVbmName(sourceName) && FormatFor(targetExtension) is not null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName) => IsVbmName(sourceName)
+        ?
+        [
+            new(".tga", "Frames as TGA images", "Write the frames as Targa images (one file per frame); the frame rate is not kept", true),
+            new(".png", "Frames as PNG images", "Write the frames as PNG images (one file per frame); the frame rate is not kept", true),
+        ]
+        : [];
+
+    /// <summary>
+    /// The export window over the tab (or over the bytes of a packfile entry), starting at the chosen format; without a
+    /// dialog every frame goes to <see cref="AssetConversionRequest.OutputFolder"/>. Returns the folder written to.
+    /// </summary>
+    public async Task<string?> ConvertAsync(AssetConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!CanConvert(request.FileName, request.TargetExtension)) return null;
+        var format = FormatFor(request.TargetExtension)!.Value;
+        VbmDocument? owned = null;
+        var document = request.Document as VbmDocument;
+        if (document is null)
+        {
+            string origin = request.ArchivePath is { } archive ? $"{request.FileName} in {Path.GetFileName(archive)}" : request.FileName;
+            document = owned = VbmDocument.Load(this, Kind, request.Bytes, request.FileName, null, origin);
+        }
+        try
+        {
+            if (document.IsBroken)
+            {
+                Shell.Dialogs.ShowError($"Could not convert {request.FileName}", "The bitmap could not be read; its Problems tab says why.");
+                return null;
+            }
+            if (request.Interactive) return await ExportFramesAsync(document, format).ConfigureAwait(true);
+            string folder = request.OutputFolder ?? DefaultExportFolder(document);
+            var all = Enumerable.Range(0, document.Current.FrameCount).ToList();
+            var export = new VbmExportRequest(folder, VbmFrameExport.DefaultBaseName(request.FileName), format, all);
+            return await ExportAsync(document, export, confirmReplace: false).ConfigureAwait(true) > 0 ? folder : null;
+        }
+        finally
+        {
+            owned?.Dispose();
+        }
     }
 
     /// <summary>Writes the frames <paramref name="request"/> names (off the UI thread); asks before replacing files.</summary>

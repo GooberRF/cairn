@@ -12,11 +12,15 @@ public sealed class VppEntryRow : ObservableObject
     private bool _isEditing;
     private string _editText = string.Empty;
 
-    public VppEntryRow(VppItem item, int index, IReadOnlyList<VppProblem>? problems = null)
+    /// <param name="item">The entry.</param>
+    /// <param name="index">Its position in the packfile.</param>
+    /// <param name="problems">Its warnings and errors.</param>
+    /// <param name="rf2">True in a Red Faction II packfile group (RF2's names for the types).</param>
+    public VppEntryRow(VppItem item, int index, IReadOnlyList<VppProblem>? problems = null, bool rf2 = false)
     {
         Item = item;
         Index = index;
-        var type = VppFileTypes.Describe(item.Name);
+        var type = VppFileTypes.Describe(item.Name, rf2);
         TypeName = type.DisplayName;
         Category = type.Category;
         Extension = item.Extension;

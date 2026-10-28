@@ -306,10 +306,58 @@ public interface IAssetConverter
 
     /// <summary>
     /// Converts <paramref name="request"/> (interactive requests show the module's own dialog) and opens the result in a
-    /// tab. UI thread. Returns the path of the main file written, or null when the user cancelled or it failed (the
-    /// converter has told the user why).
+    /// tab when it is a document Cairn opens. UI thread. Returns the path (or packfile entry name) of the main file
+    /// written, or null when the user cancelled or it failed (the converter has told the user why).
     /// </summary>
     Task<string?> ConvertAsync(AssetConversionRequest request);
+
+    /// <summary>
+    /// What this module makes from files named like <paramref name="sourceName"/>, as File › Convert to… and a packfile
+    /// entry's Convert to submenu list it (none by default). Every target listed passes <see cref="CanConvert"/>. Cheap;
+    /// no I/O (decided by the name, usually the extension).
+    /// </summary>
+    IReadOnlyList<ConversionTarget> TargetsFor(string sourceName) => [];
+
+    /// <summary>
+    /// <see cref="TargetsFor(string)"/> when the start of the file is known: a module whose targets depend on what a file
+    /// of the name holds (an <c>.rfa</c> from Red Faction II rather than Red Faction) looks at <paramref name="head"/>, its
+    /// first bytes (at least its signature and version, usually 16 bytes; empty when not known). By default the name
+    /// alone decides. Cheap; no I/O.
+    /// </summary>
+    IReadOnlyList<ConversionTarget> TargetsFor(string sourceName, ReadOnlySpan<byte> head) => TargetsFor(sourceName);
+}
+
+/// <summary>A file type an <see cref="IAssetConverter"/> makes, as the Convert to submenus list it.</summary>
+/// <param name="Extension">The <see cref="AssetConversionRequest.TargetExtension"/> it is asked for, lower case with the dot (".gltf").</param>
+/// <param name="DisplayName">Menu text without an access key ("glTF (.gltf + .bin)").</param>
+/// <param name="ToolTip">What the conversion makes, and anything it asks first.</param>
+/// <param name="Lossy">True when the output cannot hold everything the source does (the menu adds "(lossy)").</param>
+public sealed record ConversionTarget(string Extension, string DisplayName, string ToolTip, bool Lossy);
+
+/// <summary>
+/// Optional: implemented by a document so the shell can hand its content to an <see cref="IAssetConverter"/>
+/// (File › Convert to…). Documents without it get no Convert to submenu.
+/// </summary>
+public interface IDocumentContent
+{
+    /// <summary>The file name the content goes by, with its extension ("fire.vbm"); what the outputs are named after.</summary>
+    string FileName { get; }
+
+    /// <summary>
+    /// The content as file bytes, unsaved edits included (for a tab that shows another format's file, such as a PS2
+    /// mesh, the file it shows). UI thread. Throws <see cref="InvalidOperationException"/> or
+    /// <c>AssetFormatException</c> with a message for the user when it has nothing to give.
+    /// </summary>
+    byte[] CurrentBytes();
+
+    /// <summary>The packfile the content is an entry of when the tab was opened from it directly (not through a work copy), or null.</summary>
+    string? ArchivePath => null;
+
+    /// <summary>
+    /// The first bytes of the content (see <see cref="IAssetConverter.TargetsFor(string, ReadOnlySpan{byte})"/>), or empty when
+    /// the tab does not say. Cheap; UI thread.
+    /// </summary>
+    ReadOnlyMemory<byte> ContentHead => ReadOnlyMemory<byte>.Empty;
 }
 
 /// <summary>What <see cref="IAssetConverter.ConvertAsync"/> converts.</summary>
@@ -326,6 +374,190 @@ public sealed record AssetConversionRequest(string FileName, byte[] Bytes, strin
     public bool Interactive { get; init; } = true;
     /// <summary>Where the outputs go; null lets the converter choose (the dialog's default folder).</summary>
     public string? OutputFolder { get; init; }
+    /// <summary>
+    /// The tab the bytes come from (File › Convert to…), or null for a packfile entry that is not open in a tab. A
+    /// converter that works on its own open documents may use the tab as it is (its selection, its preview mesh).
+    /// </summary>
+    public IDocument? Document { get; init; }
+    /// <summary>
+    /// Adds files to the open packfile the source belongs to (<see cref="ArchivePath"/>) as ONE undo step with the given
+    /// label; an entry of the same name is replaced when the flag is true, else the file gets a free name. Returns the
+    /// names used, or null (after telling the user) when it could not. Null when the source is in no open packfile, so
+    /// "into the packfile" is not offered.
+    /// </summary>
+    public Func<string, IReadOnlyList<(string Name, byte[] Bytes)>, bool, IReadOnlyList<string>?>? AddToArchive { get; init; }
+    /// <summary>Every entry name of that packfile (to ask before replacing one); empty when unknown.</summary>
+    public IReadOnlyList<string> ArchiveEntryNames { get; init; } = [];
+    /// <summary>
+    /// Reads another entry of that packfile by name (a PS2 mesh's exporter twin, a level's textures), or null when there
+    /// is none or it cannot be read. Null when the packfile is unknown. Any thread.
+    /// </summary>
+    public Func<string, byte[]?>? ReadSibling { get; init; }
+}
+
+/// <summary>One entry of a Convert to submenu: the module, its converter and the target.</summary>
+/// <param name="Module">The module offering it (its <see cref="IModule.DisplayName"/> heads the group).</param>
+/// <param name="Converter">The module's converter.</param>
+/// <param name="Target">What it makes.</param>
+public sealed record ConversionChoice(IModule Module, IAssetConverter Converter, ConversionTarget Target);
+
+/// <summary>
+/// The Convert to submenus (File › Convert to… for the active tab, a packfile entry's context menu): the targets every
+/// module offers for a file, the request for a tab, and the menu items.
+/// </summary>
+public static class AssetConversions
+{
+    /// <summary>What a lossy target's menu text ends with.</summary>
+    public const string LossyMarker = " (lossy)";
+
+    /// <summary>
+    /// Every target the modules offer for <paramref name="sourceName"/>, grouped by module in load order. A converter that
+    /// throws, or lists a target its <see cref="IAssetConverter.CanConvert"/> refuses, adds nothing; a module lists each
+    /// extension once.
+    /// </summary>
+    public static IReadOnlyList<ConversionChoice> TargetsFor(IEnumerable<IModule> modules, string sourceName) => TargetsFor(modules, sourceName, []);
+
+    /// <summary>
+    /// <see cref="TargetsFor(IEnumerable{IModule}, string)"/> with the start of the file, for the modules whose targets depend
+    /// on the content (see <see cref="IAssetConverter.TargetsFor(string, ReadOnlySpan{byte})"/>).
+    /// </summary>
+    public static IReadOnlyList<ConversionChoice> TargetsFor(IEnumerable<IModule> modules, string sourceName, ReadOnlySpan<byte> head)
+    {
+        ArgumentNullException.ThrowIfNull(modules);
+        var choices = new List<ConversionChoice>();
+        if (string.IsNullOrWhiteSpace(sourceName)) return choices;
+        foreach (var module in modules)
+        {
+            if (module is not IAssetConverter converter) continue;
+            try
+            {
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var target in converter.TargetsFor(sourceName, head))
+                    if (target is not null && seen.Add(target.Extension) && converter.CanConvert(sourceName, target.Extension))
+                        choices.Add(new ConversionChoice(module, converter, target));
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { }
+        }
+        return choices;
+    }
+
+    /// <summary>The menu text of <paramref name="target"/>: its name, "(lossy)" when lossy, and an ellipsis (the converter asks first).</summary>
+    public static string MenuText(ConversionTarget target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return target.DisplayName.Replace("_", "__", StringComparison.Ordinal) + (target.Lossy ? LossyMarker : string.Empty) + "…";
+    }
+
+    /// <summary>
+    /// The file name a tab's content goes by: <see cref="IDocumentContent.FileName"/> for a work copy of a packfile entry
+    /// its entry name, or null when the tab has no <see cref="IDocumentContent"/>. UI thread.
+    /// </summary>
+    public static string? SourceNameOf(IShellContext shell, IDocument? document)
+    {
+        ArgumentNullException.ThrowIfNull(shell);
+        if (document is not IDocumentContent content) return null;
+        if (document.FilePath is { } path && WorkCopyEntry(shell, path) is { } entry) return entry.EntryName;
+        try { return content.FileName; }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return null; }
+    }
+
+    /// <summary>The targets for the tab <paramref name="document"/> (none without <see cref="IDocumentContent"/>). UI thread.</summary>
+    public static IReadOnlyList<ConversionChoice> TargetsFor(IShellContext shell, IDocument? document) =>
+        SourceNameOf(shell, document) is { } name ? TargetsFor(shell.Modules, name, ((IDocumentContent)document!).ContentHead.Span) : [];
+
+    private static (string ArchivePath, string EntryName)? WorkCopyEntry(IShellContext shell, string path)
+    {
+        foreach (var provider in shell.Modules.OfType<IWorkCopyProvider>())
+            if (provider.IsWorkCopy(path)) return provider.ArchiveEntryOf(path);
+        return null;
+    }
+
+    /// <summary>
+    /// The request for converting the tab <paramref name="document"/> to <paramref name="targetExtension"/>: its current
+    /// bytes (pending edits committed first), its file, and for a work copy of a packfile entry the packfile instead of
+    /// the temporary file, with <see cref="AssetConversionRequest.AddToArchive"/> while that packfile is open. UI thread.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The tab has no <see cref="IDocumentContent"/>, or nothing to give now (the message says why).</exception>
+    public static AssetConversionRequest RequestFor(IShellContext shell, IDocument document, string targetExtension, bool interactive = true)
+    {
+        ArgumentNullException.ThrowIfNull(shell);
+        ArgumentNullException.ThrowIfNull(document);
+        if (document is not IDocumentContent content) throw new InvalidOperationException($"{document.DisplayName} cannot be converted.");
+        document.CommitPendingEdits();
+        string name = SourceNameOf(shell, document) ?? content.FileName;
+        byte[] bytes = content.CurrentBytes();
+        string? path = document.FilePath, archive = path is null ? content.ArchivePath : null;
+        Func<string, IReadOnlyList<(string Name, byte[] Bytes)>, bool, IReadOnlyList<string>?>? add = null;
+        IReadOnlyList<string> names = [];
+        Func<string, byte[]?>? sibling = null;
+        if (path is not null && shell.Modules.OfType<IWorkCopyProvider>().FirstOrDefault(p => p.IsWorkCopy(path)) is { } provider)
+        {
+            archive = provider.ArchiveEntryOf(path)?.ArchivePath;
+            string workCopy = path;
+            if (AssetSiblings.For(shell, workCopy) is { } siblings) sibling = siblings.Read;
+            if (shell.Modules.OfType<IArchiveEntryTarget>().FirstOrDefault(t => t.ArchiveOf(workCopy) is not null) is { } target)
+            {
+                add = (label, files, replace) => target.AddFiles(workCopy, label, files, replace);
+                names = target.EntryNamesOf(workCopy) ?? [];
+            }
+            path = null;
+        }
+        return new AssetConversionRequest(name, bytes, targetExtension)
+        {
+            FilePath = path, ArchivePath = archive, Interactive = interactive, Document = document, AddToArchive = add, ArchiveEntryNames = names,
+            ReadSibling = sibling,
+        };
+    }
+
+    /// <summary>
+    /// Runs <paramref name="choice"/> on <paramref name="request"/>, reporting an exception the converter let through
+    /// (a converter reports its own failures). Returns what the converter returned. UI thread.
+    /// </summary>
+    public static async Task<string?> RunAsync(IShellContext shell, ConversionChoice choice, AssetConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(shell);
+        ArgumentNullException.ThrowIfNull(choice);
+        ArgumentNullException.ThrowIfNull(request);
+        try
+        {
+            return await choice.Converter.ConvertAsync(request).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            shell.Dialogs.ShowError($"Could not convert {request.FileName}", $"{choice.Module.DisplayName} could not make {choice.Target.DisplayName}: {ex.Message}", ex.ToString());
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Fills <paramref name="menu"/> with <paramref name="choices"/>: per module a caption with its name, then its
+    /// targets ("(lossy)" marked); clicking one calls <paramref name="run"/>. Nothing is added for no choices.
+    /// </summary>
+    public static void FillMenu(ItemsControl menu, IReadOnlyList<ConversionChoice> choices, Action<ConversionChoice> run)
+    {
+        ArgumentNullException.ThrowIfNull(menu);
+        ArgumentNullException.ThrowIfNull(choices);
+        ArgumentNullException.ThrowIfNull(run);
+        menu.Items.Clear();
+        IModule? group = null;
+        foreach (var choice in choices)
+        {
+            if (!ReferenceEquals(choice.Module, group))
+            {
+                if (group is not null) menu.Items.Add(new Separator());
+                group = choice.Module;
+                // a caption, not a command: shown in the menu's text colour, never highlighted or clicked
+                var caption = new MenuItem { Header = choice.Module.DisplayName.Replace("_", "__", StringComparison.Ordinal), FontWeight = FontWeights.SemiBold, Focusable = false, IsHitTestVisible = false };
+                System.Windows.Automation.AutomationProperties.SetName(caption, choice.Module.DisplayName);
+                menu.Items.Add(caption);
+            }
+            var item = new MenuItem { Header = MenuText(choice.Target), ToolTip = choice.Target.ToolTip, Tag = choice };
+            System.Windows.Automation.AutomationProperties.SetName(item, "Convert to " + choice.Target.DisplayName + (choice.Target.Lossy ? LossyMarker : string.Empty));
+            var picked = choice;
+            item.Click += (_, _) => run(picked);
+            menu.Items.Add(item);
+        }
+    }
 }
 
 /// <summary>
@@ -453,6 +685,63 @@ public interface IAssetSiblings
     bool Contains(string name);
     /// <summary>The whole file named <paramref name="name"/>, or null when there is none or it cannot be read.</summary>
     byte[]? Read(string name);
+
+    /// <summary>
+    /// The first <paramref name="count"/> bytes of the file named <paramref name="name"/> (all of a shorter one), or null
+    /// when there is none or it cannot be read: what a caller that needs only a header reads (a library probing many
+    /// files). By default the whole file is read and cut; an implementation that can read part of a file overrides it.
+    /// </summary>
+    byte[]? ReadHead(string name, int count)
+    {
+        var all = Read(name);
+        return all is null || count < 0 || all.Length <= count ? all : all[..count];
+    }
+}
+
+/// <summary>
+/// Optional: implemented by a module class that has archives open in tabs (the packfile module), so another module can
+/// use the files in them as session sources (the animations module's library groups and preview pickers) without
+/// referencing it. Callers find it through <see cref="IShellContext.Modules"/>; <see cref="AssetSiblings.OpenSources"/>
+/// joins every provider.
+/// </summary>
+public interface IOpenArchiveSources
+{
+    /// <summary>The archives open now, in tab order. UI thread.</summary>
+    IReadOnlyList<OpenArchiveSource> OpenSources { get; }
+
+    /// <summary>
+    /// Raised on the UI thread when <see cref="OpenSources"/> changes: an archive's tab opened or closed, or its entries
+    /// changed (added, removed, renamed, replaced; undo and redo included).
+    /// </summary>
+    event EventHandler? OpenSourcesChanged;
+
+    /// <summary>
+    /// The <see cref="OpenArchiveSource.Key"/> of the open archive the work copy at <paramref name="path"/> was extracted
+    /// from (a tab opened with "Open in Cairn"), or null when <paramref name="path"/> is not one. UI thread.
+    /// </summary>
+    string? SourceKeyOf(string path);
+}
+
+/// <summary>One archive open in a tab, as <see cref="IOpenArchiveSources"/> offers it.</summary>
+/// <param name="Key">Stable while the tab stays open, different for every tab (two tabs of one file have two keys).</param>
+/// <param name="Label">What it is called in lists and messages ("All_Levels.toc_group").</param>
+/// <param name="ArchivePath">The archive's file, or null when it was never saved.</param>
+/// <param name="Entries">Its entries as they are now: an immutable snapshot, safe to read from any thread.</param>
+/// <param name="Version">
+/// Identifies the entries: a new object (compared by reference) whenever they change, the same object while they do
+/// not, so a caller can cache what it learned from <paramref name="Entries"/> per version.
+/// </param>
+public sealed record OpenArchiveSource(string Key, string Label, string? ArchivePath, IAssetSiblings Entries, object Version)
+{
+    /// <summary>
+    /// Opens an entry in a tab the way the archive's own "Open in Cairn" does, so the tab is linked to the archive (its
+    /// work copy, saving back). False, after telling the user, when it cannot. Null when the archive offers no such
+    /// command. UI thread; the tab may appear a moment after it returns.
+    /// </summary>
+    public Func<string, bool>? OpenEntry { get; init; }
+
+    /// <summary>True for a Red Faction II packfile group (read only); false for a Red Faction packfile.</summary>
+    public bool IsRedFactionII { get; init; }
 }
 
 /// <summary>Helpers for <see cref="IAssetSiblings"/>.</summary>
@@ -491,6 +780,21 @@ public static class AssetSiblings
         var resolver = shell.Assets.ResolverFor(path is null ? null : Path.GetDirectoryName(path));
         return For(shell, path).Layer(resolver) ?? resolver;
     }
+
+    /// <summary>
+    /// Every archive open in a tab, from every <see cref="IOpenArchiveSources"/> (in module order, each in tab order);
+    /// empty without a shell, and off the UI thread.
+    /// </summary>
+    public static IReadOnlyList<OpenArchiveSource> OpenSources(IShellContext? shell) =>
+        shell is null || !shell.Dispatcher.CheckAccess() ? [] : [.. shell.Modules.OfType<IOpenArchiveSources>().SelectMany(p => p.OpenSources)];
+
+    /// <summary>
+    /// The <see cref="OpenArchiveSource.Key"/> of the open archive the work copy at <paramref name="path"/> came from (see
+    /// <see cref="IOpenArchiveSources.SourceKeyOf"/>), or null; also null off the UI thread.
+    /// </summary>
+    public static string? SourceKeyOf(IShellContext? shell, string? path) =>
+        shell is null || string.IsNullOrEmpty(path) || !shell.Dispatcher.CheckAccess() ? null
+            : shell.Modules.OfType<IOpenArchiveSources>().Select(p => p.SourceKeyOf(path)).FirstOrDefault(k => k is not null);
 
     /// <summary>The name a lookup of <paramref name="requestedName"/> finds among <paramref name="siblings"/> (supersede rules applied), or null.</summary>
     public static string? Find(this IAssetSiblings siblings, string requestedName)

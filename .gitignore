@@ -1,6 +1,8 @@
 # Build output
 bin/
 obj/
+# Windows matches obj/ case-insensitively; keep the OBJ (Wavefront) dialog sources
+!modules/Rfa/Cairn.Rfa.Ui/Views/Dialogs/Obj/
 dist/
 artifacts/
 

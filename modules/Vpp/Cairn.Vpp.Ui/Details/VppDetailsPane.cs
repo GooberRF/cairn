@@ -31,7 +31,9 @@ public sealed class VppDetailsPane : AssetDetailsPane
         }
         if (primary is null)
         {
-            ShowMessage("Select a file to see its details.");
+            // a Red Faction II group shows what it says about itself until a file is selected
+            if (package?.Rf2 is { } rf2) ShowDetails(GroupDetails(rf2, package));
+            else ShowMessage("Select a file to see its details.");
             return;
         }
         var resolver = Shell?.Assets.Resolver;
@@ -56,17 +58,23 @@ public sealed class VppDetailsPane : AssetDetailsPane
             case ArchiveSource a when package?.Path is { } path && string.Equals(Path.GetFullPath(a.ArchivePath), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase):
                 rows.Add(new(entry, "Offset", string.Format(CultureInfo.CurrentCulture, "{0:N0} (0x{0:X})", a.Offset)));
                 break;
+            case ArchiveSource a when package?.Rf2?.PackfilePath is { } packfile && string.Equals(a.ArchivePath, packfile, StringComparison.OrdinalIgnoreCase):
+                rows.Add(new(entry, "Offset", string.Format(CultureInfo.CurrentCulture, "{0:N0} (0x{0:X}) in {1}", a.Offset, Path.GetFileName(packfile))));
+                break;
             case ArchiveSource a:
                 rows.Add(new(entry, "Source", string.Format(CultureInfo.CurrentCulture, "{0}, offset {1:N0}", a.ArchivePath, a.Offset)));
                 break;
             case FileSource f:
                 rows.Add(new(entry, "Source", f.FilePath));
                 break;
+            case MissingFileSource m:
+                rows.Add(new(entry, "Source", m.FilePath + " (not on disk)", Flagged: true));
+                break;
             case MemorySource:
                 rows.Add(new(entry, "Source", "in memory (not saved yet)"));
                 break;
         }
-        rows.Add(new(entry, "State", item.State switch
+        if (package?.Rf2 is null) rows.Add(new(entry, "State", item.State switch
         {
             VppItemState.Added => "Added (not saved yet)",
             VppItemState.Replaced => "Replaced (not saved yet)",
@@ -112,6 +120,18 @@ public sealed class VppDetailsPane : AssetDetailsPane
             rows.Add(new AssetDetailRow(section, label, row.Value, flagged));
         }
         return rows;
+    }
+
+    /// <summary>A Red Faction II group's own facts (mode, flags raw, counts, types, where its data is).</summary>
+    internal static AssetDetails GroupDetails(Cairn.Vpp.Rf2.Rf2GroupInfo rf2, VppPackage package)
+    {
+        var rows = new List<AssetDetailRow>();
+        foreach (var (label, value) in rf2.Facts(package.Items))
+        {
+            bool type = label.StartsWith("Type ", StringComparison.Ordinal);
+            rows.Add(new(type ? "Types" : "Packfile group", type ? label[5..] : label, value, Flagged: label == "Missing on disk" || label == "Size differs"));
+        }
+        return new AssetDetails(Path.GetFileName(rf2.TocPath), rows, []);
     }
 
     private static AssetDetails Summary(IReadOnlyList<VppItem> selection, IReadOnlyList<VppProblem>? problems)

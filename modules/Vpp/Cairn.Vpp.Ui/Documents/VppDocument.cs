@@ -2,6 +2,7 @@ using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Threading;
 using Cairn.Ui.Documents;
+using Cairn.Ui.Modules;
 using Cairn.Ui.Mvvm;
 using Cairn.Ui.Services;
 using Cairn.Vpp.Model;
@@ -18,8 +19,11 @@ namespace Cairn.Vpp.Ui.Documents;
 /// comes from), so every edit is one undo step and nothing is written until Save. Saving streams to a temporary file
 /// beside the target on a worker thread (<see cref="VppSaver"/>) while the UI keeps running, then swaps it in.
 /// </summary>
-public sealed class VppDocument : SnapshotDocument<VppPackage>
+public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent, IDocument
 {
+    /// <summary>Why a Red Faction II packfile group's commands that change it are off (tooltips, status messages).</summary>
+    public const string ReadOnlyReason = "Red Faction II packfiles are read only in Cairn: extract, preview, open and convert their files instead.";
+
     private readonly FileChangeWatcher _diskWatcher;
     private VppArchiveStamp? _diskStamp;
     private bool _ownWrite;
@@ -32,8 +36,14 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
     private Cairn.Vpp.Ps2.PegConversionResult? _pegSource;
     private bool _ps2Dismissed;
 
-    public VppDocument(VppModule module, VppPackage package, string displayName, string? path, string? originText = null)
-        : base(module.Host, module.Kind, package, displayName, path, originText)
+    /// <param name="module">The packfile module.</param>
+    /// <param name="package">The packfile (a Red Faction II group's package is read only).</param>
+    /// <param name="displayName">The tab's name.</param>
+    /// <param name="path">The file it was opened from, or null.</param>
+    /// <param name="originText">Where it came from when it has no path.</param>
+    /// <param name="kind">The document kind (the .vpp kind when null).</param>
+    public VppDocument(VppModule module, VppPackage package, string displayName, string? path, string? originText = null, IDocumentKind? kind = null)
+        : base(module.Host, kind ?? module.Kind, package, displayName, path, originText)
     {
         Module = module;
         // The base class re-reads the whole file on every change to compare bytes: far too much for a packfile of up
@@ -43,7 +53,7 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
         _diskWatcher.Changed += (_, _) => CheckDisk();
         _diskStamp = package.Stamp ?? StampOf(path);
         WatchDisk();
-        List = new VppFileList { InfoCache = module.InfoColumnEnabled ? new VppInfoCache(module.Host.Dispatcher) : null };
+        List = new VppFileList { InfoCache = module.InfoColumnEnabled ? new VppInfoCache(module.Host.Dispatcher) { Rf2 = package.Rf2 is not null } : null };
         Commands = new VppDocumentCommands(this);
         ReloadFromDiskCommand = new RelayCommand(ReloadFromDisk, () => FilePath is not null && File.Exists(FilePath) && !IsBusy);
         DismissNoticeCommand = new RelayCommand(() => Notice = null);
@@ -84,6 +94,40 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
     /// summary after the first save say so). Null for packfiles, and again once the document was saved as a packfile.
     /// </summary>
     public Cairn.Vpp.Ps2.PegConversionResult? PegSource { get => _pegSource; internal set => Set(ref _pegSource, value); }
+
+    /// <summary>The PEG texture pack's own bytes while <see cref="PegSource"/> is set (what Convert to… hands on), else null.</summary>
+    internal byte[]? PegBytes { get; set; }
+
+    /// <summary>The name the content goes by: the PEG texture pack's for a document opened from one, else the packfile's (with .vpp).</summary>
+    public string FileName => PegSource is { } peg && PegBytes is not null ? peg.SourceName
+        : DisplayName.EndsWith(".vpp", StringComparison.OrdinalIgnoreCase) || Path.HasExtension(DisplayName) ? DisplayName : DisplayName + ".vpp";
+
+    /// <summary>
+    /// The PEG texture pack it was opened from, a Red Faction II group's own group file, else the packfile as Save would
+    /// write it (unsaved changes included).
+    /// </summary>
+    public byte[] CurrentBytes() => PegSource is not null && PegBytes is { } peg ? peg
+        : Current.Rf2 is { } rf2 ? File.ReadAllBytes(rf2.TocPath) : Serialize();
+
+    /// <summary>True for a Red Faction II packfile group: listed, previewed and extracted, never changed or saved.</summary>
+    public override bool IsReadOnly => History is { } history && history.Current.IsReadOnly;
+
+    /// <summary>A read-only packfile group has nothing Cairn writes: Save and Save As are off.</summary>
+    bool IDocument.CanSave => !IsReadOnly;
+
+    /// <summary>The Red Faction II group's facts, or null for an RF1 packfile.</summary>
+    public Cairn.Vpp.Rf2.Rf2GroupInfo? Rf2 => Current.Rf2;
+
+    /// <summary>
+    /// True (after telling the user why) when the document is a read-only packfile group, so a command that would
+    /// change it stops here.
+    /// </summary>
+    internal bool RefuseReadOnly()
+    {
+        if (!IsReadOnly) return false;
+        ShowStatus(ReadOnlyReason);
+        return true;
+    }
 
     /// <summary>True when the packfile holds entries only the PlayStation 2 version uses (.peg, .rfm, .rfc, .vse, .vmu).</summary>
     public bool IsPs2Packfile { get; private set; }
@@ -136,20 +180,24 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
     /// <summary>One undoable edit, refused while a save or extraction runs.</summary>
     public bool ApplyEdit(string label, Func<VppPackage, VppPackage> edit)
     {
-        if (IsBusy) return false;
+        if (IsBusy || RefuseReadOnly()) return false;
         // an edit would make a new snapshot that no longer carries the "reload first" mark (review finding 14)
         if (NeedsReload) { ShowStatus("Reload the packfile before changing it: the saved file could not be read back."); return false; }
         return Apply(label, edit);
     }
 
-    protected override void OnSnapshotChanged() => Refresh();
+    protected override void OnSnapshotChanged()
+    {
+        Refresh();
+        Module.OnPackageChanged(); // other modules' sources follow the entries
+    }
 
     private void Refresh()
     {
         var p = Current;
         _work?.Follow(p); // work copies follow their entries through rename, undo and redo
         var problems = VppValidator.Validate(p).ToList();
-        if (FilePath is { } path) problems.AddRange(VppValidator.ValidateTargetPath(path));
+        if (FilePath is { } path && p.Rf2 is null) problems.AddRange(VppValidator.ValidateTargetPath(path));
         List.Load(p, problems); // rows show their own warnings and errors
         // keep the selection on the same names (snapshots replace the item records)
         if (_selected.Count > 0)
@@ -166,7 +214,8 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
             if (item.OriginalIndex >= 0) kept++;
         }
         PendingChanges = changed + Math.Max(0, p.OriginalCount - kept);
-        IsPs2Packfile = Cairn.Vpp.Ps2.Ps2Packfiles.IsPs2(p);
+        // a Red Faction II group holds .peg and .rfm/.rfc too, but it is no PlayStation 2 packfile
+        IsPs2Packfile = p.Rf2 is null && Cairn.Vpp.Ps2.Ps2Packfiles.IsPs2(p);
         PegEntryCount = p.Items.Count(i => Cairn.Vpp.Ps2.Ps2Packfiles.IsPeg(i.Name));
         Problems = problems;
         Raise(nameof(PendingChanges));
@@ -181,7 +230,8 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
         var items = new List<StatusItem>();
         if (_operation is { } op) items.Add(new StatusItem(op.StatusText + "  (cancel)", "Click to cancel " + op.Title.ToLowerInvariant(), op.CancelCommand));
         items.Add(new StatusItem(p.Count == 1 ? "1 entry" : $"{p.Count:N0} entries", "Entries in the packfile"));
-        items.Add(new StatusItem(VppEntryRow.FormatSize(p.ArchiveBytes), $"The packfile will be {p.ArchiveBytes:N0} bytes when saved ({p.DataBytes:N0} bytes of file data)"));
+        if (p.Rf2 is { } rf2) items.Add(new StatusItem(VppEntryRow.FormatSize(p.DataBytes), $"{p.DataBytes:N0} bytes of file data ({rf2.ModeText}); read only"));
+        else items.Add(new StatusItem(VppEntryRow.FormatSize(p.ArchiveBytes), $"The packfile will be {p.ArchiveBytes:N0} bytes when saved ({p.DataBytes:N0} bytes of file data)"));
         if (PendingChanges > 0) items.Add(new StatusItem(PendingChanges == 1 ? "1 pending change" : $"{PendingChanges:N0} pending changes", "Added, replaced, renamed or removed entries not saved yet"));
         int errors = _problems.Count(x => x.Severity == VppSeverity.Error), warnings = _problems.Count(x => x.Severity == VppSeverity.Warning);
         if (errors + warnings > 0)
@@ -375,6 +425,9 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
     internal static string? StaleProblem(VppPackage package, IEnumerable<VppItem> items)
     {
         if (ReloadNeeded.TryGetValue(package, out var mustReload)) return mustReload;
+        // a packed Red Faction II group reads from its .packfile, not from the group file
+        if (package.Rf2 is { PackfilePath: { } packfile } && items.Any(i => i.Source is ArchiveSource a && string.Equals(a.ArchivePath, packfile, StringComparison.OrdinalIgnoreCase)))
+            return Cairn.Vpp.Rf2.Rf2Packfiles.StaleProblem(package);
         if (package.Path is not { } path || package.Stamp is not { } stamp) return null;
         var affected = items.Where(i => i.Source is ArchiveSource a && string.Equals(a.ArchivePath, path, StringComparison.OrdinalIgnoreCase)).ToList();
         if (affected.Count == 0) return null;
@@ -402,6 +455,10 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
         return false;
     }
 
+    /// <summary>Opens a packfile, or a Red Faction II packfile group (<c>.toc_group</c>) as a read-only package.</summary>
+    public static VppPackage OpenPackage(string path) =>
+        Cairn.Vpp.Rf2.Rf2Packfiles.IsGroupFile(path) ? Cairn.Vpp.Rf2.Rf2Packfiles.Open(path) : VppPackage.Open(path);
+
     /// <summary>Reads the packfile again from disk; pending changes are dropped (after a confirmation when there are any).</summary>
     public void ReloadFromDisk()
     {
@@ -410,7 +467,7 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>
             return;
         try
         {
-            var fresh = VppPackage.Open(FilePath);
+            var fresh = OpenPackage(FilePath);
             History.Reset(fresh);
             _diskStamp = fresh.Stamp ?? StampOf(FilePath);
             MarkSaved(FilePath);

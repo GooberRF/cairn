@@ -17,6 +17,12 @@ public sealed class AtxModule : ModuleBase, IAssetPreviewProvider, IAssetConvert
     public bool CanConvert(string sourceName, string targetExtension) =>
         sourceName.EndsWith(".vbm", StringComparison.OrdinalIgnoreCase) && string.Equals(targetExtension, ".atx", StringComparison.OrdinalIgnoreCase);
 
+    /// <inheritdoc/>
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName) =>
+        sourceName.EndsWith(".vbm", StringComparison.OrdinalIgnoreCase)
+            ? [new(".atx", "Animated texture (.atx)", "Write the bitmap's frames as images plus an .atx that plays them at its frame rate, then open the .atx", false)]
+            : [];
+
     /// <summary>
     /// A .vbm (another module's "Convert to ATX..."): the Import VBM dialog over the given bytes. An entry of a packfile
     /// has no folder of its own, so the dialog offers the last import folder rather than a temporary one.

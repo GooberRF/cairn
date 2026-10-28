@@ -66,6 +66,7 @@ public sealed class VfxProblemsPanel : DockPanel
         Children.Add(bar); Children.Add(new Grid { Children = { _list, _empty } });
         _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(300), DispatcherPriority.Background, (_, _) => { _timer!.Stop(); Run(); }, Dispatcher);
         doc.SceneChanged += (_, _) => { _timer.Stop(); _timer.Start(); };
+        doc.ConversionNotesChanged += (_, _) => { _timer.Stop(); _timer.Start(); };
         Run();
     }
 
@@ -81,7 +82,8 @@ public sealed class VfxProblemsPanel : DockPanel
         var file = _doc.Current;
         var context = new VfxLintContext(_doc.DisplayName, _shell.Assets.ResolverFor(_doc.FilePath is null ? null : Path.GetDirectoryName(_doc.FilePath)));
         IReadOnlyList<VfxDiagnostic> result;
-        try { result = await Task.Run(() => VfxLinter.Lint(file, context)); }
+        var notes = _doc.ConversionNotes;
+        try { result = await Task.Run(() => (IReadOnlyList<VfxDiagnostic>)[.. VfxLinter.Lint(file, context), .. notes]); }
         catch (Exception ex) { _counts.Text = "Lint failed: " + ex.Message; return; }
         if (generation != _generation) return;
         Diagnostics = result;

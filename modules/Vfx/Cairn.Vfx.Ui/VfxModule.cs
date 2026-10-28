@@ -13,10 +13,10 @@ using Cairn.Workspace;
 namespace Cairn.Vfx.Ui;
 
 /// <summary>The effects module hosted by the Cairn shell.</summary>
-public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider
+public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider, IAssetConverter
 {
     /// <inheritdoc/>
-    public bool CanPreview(string fileName) => fileName.EndsWith(".vfx", StringComparison.OrdinalIgnoreCase);
+    public bool CanPreview(string fileName) => fileName.EndsWith(".vfx", StringComparison.OrdinalIgnoreCase) || Rfe.RfeConversionUi.IsRfeName(fileName);
 
     /// <inheritdoc/>
     public FrameworkElement? CreatePreview(byte[] bytes, string fileName) => CreatePreview(bytes, fileName, null);
@@ -25,6 +25,8 @@ public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider
     public FrameworkElement? CreatePreview(byte[] bytes, string fileName, IAssetSiblings? siblings)
     {
         if (!CanPreview(fileName)) return null;
+        // a Red Faction II effect: its textures are in the .peg packs beside it and in its install
+        if (Rfe.RfeConversionUi.IsRfeName(fileName)) return new Rfe.RfePreview(bytes, fileName, Shell, siblings);
         var assets = Shell?.Assets;
         // Textures beside the effect (same packfile) win over the game data's.
         return new Preview.VfxPreview(bytes, fileName, () => siblings.Layer(assets?.Resolver));
@@ -35,7 +37,7 @@ public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider
 
     public override string Id => "vfx";
     public override string DisplayName => "Effects";
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [_kind];
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [_kind, _rfeKind];
     public override IReadOnlyList<ISettingsPage> SettingsPages { get; } = [new Settings.VfxSettingsPage()];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     /// <summary>Module styles and templates (<c>Themes/VfxResources.xaml</c>), merged into the application resources.</summary>
@@ -46,6 +48,7 @@ public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider
     {
         base.Initialize(shell);
         _kind.Shell = shell;
+        _rfeKind.Shell = shell;
         _menus.Add(new(MenuSlot.TopLevel, 0, BuildMenu(), d => d is VfxDocument));
         InitializeCreation(); // VfxModule.Creation.cs
         // diagnostic runs: binding errors go to the console so screenshot/self-test logs show them
@@ -87,6 +90,7 @@ public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider
     public override void ApplyDiagnosticOptions(IReadOnlyDictionary<string, string> options)
     {
         if (Active is { } doc) { ApplyOptions(doc, options); ShowProblemsOption(options); return; }
+        if (Shell.ActiveDocument is Rfe.RfeDocument rfe) { ApplyRfeOptions(rfe, options); return; }
         _pendingOptions = options;
         Shell.ActiveDocumentChanged += OnFirstActive;
     }
@@ -99,6 +103,13 @@ public sealed partial class VfxModule : ModuleBase, IAssetPreviewProvider
 
     private void OnFirstActive(object? sender, EventArgs e)
     {
+        if (Shell.ActiveDocument is Rfe.RfeDocument rfe && _pendingOptions is { } rfeOptions)
+        {
+            Shell.ActiveDocumentChanged -= OnFirstActive;
+            _pendingOptions = null;
+            ApplyRfeOptions(rfe, rfeOptions);
+            return;
+        }
         if (Active is not { } doc || _pendingOptions is not { } options) return;
         Shell.ActiveDocumentChanged -= OnFirstActive;
         _pendingOptions = null;

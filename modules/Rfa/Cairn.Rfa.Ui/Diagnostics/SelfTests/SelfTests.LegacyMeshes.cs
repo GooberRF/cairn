@@ -28,8 +28,8 @@ internal static class LegacyMeshSelfTests
             string box = Path.Combine(folder, "box.v3d"), guard = Path.Combine(folder, "guard.vcm"), rf2 = Path.Combine(folder, "rf2_thing.rfm");
             File.WriteAllBytes(box, SyntheticExporterMesh.SampleStatic());
             File.WriteAllBytes(guard, SyntheticExporterMesh.SampleCharacter());
-            // A Red Faction II mesh header (same magic, version 0x114): refused with a reason.
-            File.WriteAllBytes(rf2, [0x12, 0x87, 0x12, 0x87, 0x14, 0x01, 0, 0, .. new byte[56]]);
+            // A Red Faction II prototype mesh header (same magic, version 8; the game's 0x114 meshes are read): refused with a reason.
+            File.WriteAllBytes(rf2, [0x12, 0x87, 0x12, 0x87, 0x08, 0, 0, 0, .. new byte[56]]);
 
             // .v3d: a read-only tab with the convert banner
             var v3d = await Open(ctx, box, opened);
@@ -126,7 +126,7 @@ internal static class LegacyMeshSelfTests
 
             // a file that cannot be read
             var bad = await Open(ctx, rf2, opened);
-            if (ctx.Check(bad is { IsLegacy: true }, "a Red Faction II .rfm still opens a tab"))
+            if (ctx.Check(bad is { IsLegacy: true }, "a Red Faction II prototype .rfm still opens a tab"))
             {
                 ctx.Check(bad!.Diagnostics.Any(d => d.Code == LegacyMeshSource.UnreadableCode && d.Message.Contains("Red Faction II", StringComparison.Ordinal)),
                     "Problems says why: " + bad.Diagnostics.FirstOrDefault()?.Message);

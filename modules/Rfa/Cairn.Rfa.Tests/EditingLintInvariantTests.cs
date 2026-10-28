@@ -107,7 +107,7 @@ public class EditingLintInvariantTests
         var keys = good.Bones[1].RotationKeys;
         var pos = good.Bones[1].PositionKeys;
 
-        FixRemoves(ClipRules.UnsupportedVersion, good with { Version = 9 });
+        FixRemoves(ClipRules.UnsupportedVersion, good with { Version = 10 });
         FixRemoves(ClipRules.NoPositionKeys, ClipEdit.WithPositionKeys(good, 1, []));
         FixRemoves(ClipRules.NoRotationKeys, ClipEdit.WithRotationKeys(good, 1, []));
         FixRemoves(ClipRules.KeyTimesNotIncreasing, ClipEdit.WithRotationKeys(good, 1, [keys[1], keys[0], .. keys.Skip(2)]));

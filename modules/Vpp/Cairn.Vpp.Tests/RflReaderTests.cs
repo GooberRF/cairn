@@ -119,6 +119,23 @@ public sealed class RflReaderTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Rf2LevelsAreNamedWithoutAnUnsupportedWarning()
+    {
+        byte[] level = SyntheticLevel.Rf2();
+        var s = RflReader.ReadSummary(level, "rf2.rfl");
+        Assert.Equal(RflReader.Rf2Version, s.Version);
+        Assert.Equal("Red Faction II (295)", s.VersionLabel);
+        Assert.Equal("RF2 level", s.LevelName);
+        Assert.Empty(s.Notes);
+        // The packfile details pane: the format named, RF2 as the game, no warning banner.
+        var sheet = Facts.VppFacts.Describe("rf2.rfl", () => new MemoryStream(level), level.Length);
+        Assert.Empty(sheet.Warnings);
+        Assert.Contains(sheet.Rows, r => r.Label == "Format version" && r.Value == "Red Faction II (295)");
+        Assert.Contains(sheet.Rows, r => r.Label == "Loads in" && r.Value == "Red Faction II");
+        Assert.DoesNotContain(sheet.Rows, r => r.Label == "Requires mod");
+    }
+
+    [Fact]
     public void FactsShowIdentityPropertiesAndPresence()
     {
         var s = RflReader.ReadSummary(SyntheticLevel.Stock(), "synthetic.rfl");
@@ -552,6 +569,14 @@ internal static class SyntheticLevel
         return w.Finish();
     }
 
+    /// <summary>The header of a Red Faction II level (version 295, no mod name) and its first resource list section.</summary>
+    public static byte[] Rf2()
+    {
+        var w = new LevelWriter(RflReader.Rf2Version, "RF2 level", null);
+        w.Section(0x7000, b => b.I32(0));
+        return w.Finish();
+    }
+
     public static byte[] AlpineShortProps()
     {
         var w = new LevelWriter(306, "Alpine", "");
@@ -576,11 +601,13 @@ internal static class SyntheticLevel
     {
         private readonly MemoryStream _out = new();
 
-        public LevelWriter(int version, string name, string mod)
+        /// <param name="mod">The mod name; null writes none (Red Faction II levels have no mod name).</param>
+        public LevelWriter(int version, string name, string? mod)
         {
             var b = new Body(_out);
             b.I32(unchecked((int)0xD4BADA55)); b.I32(version); b.I32((int)Timestamp); b.I32(0); b.I32(0); b.I32(0); b.I32(0);
-            b.Str(name); b.Str(mod);
+            b.Str(name);
+            if (mod is not null) b.Str(mod);
         }
 
         public void Section(uint id, Action<Body> write)

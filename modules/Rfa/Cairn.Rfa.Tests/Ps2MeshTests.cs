@@ -395,16 +395,19 @@ public class Ps2MeshTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void RedFactionII_IsRefused()
+    public void RedFactionII_IsNotReadAsPs2()
     {
+        // A PS2 layout behind Red Faction II's version 0x114 goes to the Red Faction II reader (Rf2MeshTests), which
+        // finds no Red Faction II mesh there; an older Red Faction II version is a prototype, refused with the reason.
         var bytes = Square(false).Build(kindField: 0x114, version: 0);
-        Assert.False(new RfmFormat().Recognises(bytes));
-        Assert.False(new RfcFormat().Recognises(bytes));
         Assert.False(new RfmFormat().TryRead(bytes, "rf2.rfm", out var mesh, out var error));
         Assert.Null(mesh);
-        Assert.StartsWith("Red Faction II mesh (version 0x114): not supported", error!.Message);
-        Assert.False(new RfcFormat().TryRead(bytes, "rf2.rfc", out _, out error));
-        Assert.Contains("Red Faction II", error!.Message);
+        Assert.StartsWith("Red Faction II mesh: ", error!.Message);
+        var prototype = Square(false).Build(kindField: 8, version: 0);
+        Assert.False(new RfmFormat().Recognises(prototype));
+        Assert.False(new RfcFormat().Recognises(prototype));
+        Assert.False(new RfcFormat().TryRead(prototype, "rf2.rfc", out _, out error));
+        Assert.StartsWith("Red Faction II prototype mesh (version 8): not supported", error!.Message);
 
         Assert.False(new RfmFormat().TryRead(Square(false).Build(version: 2), "v2.rfm", out _, out error));
         Assert.Contains("unknown PlayStation 2 mesh header", error!.Message);
@@ -535,25 +538,34 @@ public class Ps2MeshTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void RedFactionII_FilesAreAllRefused()
+    public void RedFactionII_LooseFilesAreReadOrRefusedAsPrototypes()
     {
         if (LocalPaths.Rf2Directory is not { } dir)
         {
             output.WriteLine("skipped: " + LocalPaths.HowToSet(LocalPaths.Rf2DirectoryVariable, "rf2Directory"));
             return;
         }
-        int count = 0;
+        // Never taken for PS2 meshes: version 0x114 reads as Red Faction II (Rf2MeshTests covers those in depth), the
+        // older prototype versions are refused with the reason. The header alone decides, so this stays fast.
+        int read = 0, refused = 0;
         foreach (var file in Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories).Where(IsPs2Mesh))
         {
             var bytes = File.ReadAllBytes(file);
             if (bytes.Length < 8) continue;
             ILegacyMeshFormat format = file.EndsWith(".rfc", StringComparison.OrdinalIgnoreCase) ? new RfcFormat() : new RfmFormat();
+            Assert.True(LegacyMeshSupport.IsRedFactionII(bytes), file);
+            if (BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(4)) == 0x114)
+            {
+                Assert.True(format.Recognises(bytes) || LegacyMeshSupport.Identify(bytes, Path.GetFileName(file)) is not null, file);
+                read++;
+                continue;
+            }
             Assert.False(format.Recognises(bytes), file);
             Assert.False(format.TryRead(bytes, Path.GetFileName(file), out _, out var error), file);
-            Assert.Contains("Red Faction II mesh", error!.Message);
-            count++;
+            Assert.Contains("Red Faction II prototype mesh", error!.Message);
+            refused++;
         }
-        output.WriteLine($"{count} Red Faction II meshes refused");
+        output.WriteLine($"{read} Red Faction II meshes recognised, {refused} prototypes refused");
     }
 
     // ── Exporter twins (.v3d / .vcm in RF_PS2.VPP) ──────────────────────────

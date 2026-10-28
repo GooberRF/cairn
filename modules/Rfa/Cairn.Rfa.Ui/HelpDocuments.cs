@@ -121,13 +121,15 @@ public static class HelpDocuments
             "Cairn reads four mesh formats the PC game does not load, shows them in 3D and converts them to .v3m or .v3c. "
             + "It never writes them. .v3d is the 3ds Max exporter's static mesh (the source a .v3m was compiled from) and "
             + ".vcm its character mesh, with skeleton, collision spheres, prop points and weights; .rfm and .rfc are the "
-            + "PlayStation 2 version's static and character meshes. A file is recognised by its contents, so an exporter "
-            + "mesh named .v3m still opens as one."));
+            + "PlayStation 2 version's static and character meshes, and Red Faction II's (version 0x114), whose textures "
+            + "come from the .peg packs beside them. A file is recognised by its contents, so an exporter mesh named .v3m "
+            + "still opens as one. Converting a Red Faction II mesh translates its texture names to Red Faction names by "
+            + "default; the Convert window can keep the names and write the textures from the .peg packs beside the mesh instead."));
         Add(document, Heading2("The tab"));
         Add(document, Body(
             "The tab shows the mesh converting the file makes, read-only, with a banner and a Convert… button. A character "
             + "mesh shows its skeleton and plays preview clips like a .v3c. Problems lists, as information (LEG100), what "
-            + "converting approximates; a file that cannot be read (a Red Faction II mesh, a damaged file) opens with the "
+            + "converting approximates; a file that cannot be read (an early Red Faction II prototype, a damaged file) opens with the "
             + "reason (LEG001), and Save and Save As are off."));
         Add(document, Heading2("Converting"));
         Add(document, Body(
@@ -135,8 +137,9 @@ public static class HelpDocuments
             + "into a folder, or into the packfile the mesh came from as a new entry (one undo step in the packfile's tab). "
             + "Next to the source is off when that is the game directory. A taken name gets a free one unless Replace is "
             + "ticked. Save As on the tab writes the converted mesh too, never over the file the tab was read from. In a "
-            + "packfile, select meshes and use Convert meshes… (right-click, or the Packfile menu) to convert them all as "
-            + "one undo step, with a report."));
+            + "packfile, select meshes and use Convert meshes and animations… (right-click, or the Packfile menu) to convert "
+            + "them all as one undo step, with a report. File › Convert to also offers glTF (.gltf or .glb), with the textures "
+            + "as PNG; a Red Faction II mesh keeps its own texture names there."));
         Add(document, Heading2("What the conversion does"));
         Add(document, Body(
             "Exporter meshes convert the way the game's mesh compiler did: one smooth normal per position, each triangle's "
@@ -146,6 +149,30 @@ public static class HelpDocuments
             + "their weights are 1/16 steps; when the same-named .v3d or .vcm is beside a .rfm or .rfc (the same packfile or "
             + "folder), Cairn converts that instead and says so. Material flag 0x8 (a texture with alpha) is not set; the "
             + "engine does not read material flags."));
+        Add(document, Heading2("Red Faction II animations (.rfa version 9)"));
+        Add(document, Body(
+            "Red Faction II's clips are .rfa files of version 9, with shorter keys (no eases, no control points). They open "
+            + "read-only in a clip tab, with a banner and a Convert… button, and play on the Red Faction II character that "
+            + "fits them best (the clip's name first, then the skeleton it was made on), converted on the fly: one beside the "
+            + "clip in its packfile or folder, else one of the Red Faction II install it comes from, else one of the other "
+            + "open packfiles. Preview mesh lists the Red Faction II characters of the open packfiles (the clip's own first), "
+            + "best first; a character picked there wins and is remembered. Red Faction meshes are left out (the clip would "
+            + "play mangled on them) unless Other game is ticked. A packfile preview plays "
+            + "them the same way. File › Convert to › Red Faction clip (.rfa), the banner, or Convert meshes and animations… "
+            + "in a packfile writes the version 8 clip Red Faction plays, with every key kept and position keys joined by "
+            + "straight lines; it plays on a Red Faction II character converted to .v3c. The converted clip keeps its name and "
+            + "never replaces a Red Faction II clip, the one it was read from or another, even with Replace (it takes a free "
+            + "name). Cairn never writes version 9."));
+        Add(document, Heading2("Open packfiles in the Animations library"));
+        Add(document, Body(
+            "Every packfile open in Cairn (a .vpp, a PS2 packfile, a Red Faction II .toc_group) gets a group at the top of "
+            + "the library's Meshes and Clips tabs, with its characters in skeleton families (Red Faction II .rfc characters "
+            + "too), its static meshes and its clips. Its headers are read in the background when the tab opens; the group "
+            + "follows the packfile's changes and goes when it closes. Double-click plays a clip on the mesh tab in front or "
+            + "makes a mesh the preview mesh of the clip tab in front; Ctrl+double-click opens it through the packfile's Open "
+            + "in Cairn. A clip and a mesh of different games never play together: double-click opens a new tab and says why. "
+            + "The Preview mesh and Preview clip lists start with the tab's own packfile, then the other open packfiles, then "
+            + "the library. Nothing is written to a packfile."));
         return document;
     }
 

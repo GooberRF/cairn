@@ -16,6 +16,18 @@ public sealed record PreviewClipOption(LibraryClip? Clip, string Label, string N
         ? "Show the mesh's bind (rest) pose"
         : $"{Clip.Name} · {Clip.BoneCount} bones · {Clip.Facts?.Duration / (double)RfaClip.TicksPerFrame:0.#} frames · {Clip.Location.DisplayLocation}";
 
+    /// <summary>The picker's group header (the mesh's own packfile, another one, "Library"), or null for none.</summary>
+    public string? Group { get; init; }
+
+    /// <summary>True for the first entry of its <see cref="Group"/>: the list shows the heading above it.</summary>
+    public bool IsGroupStart { get; init; }
+
+    /// <summary>The heading the list shows above this entry, or null.</summary>
+    public string? GroupHeading => IsGroupStart ? Group : null;
+
+    /// <summary>The open packfile the clip is in, or null for the search-path library's (or Bind pose).</summary>
+    public PackfileLibrary? Source { get; init; }
+
     public override string ToString() => Label;
 }
 
@@ -29,6 +41,12 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
     private readonly bool _isStatic;
     private PreviewClipOption? _selectedPreviewClip;
     private RfaClip? _previewClip;
+    /// <summary>The library or packfile entry <see cref="_previewClip"/> was read from, or null.</summary>
+    private LibraryClip? _previewClipEntry;
+    /// <summary>Why the preview clip is no longer the one picked (its packfile entry was removed), shown until another pick.</summary>
+    private string? _lostNotice;
+    /// <summary>The snapshot of its own packfile a work copy's textures were last looked up in, or null.</summary>
+    private object? _ownVersion;
     private bool _userChoseClip;
     private bool _syncingPicker;
     private int _clipRequest;
@@ -85,8 +103,16 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
     /// <summary>True for a .v3d, .vcm, .rfm or .rfc tab (until it is saved as .v3m/.v3c).</summary>
     public bool IsLegacy => _legacy is not null;
 
+    /// <summary>True for a Red Faction II mesh's tab: it plays Red Faction II clips only (a clip stores bone indices only).</summary>
+    public bool IsRedFactionIIMesh => _legacy?.Mesh?.IsRedFactionII == true;
+
     /// <summary>Opens the Convert window for this mesh.</summary>
     public RelayCommand ConvertLegacyCommand { get; }
+
+    /// <summary>A Red Faction II mesh also finds its textures inside the .peg packs beside it.</summary>
+    public override AssetResolver Resolver =>
+        _legacy is { } legacy && LegacyMeshTextures.ResolverFor(legacy, DisplayName, FilePath, AssetSiblings.For(Shell.Host, FilePath), Shell.Assets.ResolverFor(Folder)) is { } layered
+            ? layered : base.Resolver;
 
     public override bool ShowsReadOnlyBanner => IsReadOnly && _legacy is null;
 
@@ -145,7 +171,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         if (l.Mesh is null)
         {
             yield return new Diagnostic(LegacyMeshSource.UnreadableCode, DiagnosticSeverity.Error, $"{DisplayName} could not be read: {l.Error}",
-                "Cairn reads the exporter meshes (.v3d, .vcm) and Red Faction's PlayStation 2 meshes (.rfm, .rfc). Red Faction II's meshes and damaged files cannot be converted, and the tab cannot be saved: there is no mesh to write.",
+                "Cairn reads the exporter meshes (.v3d, .vcm), Red Faction's PlayStation 2 meshes and Red Faction II's meshes (.rfm, .rfc). Damaged files and Red Faction II's early prototype meshes cannot be converted, and the tab cannot be saved: there is no mesh to write.",
                 DiagnosticLocation.Document);
             yield break;
         }
@@ -171,8 +197,12 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         get => _selectedPreviewClip;
         set
         {
-            if (!Set(ref _selectedPreviewClip, value) || _syncingPicker || value is null) return;
+            bool changed = Set(ref _selectedPreviewClip, value);
+            if (_syncingPicker || value is null) return;
+            // the entry shown picked again: nothing to do, unless it is not the one playing
+            if (!changed && ReferenceEquals(value.Clip, _previewClipEntry) && (value.Clip is null) == (_previewClip is null)) return;
             _userChoseClip = true;
+            _lostNotice = null;
             LoadPreviewClip(value.Clip);
         }
     }
@@ -192,6 +222,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
     {
         ArgumentNullException.ThrowIfNull(clip);
         _userChoseClip = true;
+        _lostNotice = null;
         if (!PreviewClipOptions.Any(o => ReferenceEquals(o.Clip, clip)))
             PreviewClipOptions.Insert(1, new PreviewClipOption(clip, clip.Name, $"{clip.BoneCount} bones"));
         LoadPreviewClip(clip, play);
@@ -273,6 +304,55 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         if (_previewClip is null && !_userChoseClip) ChoosePreviewClip();
     }
 
+    /// <summary>
+    /// A packfile opened, changed or closed: the picker follows; a work copy's textures are looked up again in its packfile
+    /// as it is now; a preview clip from a packfile that changed plays as its entry is now (or, removed, goes back to the
+    /// automatic choice with a notice).
+    /// </summary>
+    public override void OnPackfileSourcesChanged()
+    {
+        RebuildPickerOptions();
+        FollowOwnPackfile();
+        if (FollowPackfileClip()) return;
+        if (_previewClip is null && !_userChoseClip) ChoosePreviewClip();
+    }
+
+    /// <summary>
+    /// A work copy (Open in Cairn): when its packfile has a new snapshot (an edit, a save), the viewport's resolver is
+    /// made again over the packfile's current entries, so a texture is never read through offsets of a file saved over.
+    /// </summary>
+    private void FollowOwnPackfile()
+    {
+        if (_liveEdit || Shell.Packfiles.OpenSourceOf(AssetSiblings.SourceKeyOf(Shell.Host, FilePath)) is not { } source || ReferenceEquals(source.Version, _ownVersion)) return;
+        _ownVersion = source.Version;
+        Scene.SetMesh(Current, DisplayName, Resolver);
+        Scene.SetAnimation(_previewClip, Playback.Time);
+    }
+
+    /// <summary>
+    /// The preview clip came from a packfile that changed since (a new snapshot, read again): its entry as it is now
+    /// plays, or, when the packfile no longer has it, the preview goes back to the automatic choice with a notice. A
+    /// closed packfile's clip keeps playing (it is in memory); a packfile being read again is waited for. True when the
+    /// preview clip was changed.
+    /// </summary>
+    private bool FollowPackfileClip()
+    {
+        var packfiles = Shell.Packfiles;
+        if (_previewClipEntry is not { } shown || PackfileLibrary.KeyOf(shown) is not { } key || !packfiles.IsOpen(key)) return false;
+        if (packfiles.LibraryOf(key) is not { } library || library.Contains(shown)) return false;
+        if (library.FindClip(shown.Name) is { IsReadable: true } now && PackfileLibrary.IsRedFactionII(now) == PackfileLibrary.IsRedFactionII(shown))
+        {
+            LoadPreviewClip(now);
+            return true;
+        }
+        _lostNotice = $"{shown.Name} is no longer in {library.Label}, so the preview went back to the automatic choice.";
+        _userChoseClip = false;
+        LoadPreviewClip(null);
+        ChoosePreviewClip();
+        if (_previewClip is null) Scene.SetNotice(_lostNotice, warning: true);
+        return true;
+    }
+
     public override void OnAssetsChanged()
     {
         Scene.SetMesh(Current, DisplayName, Resolver);
@@ -306,29 +386,126 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
             var library = Shell.Assets.Snapshot;
             var usage = Shell.Assets.Usage;
             int bones = Scene.Skeleton.Count;
+            bool rf2 = IsRedFactionIIMesh;
+            // the open packfiles first (the mesh's own, then the others): clips of its game with its bone count
+            var own = Shell.Packfiles.OwnOf(FilePath);
+            bool grouped = false;
+            foreach (var source in Shell.Packfiles.InPickerOrder(FilePath))
+            {
+                string group = ReferenceEquals(source, own) ? PickerGroups.Own(source) : PickerGroups.Other(source);
+                foreach (var (clip, note) in PackfileClips(source, bones, rf2))
+                {
+                    options.Add(new PreviewClipOption(clip, clip.Name, note) { Group = group, Source = source });
+                    grouped = true;
+                }
+            }
+            // then the library's, of the mesh's game only
+            string? libraryGroup = PickerGroups.Library(grouped);
             var seen = new HashSet<LibraryClip>(ReferenceEqualityComparer.Instance);
             if (library.FindMesh(DisplayName) is { } self && self.BoneCount == bones)
             {
                 foreach (var clip in library.PreviewClipCandidates(self.Name, usage))
                 {
-                    if (seen.Add(clip)) options.Add(new PreviewClipOption(clip, clip.Name, NoteFor(clip, usage)));
+                    if (PackfileLibrary.IsRedFactionII(clip) == rf2 && seen.Add(clip)) options.Add(new PreviewClipOption(clip, clip.Name, NoteFor(clip, usage)) { Group = libraryGroup });
                 }
             }
             foreach (var clip in library.CompatibleClips(bones))
             {
-                if (seen.Add(clip)) options.Add(new PreviewClipOption(clip, clip.Name, NoteFor(clip, usage)));
+                if (PackfileLibrary.IsRedFactionII(clip) == rf2 && seen.Add(clip)) options.Add(new PreviewClipOption(clip, clip.Name, NoteFor(clip, usage)) { Group = libraryGroup });
             }
         }
         _syncingPicker = true;
         try
         {
             var selectedClip = _selectedPreviewClip?.Clip;
+            PickerGroups.MarkStarts(options, o => o.Group, o => o with { IsGroupStart = true });
             PreviewClipOptions.Clear();
             foreach (var o in options) PreviewClipOptions.Add(o);
-            SelectedPreviewClip = PreviewClipOptions.FirstOrDefault(o => selectedClip is null ? o.Clip is null : o.Clip is not null && o.Clip.Name == selectedClip.Name)
+            SelectedPreviewClip = (selectedClip is null ? null : Matching(selectedClip)) ?? PreviewClipOptions.FirstOrDefault(o => selectedClip is null ? o.Clip is null : ReferenceEquals(o.Clip, selectedClip))
                 ?? PreviewClipOptions[0];
         }
         finally { _syncingPicker = false; }
+    }
+
+    /// <summary>
+    /// The picker entry of <paramref name="clip"/>: the same entry; for a packfile's clip the entry of its name in the same
+    /// packfile (by source key, never a packfile of the same name); for a library clip one of its name from the same
+    /// place, else of its name. Null when the picker does not list it.
+    /// </summary>
+    private PreviewClipOption? Matching(LibraryClip clip)
+    {
+        if (PreviewClipOptions.FirstOrDefault(o => ReferenceEquals(o.Clip, clip)) is { } same) return same;
+        bool SameName(PreviewClipOption o) => o.Clip is not null && string.Equals(o.Clip.Name, clip.Name, StringComparison.OrdinalIgnoreCase);
+        if (PackfileLibrary.KeyOf(clip) is { } key) return PreviewClipOptions.FirstOrDefault(o => SameName(o) && PackfileLibrary.KeyOf(o.Clip) == key);
+        return PreviewClipOptions.FirstOrDefault(o => SameName(o) && o.Source is null && o.Clip!.Location.DisplayLocation == clip.Location.DisplayLocation)
+            ?? PreviewClipOptions.FirstOrDefault(o => SameName(o) && o.Source is null);
+    }
+
+    // ── Clips of the open packfiles ──────────────────────────────────────────
+
+    /// <summary>How the Red Faction II clips of each packfile snapshot rank on this mesh (by fit), once worked out.</summary>
+    private readonly Dictionary<PackfileLibrary, IReadOnlyList<(string Name, double JointOffset)>> _rf2Ranks = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<PackfileLibrary> _ranking = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// The clips of <paramref name="source"/> this mesh plays, with their picker notes: a Red Faction mesh's Red Faction
+    /// clips with its bone count by name; a Red Faction II character's Red Faction II clips ranked by name and bind-pose fit
+    /// (<see cref="Formats.Legacy.Rf2AnimationConverter.RankClips"/>; worked out in the background the first time, by name
+    /// until then).
+    /// </summary>
+    private IEnumerable<(LibraryClip Clip, string Note)> PackfileClips(PackfileLibrary source, int bones, bool rf2)
+    {
+        var clips = source.ClipsFor(bones, rf2);
+        if (!rf2 || clips.Count == 0) return clips.Select(c => (c, Frames(c)));
+        if (!_rf2Ranks.TryGetValue(source, out var ranks))
+        {
+            RankRf2Clips(source, clips);
+            return clips.Select(c => (c, Frames(c)));
+        }
+        var byName = clips.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+        return ranks.Where(r => byName.ContainsKey(r.Name)).Select(r => (byName[r.Name],
+            double.IsNaN(r.JointOffset) ? Frames(byName[r.Name]) : $"{Frames(byName[r.Name])} · fit {r.JointOffset * 1000:0.#} mm"));
+    }
+
+    private static string Frames(LibraryClip clip) =>
+        clip.Facts is { } f ? (f.Duration / (double)RfaClip.TicksPerFrame).ToString("0.#", CultureInfo.CurrentCulture) + " f" : "";
+
+    /// <summary>Reads the candidate clips off the UI thread and ranks them on this mesh's skeleton; the picker follows.</summary>
+    private void RankRf2Clips(PackfileLibrary source, IReadOnlyList<LibraryClip> clips)
+    {
+        if (!_ranking.Add(source)) return;
+        var bones = Current.Bones.ToArray();
+        string name = DisplayName;
+        var read = source.Contents.Read;
+        var busy = BusyTracker.Begin("rank clips for " + name);
+        _ = Task.Run(() =>
+        {
+            var loaded = new List<(string, RfaClip)>();
+            foreach (var clip in clips)
+            {
+                try
+                {
+                    if (read(clip.Name) is { } bytes) loaded.Add((clip.Name, RfaReader.Read(bytes, clip.Name)));
+                }
+                catch (AssetFormatException)
+                {
+                    // an unreadable clip is not ranked (it is still listed)
+                }
+            }
+            return Formats.Legacy.Rf2AnimationConverter.RankClips(name, bones, loaded);
+        }).ContinueWith(task => Shell.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            busy.Dispose();
+            _ranking.Remove(source);
+            if (!task.IsCompletedSuccessfully) return;
+            // unranked clips (unreadable) keep their place at the end
+            var ranked = task.Result.ToList();
+            foreach (var clip in clips.Where(c => ranked.All(r => !string.Equals(r.Name, c.Name, StringComparison.OrdinalIgnoreCase)))) ranked.Add((clip.Name, double.NaN));
+            _rf2Ranks[source] = ranked;
+            // forget the rankings of packfile snapshots no longer open
+            foreach (var stale in _rf2Ranks.Keys.Where(k => !Shell.Packfiles.Libraries.Contains(k)).ToList()) _rf2Ranks.Remove(stale);
+            RebuildPickerOptions();
+        })), TaskScheduler.Default);
     }
 
     private string NoteFor(LibraryClip clip, Cairn.Rfa.Formats.Tbl.ClipUsageIndex usage)
@@ -342,7 +519,9 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
 
     private void ChoosePreviewClip()
     {
-        if (!HasSkeleton) return;
+        // a Red Faction II skeleton is not a Red Faction one: a clip that merely has as many bones would twist it, so
+        // its tab starts in the bind pose (the picker still lists the clips)
+        if (!HasSkeleton || _legacy?.Mesh?.IsRedFactionII == true) return;
         var library = Shell.Assets.Snapshot;
         LibraryClip? pick = null;
         if (library.FindMesh(DisplayName) is { } self && self.BoneCount == Scene.Skeleton.Count)
@@ -358,6 +537,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         if (clip is null)
         {
             _previewClip = null;
+            _previewClipEntry = null;
             Playback.SetClip(null);
             Scene.SetAnimation(null, Playback.Time);
             SyncPicker(null);
@@ -379,11 +559,13 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
                         return;
                     }
                     _previewClip = task.Result;
+                    _previewClipEntry = clip;
                     Playback.SetClip(_previewClip);
                     Scene.SetAnimation(_previewClip, Playback.Time);
-                    Scene.SetNotice(_previewClip.BoneCount != Scene.Skeleton.Count
+                    string? mismatch = _previewClip.BoneCount != Scene.Skeleton.Count
                         ? $"{clip.Name} has {_previewClip.BoneCount} bones; this mesh has {Scene.Skeleton.Count}. The game would play it wrong."
-                        : null, warning: true);
+                        : null;
+                    Scene.SetNotice(_lostNotice is { } lost ? (mismatch is null ? lost : lost + " " + mismatch) : mismatch, warning: true);
                     SyncPicker(clip);
                     RaiseAll(nameof(PreviewClip), nameof(StatusDurationText));
                     if (play)
@@ -404,8 +586,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         _syncingPicker = true;
         try
         {
-            SelectedPreviewClip = PreviewClipOptions.FirstOrDefault(o => clip is null ? o.Clip is null : ReferenceEquals(o.Clip, clip))
-                ?? PreviewClipOptions.FirstOrDefault(o => clip is not null && o.Clip?.Name == clip.Name);
+            SelectedPreviewClip = clip is null ? PreviewClipOptions.FirstOrDefault(o => o.Clip is null) : Matching(clip);
         }
         finally { _syncingPicker = false; }
     }
@@ -436,6 +617,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         ++_clipRequest;
         _userChoseClip = true;
         _previewClip = clip;
+        _previewClipEntry = null;
         Playback.SetClip(clip);
         Scene.SetAnimation(clip, Playback.Time);
         RaiseAll(nameof(PreviewClip), nameof(StatusDurationText));

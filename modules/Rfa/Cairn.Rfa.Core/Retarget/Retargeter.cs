@@ -1126,7 +1126,8 @@ public static class Retargeter
 
         private RfaClip BuildClip() => new()
         {
-            Version = _clip.Version,
+            // a Red Faction II clip retargets to a Red Faction one (version 9 is never written)
+            Version = _clip.IsRedFactionII ? 8 : _clip.Version,
             PosReduction = _clip.PosReduction,
             RotReduction = _clip.RotReduction,
             StartTime = _clip.StartTime,

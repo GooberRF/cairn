@@ -148,7 +148,8 @@ public class AssetPreviewPane : UserControl, IDisposable
         if (_disposed) return;
         int generation = Begin(source);
         string ext = source.Extension;
-        if (ext.Equals(".rfl", StringComparison.OrdinalIgnoreCase))
+        // without a module that previews levels, the details below are the level's preview
+        if (ext.Equals(".rfl", StringComparison.OrdinalIgnoreCase) && FindProvider(source.Name) is null)
         {
             var line = PreviewUi.Text("Levels have no preview: the level's information, statistics and referenced files are in the details below.", "HintText");
             line.Margin = new Thickness(10, 6, 10, 6);
