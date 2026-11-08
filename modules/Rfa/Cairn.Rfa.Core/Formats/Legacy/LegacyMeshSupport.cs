@@ -23,7 +23,8 @@ public sealed record LegacyMeshConversion(
 
     /// <summary>
     /// Files written beside the mesh (a Red Faction II mesh converted with its original texture names: its textures
-    /// from the <c>.peg</c> packs, as <c>.tga</c>); empty otherwise.
+    /// from the <c>.peg</c> packs, as <c>.tga</c>; a Red Faction II character over the texture limit: its atlases); empty
+    /// otherwise.
     /// </summary>
     public ImmutableArray<(string Name, byte[] Bytes)> Textures { get; init; } = [];
 
@@ -55,7 +56,8 @@ public sealed record LegacyConvertOptions
 
     /// <summary>
     /// The textures beside the source (its <c>.peg</c> packs, see <see cref="LegacyMeshSupport.TexturePacksFor"/>), for
-    /// <see cref="Rf2TextureMode.KeepOriginals"/>; null when there are none.
+    /// <see cref="Rf2TextureMode.KeepOriginals"/> and for the atlas of a character over the texture limit (in either
+    /// mode; read only then); null when there are none.
     /// </summary>
     public PegTextureSet? TexturePacks { get; init; }
 }
@@ -281,13 +283,13 @@ public static class LegacyMeshSupport
     /// <param name="mesh">The mesh.</param>
     /// <param name="sourceName">The legacy file's name (the output takes its stem).</param>
     /// <param name="options">What happens to a Red Faction II mesh's textures; null for <see cref="LegacyConvertOptions.Default"/>.</param>
-    /// <exception cref="AssetFormatException">The mesh cannot be compiled; the message says why.</exception>
+    /// <exception cref="AssetFormatException">The mesh cannot be compiled, or a Red Faction II character's textures cannot be brought within the limit; the message says why.</exception>
     public static LegacyMeshConversion Convert(LegacyMesh mesh, string sourceName, LegacyConvertOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(mesh);
         var textureNotes = new List<string>();
         var textures = ImmutableArray<(string, byte[])>.Empty;
-        if (mesh.IsRedFactionII) (mesh, textureNotes, textures) = Rf2MeshTextures.Apply(mesh, options ?? LegacyConvertOptions.Default);
+        if (mesh.IsRedFactionII) (mesh, textureNotes, textures) = Rf2MeshTextures.Apply(mesh, options ?? LegacyConvertOptions.Default, sourceName);
         var compiled = Compile(mesh);
         byte[] bytes = V3dWriter.Write(compiled);
         string output = Path.ChangeExtension(Path.GetFileName(sourceName), TargetExtension(mesh));

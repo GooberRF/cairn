@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Cairn.Ui.Modules;
+using Cairn.Ui.Services;
 
 namespace Cairn.Viewport;
 
@@ -165,7 +166,8 @@ public sealed class FlyCameraController : IDisposable
         _lastMouse = p;
         if ((p - _downAt).Length > 3) _moved = true;
         if (!_moved) return;
-        Look(delta.X * LookSensitivity, delta.Y * LookSensitivity);
+        var mouse = ViewportMouse.Current;
+        Look(delta.X * LookSensitivity * mouse.FlyX, delta.Y * LookSensitivity * mouse.FlyY);
         e.Handled = true;
     }
 

@@ -97,9 +97,8 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
         var options = new LegacyConvertOptions
         {
             Rf2Textures = rf2Textures,
-            TexturePacks = rf2Textures == Rf2TextureMode.KeepOriginals
-                ? LegacyMeshTextures.PacksForTab(legacy, doc.DisplayName, doc.FilePath, doc.FilePath is null ? null : AssetSiblings.For(Host, doc.FilePath))
-                : null,
+            // read only for what needs pixels: kept textures, or a character's atlas
+            TexturePacks = LegacyMeshTextures.PacksForTab(legacy, doc.DisplayName, doc.FilePath, doc.FilePath is null ? null : AssetSiblings.For(Host, doc.FilePath)),
         };
         return LegacyMeshSupport.Convert(legacy.Bytes, doc.DisplayName, SiblingReader(doc), options);
     }
@@ -287,6 +286,33 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
         return written;
     }
 
+    /// <summary>
+    /// Writes files a tab's mesh refers to into its packfile, or beside it (asking before replacing one). Returns false,
+    /// after saying why, when they were not written.
+    /// </summary>
+    internal bool WriteBeside(MeshDocumentViewModel doc, IReadOnlyList<(string Name, byte[] Bytes)> files)
+    {
+        if (doc.FilePath is { } path && PackfileOf(doc) is not null && ArchiveTarget is { } target)
+            return target.AddFiles(path, $"Add {files[0].Name}", files, replace: true) is not null;
+        if (NextToFolder(doc) is not { Length: > 0 } folder)
+        {
+            workspace.Dialogs.ShowError($"Could not write {files[0].Name}", $"There is no folder to write it to ({NoNextToReason(SourceFolder(doc))}). Save the mesh in another folder first.");
+            return false;
+        }
+        var taken = files.Where(f => File.Exists(Path.Combine(folder, f.Name))).Select(f => f.Name).ToList();
+        if (taken.Count > 0 && !workspace.Dialogs.Confirm($"Replace {string.Join(", ", taken)}?", $"{folder} already holds {string.Join(", ", taken)}.", "Replace")) return false;
+        try
+        {
+            foreach (var (name, bytes) in files) AtomicFile.WriteAllBytes(Path.Combine(folder, name), bytes);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            workspace.Dialogs.ShowError($"Could not write {files[0].Name}", ex.Message);
+            return false;
+        }
+    }
+
     /// <summary>The textures of <paramref name="conversions"/>, once per name (for adding to a packfile with the meshes).</summary>
     private static IEnumerable<(string Name, byte[] Bytes)> DistinctTextures(IEnumerable<LegacyMeshConversion> conversions)
     {
@@ -403,12 +429,11 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
                         else failed.Add($"{entry.Name}: another selected entry makes {clip.OutputName} too; left out");
                         continue;
                     }
-                    // a Red Faction II mesh with its texture names kept: its textures from the .peg entries beside it
+                    // a Red Faction II mesh: the .peg entries beside it, read only for kept textures or a character's atlas
                     var options = new LegacyConvertOptions
                     {
                         Rf2Textures = rf2Textures,
-                        TexturePacks = rf2Textures == Rf2TextureMode.KeepOriginals && LegacyMeshSupport.IsRedFactionII(bytes)
-                            ? LegacyMeshTextures.PacksForEntry(entry.Name, byName.Values, request.ArchiveName) : null,
+                        TexturePacks = LegacyMeshSupport.IsRedFactionII(bytes) ? LegacyMeshTextures.PacksForEntry(entry.Name, byName.Values, request.ArchiveName) : null,
                     };
                     var conversion = LegacyMeshSupport.Convert(bytes, entry.Name, name => byName.TryGetValue(name, out var twin) ? twin.Read() : null, options);
                     if (!outputs.Add(conversion.OutputName))

@@ -278,6 +278,8 @@ module had before are still there.
   picks it yourself. The page says whether the folder looks like an install.
 - **Search folders**: extra folders where Cairn looks for the textures, meshes, clips and tables your files name,
   such as your mod's work folder. **Add…**, **Remove**, **Move up** and **Move down** set them and their order.
+- **3D viewport mouse**: **Invert horizontal** and **Invert vertical** for **Orbit** (left-drag in every 3D preview)
+  and, separately, for **Fly mode** (mouse look in the level preview). Panning always follows the cursor.
 
 For previews and checks, Cairn finds files by name, as the game does. It looks in the open file's own folder (or
 packfile) first, then in your search folders (loose files before any `.vpp` in the same folder), then in the game: its packfiles and
@@ -699,6 +701,7 @@ Useful while looking:
 
 - **Camera**: left-drag orbits, middle-drag (or **Shift**+left-drag) pans, the wheel zooms. **F** frames the
   selected bones or everything; **1**, **3** and **7** give front, side and top views; **5** switches perspective.
+  To reverse the orbit along either axis, see **Tools › Settings… › General › 3D viewport mouse**.
 - The viewport toolbar shows or hides the skeleton, bone names (**Aa**), the grid, collision spheres, prop points
   and the root's path, and switches between the clip and the bind pose. The eye button picks textured, flat or
   hidden mesh, full bright and the background.
@@ -1090,6 +1093,8 @@ Rules on the Blender side:
   **Weights › Limit Total**, 4; more are cut to the strongest 4, MI007).
 - **At most 3 levels of detail, 7 textures each.** Object names hold 23 characters and texture names 31, in plain
   Latin letters.
+- **A character (`.v3c`) must be one submesh.** The game keeps only the last submesh of a `.v3c`, so join your objects
+  before exporting (MI028 warns if you don't, and V3C028 offers a fix). A static mesh (`.v3m`) may have many.
 - **Textures are names, not files.** The mesh stores only each texture's file name; ship the textures with your mod.
   The game also finds a `.png` or `.dds` with the same name as the `.tga`.
 
@@ -1168,6 +1173,12 @@ textures from the packs beside the converted mesh as `.tga` files instead. They 
 Convert to**), keeping their own texture names, with the textures as PNG. The report lists what is approximated, such
 as material settings Red Faction has no place for. Early prototype versions open with the reason in Problems. See
 [Use Red Faction II content](#use-red-faction-ii-content).
+
+A Red Faction II character always converts to one submesh, because the game keeps only the last submesh of a `.v3c`.
+Many of them use more than 7 textures, so Cairn combines the fewest it can into an atlas (`<mesh>_atlas.tga`) and
+writes it beside the converted mesh, whichever texture option you choose, so ship that file with your mod. It needs the
+`.peg` packs beside the source mesh. Tiling textures and textures with different material settings stay separate, and
+if too few can be combined the conversion stops and names them.
 
 ### Convert Red Faction II animations
 
@@ -2246,6 +2257,8 @@ flagged at the top. **Copy all** copies the facts as text.
   move, **Q** and **E** to go down and up, **Shift** to go faster and **Ctrl** slower; the wheel steps forward and
   back. While you fly, these keys move the camera even with **Ctrl** held (**Ctrl+W** does not close the tab). Press
   **V** again to go back to orbiting.
+- **Inverting the mouse**: **Tools › Settings… › General › 3D viewport mouse** reverses the orbit and the fly-mode
+  mouse look along either axis, each on its own.
 - **Compiled** or **Brushes** (levels only): the compiled geometry is what the game draws, the rooms and movers that
   the level editor built; the brushes are what the editor works on. A group file has only brushes.
 - **Faces**: tick the face classes to draw: **Ordinary faces**, **Portal**, **Detail**, **Sky**, **Invisible**,

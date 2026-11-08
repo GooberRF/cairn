@@ -48,6 +48,7 @@ public partial class App : Application
         if (diagnostic && string.IsNullOrEmpty(_settings.GameDirectory) && Cairn.Workspace.LocalPaths.GameDirectory is { } game)
             _settings.GameDirectory = game;
         if (_options.Theme is { } forced) _settings.Theme = forced;
+        ViewportMouse.Load(_settings);
         var theme = new ThemeService(this);
         theme.Apply(_settings.Theme);
 

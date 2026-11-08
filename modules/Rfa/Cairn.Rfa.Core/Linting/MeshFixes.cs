@@ -32,6 +32,18 @@ internal static class MeshFixes
                 : m with { Header = m.Header with { SubmeshCount = submeshes, CollisionSphereCount = spheres } };
         });
 
+    /// <summary>
+    /// Joins a character's submeshes; when the joined mesh would use too many textures the UI makes an atlas as well,
+    /// which needs the images and writes a file, so it cannot be a pure edit.
+    /// </summary>
+    public static QuickFix MergeSubmeshes(V3dFile mesh) =>
+        V3dTextureAtlas.MostTextures(V3dSubmeshMerge.Merge(mesh).Submeshes[0]) > V3dBuilder.MaxTexturesPerLod
+            ? new("Merge the submeshes and combine textures into an atlas…", QuickFixKind.MergeWithAtlas)
+            : new("Merge the submeshes into one", QuickFixKind.Edit, MeshEdit: m =>
+                m.Kind == V3dKind.Character && m.Submeshes.Count() > 1 && V3dSubmeshMerge.Obstacle(m) is null
+                    ? V3dBuilder.Build(V3dSubmeshMerge.Merge(m), V3dBuildOptions.Preserve)
+                    : m);
+
     public static QuickFix MakeRoot(int bone) =>
         new($"Make bone {bone} a root", QuickFixKind.Edit, MeshEdit: m =>
         {

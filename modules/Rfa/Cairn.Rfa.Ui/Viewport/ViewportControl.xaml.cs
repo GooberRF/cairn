@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Cairn.Rfa.Ui.ViewModels;
 using Cairn.Assets;
+using Cairn.Ui.Services;
 
 namespace Cairn.Rfa.Ui.Viewport;
 
@@ -596,8 +597,9 @@ public partial class ViewportControl : UserControl
         var camera = _scene.Camera;
         if (_drag == DragMode.Orbit)
         {
-            camera.Yaw -= delta.X * 0.4;
-            camera.Pitch += delta.Y * 0.4;
+            var mouse = ViewportMouse.Current;
+            camera.Yaw -= delta.X * 0.4 * mouse.OrbitX;
+            camera.Pitch += delta.Y * 0.4 * mouse.OrbitY;
         }
         else
         {

@@ -3,6 +3,7 @@ using System.Windows.Threading;
 using Cairn.Assets;
 using Cairn.Ui.Modules;
 using Cairn.Ui.Mvvm;
+using Cairn.Ui.Services;
 using Cairn.Workspace;
 
 namespace Cairn.Shell.Dialogs;
@@ -20,6 +21,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly ShellViewModel _shell;
     private readonly AppSettings _working;
     private readonly AppTheme _originalTheme;
+    private readonly ViewportMouse _mouse;
     private string? _selectedFolder;
     private string? _validatedDirectory;
     private bool _directoryLooksRight;
@@ -34,6 +36,7 @@ public sealed class SettingsViewModel : ObservableObject
         _shell = shell ?? throw new ArgumentNullException(nameof(shell));
         _working = shell.Settings.Clone();
         _originalTheme = shell.Settings.Theme;
+        _mouse = ViewportMouse.Read(_working);
         foreach (var folder in _working.SearchFolders) SearchFolders.Add(folder);
         Associations = new AssociationsPage(new AssociationsModel(associations ?? new WindowsAssociationStore(), shell.Modules, shell.Dialogs, shell.ShowStatus));
         Pages = [Associations, .. shell.Modules.SelectMany(m => m.SettingsPages)];
@@ -76,6 +79,16 @@ public sealed class SettingsViewModel : ObservableObject
     public bool IsThemeLight { get => Theme == AppTheme.Light; set { if (value) Theme = AppTheme.Light; } }
 
     public bool IsThemeDark { get => Theme == AppTheme.Dark; set { if (value) Theme = AppTheme.Dark; } }
+
+    // ── Viewport mouse ───────────────────────────────────────────────────────
+
+    public bool InvertOrbitX { get => _mouse.InvertOrbitX; set { if (_mouse.InvertOrbitX != value) { _mouse.InvertOrbitX = value; Raise(nameof(InvertOrbitX)); } } }
+
+    public bool InvertOrbitY { get => _mouse.InvertOrbitY; set { if (_mouse.InvertOrbitY != value) { _mouse.InvertOrbitY = value; Raise(nameof(InvertOrbitY)); } } }
+
+    public bool InvertFlyX { get => _mouse.InvertFlyX; set { if (_mouse.InvertFlyX != value) { _mouse.InvertFlyX = value; Raise(nameof(InvertFlyX)); } } }
+
+    public bool InvertFlyY { get => _mouse.InvertFlyY; set { if (_mouse.InvertFlyY != value) { _mouse.InvertFlyY = value; Raise(nameof(InvertFlyY)); } } }
 
     // ── Game directory ───────────────────────────────────────────────────────
 
@@ -250,6 +263,7 @@ public sealed class SettingsViewModel : ObservableObject
         s.GameDirectory = _working.GameDirectory;
         s.SearchFolders = [.. SearchFolders];
         s.Set(FoundViaKey, _working.Get<string>(FoundViaKey));
+        ViewportMouse.Apply(s, _mouse);
         // The shared resolver first: a module page that rebuilds its own asset services shares its indexes.
         _shell.Assets.Reconfigure(s);
         foreach (var page in Pages) page.Commit();

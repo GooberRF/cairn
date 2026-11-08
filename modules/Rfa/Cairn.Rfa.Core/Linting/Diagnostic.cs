@@ -33,6 +33,8 @@ public enum QuickFixKind
     OpenSearchSettings,
     /// <summary>Lets the user pick the file to use instead of a missing one (the App's texture browser; <see cref="QuickFix.Payload"/> is the missing name).</summary>
     LocateFile,
+    /// <summary>Merges a character's submeshes and writes a texture atlas beside it (the merged mesh would use too many textures).</summary>
+    MergeWithAtlas,
 }
 
 /// <summary>One offered repair for a diagnostic.</summary>

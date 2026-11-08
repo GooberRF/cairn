@@ -8,20 +8,30 @@ namespace Cairn.Rfa.Formats.Legacy;
 /// The texture side of a Red Faction II mesh's conversion: its material names translated to Red Faction names
 /// (<see cref="Rf2TextureMode.Translate"/>, the default), or kept with the textures written beside the converted mesh
 /// from the <c>.peg</c> packs (<see cref="Rf2TextureMode.KeepOriginals"/>). Every name that changes, stays or cannot
-/// be found is listed in the report.
+/// be found is listed in the report. A character over the texture limit first gets an atlas (<see cref="V3dTextureAtlas"/>)
+/// from the packs, in either mode.
 /// </summary>
 internal static class Rf2MeshTextures
 {
     private const int ListedNames = 8;
 
-    public static (LegacyMesh Mesh, List<string> Notes, ImmutableArray<(string Name, byte[] Bytes)> Files) Apply(LegacyMesh mesh, LegacyConvertOptions options)
+    public static (LegacyMesh Mesh, List<string> Notes, ImmutableArray<(string Name, byte[] Bytes)> Files) Apply(LegacyMesh mesh, LegacyConvertOptions options, string sourceName)
     {
         var notes = new List<string>();
+        var atlases = ImmutableArray<(string Name, byte[] Bytes)>.Empty;
+        if (mesh.Description.Kind == V3dKind.Character && mesh.Description.Submeshes.Length == 1)
+        {
+            var atlas = V3dTextureAtlas.Combine(mesh.Description.Submeshes[0], Path.GetFileNameWithoutExtension(sourceName), name => Pixels(name, options.TexturePacks));
+            mesh = mesh with { Description = mesh.Description with { Submeshes = [atlas.Submesh] } };
+            atlases = atlas.Files;
+            foreach (var (file, sources) in atlas.Combined)
+                notes.Add($"{sources.Length:N0} textures were combined into {file}, written beside the mesh with their Red Faction II pixels, because a .v3c holds {V3dBuilder.MaxTexturesPerLod} per level of detail: {List(sources)}.");
+        }
         var names = mesh.Description.Submeshes.SelectMany(s => s.Materials).Select(m => m.DiffuseMap.Text)
-            .Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        if (names.Count == 0) return (mesh, notes, []);
+            .Where(n => n.Length > 0 && !atlases.Any(a => string.Equals(a.Name, n, StringComparison.OrdinalIgnoreCase))).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (names.Count == 0) return (mesh, notes, atlases);
 
-        if (options.Rf2Textures == Rf2TextureMode.KeepOriginals) return (mesh, notes, WriteOriginals(names, options.TexturePacks, notes));
+        if (options.Rf2Textures == Rf2TextureMode.KeepOriginals) return (mesh, notes, [.. WriteOriginals(names, options.TexturePacks, notes), .. atlases]);
 
         var translations = names.Select(Rf2TextureNames.Translate).ToList();
         var changed = translations.Where(t => t.IsTranslated).ToList();
@@ -47,8 +57,12 @@ internal static class Rf2MeshTextures
             notes.Add($"{kept.Count:N0} texture name{(kept.Count == 1 ? " has" : "s have")} no Red Faction translation and keep{(kept.Count == 1 ? "s its" : " their")} Red Faction II name{(kept.Count == 1 ? "" : "s")}: {List(kept.Select(t => t.Original))}. "
                 + "Convert with the Red Faction II textures kept to write them beside the mesh.");
         }
-        return (mesh, notes, []);
+        return (mesh, notes, atlases);
     }
+
+    /// <summary>A still texture's image from the packs (an animated one cannot go in an atlas); null when there is none.</summary>
+    private static BgraImage? Pixels(string name, PegTextureSet? packs) =>
+        packs?.Find(name) is { Texture.IsAnimated: false } && !name.EndsWith(".vbm", StringComparison.OrdinalIgnoreCase) ? packs.Decode(name) : null;
 
     private static ImmutableArray<(string Name, byte[] Bytes)> WriteOriginals(List<string> names, PegTextureSet? packs, List<string> notes)
     {

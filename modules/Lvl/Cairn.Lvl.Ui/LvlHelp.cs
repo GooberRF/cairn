@@ -46,7 +46,8 @@ internal static class LvlHelp
         Para("Camera: drag with the left button to orbit, the middle button (or Shift and the left button) to pan, and the wheel to " +
              "zoom. F frames the whole level, Home resets the view, and 1, 3 and 7 look from the front, side and top. Fly (V) turns " +
              "on the fly camera: drag with either button to look around, W A S D to move, Q and E to go down and up, Shift to go " +
-             "faster and Ctrl slower; the wheel steps forward and back.");
+             "faster and Ctrl slower; the wheel steps forward and back. Tools › Settings… › General › 3D viewport mouse inverts " +
+             "the orbit and the fly-mode mouse look along either axis.");
         Para("A level with more triangles than the preview's limit (300,000 at first) asks before it is built: building a very large " +
              "level takes longer and uses more memory.");
         Heading("Converting");

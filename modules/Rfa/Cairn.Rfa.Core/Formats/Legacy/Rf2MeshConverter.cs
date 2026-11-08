@@ -7,7 +7,8 @@ namespace Cairn.Rfa.Formats.Legacy;
 
 /// <summary>
 /// Turns a parsed <see cref="Rf2MeshFile"/> into a <see cref="V3dMeshDescription"/> for <see cref="V3dBuilder"/>:
-/// one submesh per object (named after it, placed at its offset), its levels of detail with their stored switch
+/// one submesh per object (a character's objects joined into one, since a <c>.v3c</c> draws only one submesh; named after
+/// it, placed at its offset), its levels of detail with their stored switch
 /// distances, one material per texture, vertices split wherever a corner's UV differs (UVs are stored per corner),
 /// the skeleton from the stored inverse bind transforms, and the collision spheres and prop points. What the PC
 /// format cannot hold or Cairn does not understand is listed in the notes.
@@ -37,7 +38,9 @@ internal static class Rf2MeshConverter
                 stats.DroppedLods += lods.Length - V3dBuilder.MaxLods;
                 lods = lods[..V3dBuilder.MaxLods];
             }
-            foreach (var part in Split(lods, stats)) submeshes.Add(BuildSubmesh(file, obj, lods, part, stats));
+            // a .v3c draws only one submesh: a character is never cut, and its objects are joined below
+            List<HashSet<string>?> parts = character ? [null] : Split(lods, stats);
+            foreach (var part in parts) submeshes.Add(BuildSubmesh(file, obj, lods, part, stats));
 
             // facts of the object as stored, whatever it was cut into
             if (lods.Length > 1)
@@ -60,6 +63,14 @@ internal static class Rf2MeshConverter
 
         // names: the object names, made unique and fitted to the 24-byte field
         var subs = submeshes.ToList();
+        int joinedObjects = 0;
+        if (character && subs.Count > 1)
+        {
+            joinedObjects = subs.Count;
+            // an object with fewer levels of detail keeps its last one at every distance beyond it
+            int most = subs.Max(s => s.Lods.Length);
+            subs = [V3dSubmeshMerge.Merge([.. subs.Select(s => s with { Lods = [.. s.Lods, .. Enumerable.Repeat(s.Lods[^1], most - s.Lods.Length)] })])];
+        }
         var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < subs.Count; i++)
         {
@@ -96,6 +107,9 @@ internal static class Rf2MeshConverter
 
         // ── notes: what the conversion approximates, in plain words ──
         if (subs.Count == 0) notes.Add("The file holds no geometry.");
+        if (joinedObjects > 0) notes.Add($"The {joinedObjects:N0} objects were joined into one submesh: the game draws only one submesh of a .v3c.");
+        if (character && subs.Count == 1 && V3dTextureAtlas.MostTextures(subs[0]) is var textures and > V3dBuilder.MaxTexturesPerLod)
+            notes.Add($"The mesh uses {textures:N0} textures in one level of detail; a .v3c holds {V3dBuilder.MaxTexturesPerLod} in its one submesh, so converting combines the fewest needed into an atlas written beside the mesh, from the .peg packs.");
         int objects = file.Objects.Count(o => !o.Lods.IsEmpty);
         if (stats.SplitObjects > 0)
             notes.Add($"{stats.SplitObjects:N0} object{(stats.SplitObjects == 1 ? " uses" : "s use")} more than {V3dBuilder.MaxTexturesPerLod} textures in one level of detail, more than a PC mesh allows; "
@@ -177,7 +191,7 @@ internal static class Rf2MeshConverter
     }
 
     /// <summary>
-    /// The texture groups an object is cut into: one group (every texture) when no LOD uses more than a PC LOD holds,
+    /// The texture groups a static object is cut into: one group (every texture) when no LOD uses more than a PC LOD holds,
     /// else consecutive groups of at most <see cref="V3dBuilder.MaxTexturesPerLod"/> distinct texture names in order of
     /// first use.
     /// </summary>

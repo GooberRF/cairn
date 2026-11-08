@@ -93,6 +93,7 @@ toggles and the buttons of the module in front.
 | General page section | Settings |
 |---|---|
 | **Appearance** | **Follow Windows**, **Light**, **Dark**. The theme changes as you pick it; **Cancel** puts the old one back. |
+| **3D viewport mouse** | **Orbit** and **Fly mode**, each with **Invert horizontal** and **Invert vertical**: reverse the left-drag orbit of every 3D preview, and the level preview's fly-mode mouse look, along either axis. Panning is not affected. Off at first. |
 | **Red Faction folder** | The game folder, **Auto-detect** (from Alpine Faction's or Dash Faction's settings), **Browse…**. The page says whether the folder looks like an install. |
 | **Search folders** | Extra folders searched for referenced files, in order: **Add…**, **Remove**, **Move up**, **Move down**. |
 
@@ -1169,7 +1170,12 @@ with the meshes it concerns. A PS2 mesh converts from its exporter twin when the
   texture name to the Red Faction texture REDUX's tables match it with (names without a match stay, and the report
   lists them); **Keep the Red Faction II texture names and write the textures from the .peg packs beside the mesh
   (.tga)** keeps the names and writes each texture as a `.tga` beside the output (an animated one as its first
-  frame). An object with more than 7 textures in a LOD is split into submeshes. A Red Faction II character opens in
+  frame). A static object with more than 7 textures in a LOD is split into submeshes. A character becomes one submesh
+  (the game keeps only the last submesh of a `.v3c`): above 7 textures, the fewest needed are combined into
+  `<mesh>_atlas.tga` (`_atlas2` for a second), written beside the output in either mode from the `.peg` packs. A texture
+  goes in an atlas only with UVs inside 0 to 1, an image in the packs and no animation, and only with textures of the
+  same material settings; sources are not scaled, an atlas side stays within 1024 pixels, and UVs are inset half a
+  texel. If that cannot reach 7, the conversion stops with the names. A Red Faction II character opens in
   its bind pose. The report lists what is
   approximated: material settings (only the texture, the see-through flag and an environment map name are kept), LOD
   switch distances, bone orientation, prop points, weights rounded to bytes. glTF export keeps the Red Faction II
@@ -1317,7 +1323,7 @@ Harmless tidy-ups.
 | V3C006 | A prop point is attached to a bone that does not exist. | Attach it to the root bone |
 | V3C007 | A vertex is weighted to a bone that does not exist. | Re-skin (re-export or rebuild through glTF import) |
 | V3C008 | A submesh has no LODs or more than 3. | Re-export with 1 to 3 |
-| V3C009 | More than 7 textures in one LOD. | Combine textures or split the object |
+| V3C009 | More than 7 textures in one LOD. | Combine textures into an atlas; a static mesh can also be split into submeshes |
 | V3C010 | A triangle uses a vertex its batch does not have. | Re-export |
 | V3C011 | A batch uses a texture slot the LOD does not have. | Re-export |
 | V3C012 | The header's submesh or sphere counts disagree with the file. | Set the header counts to the sections' |
@@ -1337,6 +1343,7 @@ Harmless tidy-ups.
 | V3C025 | LOD distances are not increasing. | Sort the LOD distances |
 | V3C026 | The file name is longer than 59 characters. | Save as… |
 | V3C027 | The mesh has no submeshes: it holds no geometry, so the game draws nothing for it. | Re-export the mesh |
+| V3C028 | A `.v3c` has more than one submesh: the game keeps only the last, so the others do not appear. A warning, not an error, since the file still loads. | Use the fix to merge them (it also makes an atlas beside the mesh when the result would use more than 7 textures), or re-export as one object |
 
 #### glTF mesh import findings
 
@@ -1363,6 +1370,7 @@ Shown in the **PRE-FLIGHT** list of **Import Mesh from glTF**. Errors disable **
 | MI017 | Warning | A character was asked for but there is no skeleton. | Add an armature, or build a static mesh. |
 | MI018 | Warning | The bind matrices do not fit; the bind pose was rebuilt from the nodes. | Apply transforms in your 3D tool and re-export. |
 | MI019 | Info | Vertex weights that do not add up exactly were kept as stored. | Usually harmless. |
+| MI028 | Warning | A character has more than one submesh; the game keeps only the last. | Join the objects before exporting, or merge them with the fix of V3C028 after importing. |
 | MI099 | Error | The mesh could not be built. | The message names the limit; fix it and import again. |
 
 #### OBJ mesh import findings
@@ -1380,6 +1388,7 @@ Shown in the **PRE-FLIGHT** list of **Import Mesh from OBJ**, beside the glTF co
 | MI025 | Warning | OBJ has no bone weights: every vertex follows the nearest bone of the kept skeleton. | For real skinning, weight the mesh in your 3D tool and import glTF. |
 | MI026 | Info / Warning | Cairn's metadata lines restored the mesh, or some were damaged and ignored. A file exported with one LOD also leaves out the materials only the other LODs use. | Nothing, or export from Cairn again. |
 | MI027 | Info | The file was read as Z-up, or scaled. | Nothing; it confirms the options. |
+| MI028 | Warning | A character has more than one submesh; the game keeps only the last. | Join the objects before exporting, or merge them with the fix of V3C028 after importing. |
 
 #### Exporter and PS2 mesh codes
 
@@ -1390,7 +1399,7 @@ Shown in the **PRE-FLIGHT** list of **Import Mesh from OBJ**, beside the glTF co
 
 ### Animations and meshes settings
 
-**Tools › Settings…**. APPEARANCE, RED FACTION FOLDER and SEARCH FOLDERS are on the **General** page and apply to
+**Tools › Settings…**. APPEARANCE, 3D VIEWPORT MOUSE, RED FACTION FOLDER and SEARCH FOLDERS are on the **General** page and apply to
 every module (see [The Cairn window](USAGE.md#the-cairn-window)); the sections below are on the **Animations and
 meshes** page.
 

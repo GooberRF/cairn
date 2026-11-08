@@ -600,6 +600,19 @@ public class ObjMeshTests(ITestOutputHelper output)
     // ── characters ──────────────────────────────────────────────────────────
 
     [Fact]
+    public void Character_with_two_objects_warns_that_only_the_last_draws()
+    {
+        var character = V3dBuilder.Build(V3dBuilderTests.SampleDescription());
+        string one = Lf("o a", "v 0 0 0", "v 1 0 0", "v 0 1 0", "f 1 2 3");
+        string two = Lf("o a", "v 0 0 0", "v 1 0 0", "v 0 1 0", "f 1 2 3", "o b", "v 0 0 1", "v 1 0 1", "v 0 1 1", "f 4 5 6");
+        var options = new ObjMeshImportOptions { KeepSkeletonFrom = character };
+        Assert.DoesNotContain(ImportText(one, null, options).Issues, i => i.Code == "MI028");
+        var issue = Assert.Single(ImportText(two, null, options).Issues, i => i.Code == "MI028");
+        Assert.Equal(MeshImportSeverity.Warning, issue.Severity);
+        Assert.DoesNotContain(ImportText(two, null).Issues, i => i.Code == "MI028");
+    }
+
+    [Fact]
     public void Character_exports_its_bind_pose_and_imports_onto_a_kept_skeleton()
     {
         var description = V3dBuilderTests.SampleDescription();

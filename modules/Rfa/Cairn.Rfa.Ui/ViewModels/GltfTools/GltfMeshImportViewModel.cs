@@ -501,6 +501,7 @@ public sealed class GltfMeshImportViewModel : ObservableObject
         "MI002" => "Fix: rename it in your 3D tool to fit (bone and sphere names 23 characters, submeshes 23, textures 31, prop points 67), using plain Latin letters.",
         "MI003" => "Fix: keep at most three LODs (name the objects _LOD0, _LOD1, _LOD2) and delete or merge the rest.",
         "MI004" => "Fix: use at most 7 materials per LOD: merge materials, or bake them onto a shared texture.",
+        "MI028" => "Fix: join the objects into one before exporting, or use the Merge fix of the mesh's problem V3C028 after importing.",
         "MI005" => "Nothing to fix: oversized batches are split automatically (fewer vertices per material draws faster).",
         "MI006" => "Fix: weight-paint those vertices in your 3D tool if they should follow another bone.",
         "MI007" => "Fix: limit the influences to 4 per vertex in your 3D tool (Blender: Weights › Limit Total) to choose what is dropped.",

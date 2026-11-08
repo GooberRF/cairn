@@ -628,6 +628,8 @@ public static class ObjMeshImport
         {
             if (d.Bones.Length > V3dBoneSection.MaxBones)
                 Issue(MeshImportSeverity.Error, "MI001", $"The skeleton has {d.Bones.Length} bones; the engine poses at most {V3dBoneSection.MaxBones}.");
+            if (d.Kind == V3dKind.Character && d.Submeshes.Length > 1)
+                Issue(MeshImportSeverity.Warning, "MI028", $"The mesh has {d.Submeshes.Length} submeshes, but the game keeps only the last submesh of a .v3c, so the others will not appear in game.");
             foreach (var s in d.Submeshes)
             {
                 if (s.Lods.Length > V3dBuilder.MaxLods)

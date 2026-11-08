@@ -124,7 +124,10 @@ public static class HelpDocuments
             + "PlayStation 2 version's static and character meshes, and Red Faction II's (version 0x114), whose textures "
             + "come from the .peg packs beside them. A file is recognised by its contents, so an exporter mesh named .v3m "
             + "still opens as one. Converting a Red Faction II mesh translates its texture names to Red Faction names by "
-            + "default; the Convert window can keep the names and write the textures from the .peg packs beside the mesh instead."));
+            + "default; the Convert window can keep the names and write the textures from the .peg packs beside the mesh instead. "
+            + "The game keeps only the last submesh of a .v3c, so a Red Faction II character always converts to one submesh: "
+            + "above 7 textures, the fewest needed are combined into <mesh>_atlas.tga, written beside the mesh. Tiling textures "
+            + "and textures with different material settings stay separate; if too few can be combined, the conversion stops and names them."));
         Add(document, Heading2("The tab"));
         Add(document, Body(
             "The tab shows the mesh converting the file makes, read-only, with a banner and a Convert… button. A character "

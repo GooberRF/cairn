@@ -62,6 +62,14 @@ public static class MeshLinter
                 "The mesh has no submeshes: it holds no geometry, so the game draws nothing for it.",
                 "Re-export the mesh from its source scene (or rebuild it through glTF import).", at));
         }
+        if (mesh.Kind == V3dKind.Character && submeshes > 1)
+        {
+            string? obstacle = V3dSubmeshMerge.Obstacle(mesh);
+            results.Add(Make(MeshRules.SeveralSubmeshes,
+                $"The mesh has {submeshes} submeshes, but the game keeps only the last submesh of a .v3c, so the others will not appear in game.",
+                obstacle is null ? "Merge them into one submesh." : $"Join the objects in the source scene and re-export; Cairn cannot merge them because {obstacle}.",
+                at, obstacle is null ? [MeshFixes.MergeSubmeshes(mesh)] : []));
+        }
         if (mesh.Header.SubmeshCount != submeshes || mesh.Header.CollisionSphereCount != spheres)
         {
             results.Add(Make(MeshRules.HeaderCounts,
@@ -189,7 +197,7 @@ public static class MeshLinter
                 {
                     results.Add(Make(MeshRules.TooManyTextures,
                         $"Submesh {si} LOD {li} uses {lod.Textures.Length} textures; the engine allows {MeshRules.MaxTexturesPerLod} per LOD.",
-                        "Combine textures (an atlas) or split the object into several submeshes.", lodAt));
+                        character ? "Combine textures into an atlas: a .v3c keeps only one submesh." : "Combine textures (an atlas) or split the object into several submeshes.", lodAt));
                 }
                 CheckTextures(results, lod, si, li, context);
                 CheckPropPoints(results, mesh, lod, si, li, boneCount);

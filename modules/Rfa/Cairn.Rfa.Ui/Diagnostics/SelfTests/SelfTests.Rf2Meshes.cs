@@ -1,6 +1,7 @@
 using System.Windows;
 using Cairn.Rfa.Formats.Legacy;
 using Cairn.Rfa.Formats.V3d;
+using Cairn.Rfa.Linting;
 using Cairn.Rfa.Ui.ViewModels;
 using Cairn.Rfa.Ui.Views.Dialogs;
 using ShellSelfTestContext = Cairn.Ui.Diagnostics.SelfTestContext;
@@ -17,6 +18,59 @@ namespace Cairn.Rfa.Ui.Diagnostics.SelfTests;
 /// </summary>
 internal static class Rf2MeshSelfTests
 {
+    /// <summary>
+    /// A character over the texture limit: its tab shows no texture error, Convert writes one submesh and an atlas from
+    /// the packs with the default texture option, and the two-submesh .v3c an earlier version made is merged by V3C028's
+    /// fix, which writes an atlas from the textures beside it.
+    /// </summary>
+    private static async Task ManyTextures(ShellSelfTestContext ctx, string folder, List<DocumentViewModel> opened)
+    {
+        var ws = RfaModule.Workspace;
+        string[] textures = [.. Enumerable.Range(0, 9).Select(i => $"busy{i}.tga")];
+        string source = Path.Combine(folder, "busy.rfc");
+        File.WriteAllBytes(source, SyntheticRf2Mesh.SampleManyTextures(textures));
+        File.WriteAllBytes(Path.Combine(folder, "busy_vcm.peg"), SyntheticRf2Mesh.SamplePeg([.. textures.Select((t, i) => (t, 16, 16, 0xFF000000u | (uint)(i * 25) << 8))]));
+
+        var doc = await Open(ctx, source, opened);
+        if (!ctx.Check(doc is { Kind: DocumentKind.CharacterMesh }, "busy.rfc opens as a character")) return;
+        ctx.Check(doc!.Current.Submeshes.Count() == 1, "a character is one submesh in its tab too");
+        ctx.Check(doc.Diagnostics.All(d => d.Code != MeshRules.TooManyTextures) && doc.Diagnostics.Any(d => d.Message.Contains("atlas", StringComparison.Ordinal)),
+            "the tab explains the atlas instead of reporting V3C009");
+        string outFolder = Path.Combine(folder, "busy-out");
+        var written = await ws.Legacy.ConvertDocumentAsync(doc, new LegacyConvertChoice(LegacyConvertTarget.Folder, outFolder, false));
+        ctx.Check(written is [var mesh, var atlas] && atlas.EndsWith("busy_atlas.tga", StringComparison.Ordinal) && V3dReader.ReadFile(mesh).Submeshes.Single().Lods[0].Textures.Length == 7,
+            $"Convert writes one submesh of 7 textures and the atlas ({string.Join(", ", (written ?? []).Select(Path.GetFileName))})");
+
+        // the file an earlier version wrote: 7 and 2 textures in two submeshes, its textures beside it
+        string oldFolder = Path.Combine(folder, "busy-old");
+        Directory.CreateDirectory(oldFolder);
+        foreach (string texture in textures) File.WriteAllBytes(Path.Combine(oldFolder, texture), TgaWriter.Write(new BgraImage(16, 16), includeAlpha: false));
+        string oldPath = Path.Combine(oldFolder, "busy.v3c");
+        File.WriteAllBytes(oldPath, V3dWriter.Write(V3dBuilder.Build(SplitForTest(LegacyMeshSupport.Read(File.ReadAllBytes(source), "busy.rfc").Description), V3dBuildOptions.Default)));
+        if (await Open(ctx, oldPath, opened) is not { } old) return;
+        var diagnostic = old.Diagnostics.FirstOrDefault(d => d.Code == MeshRules.SeveralSubmeshes);
+        if (ctx.Check(diagnostic?.QuickFixes.SingleOrDefault()?.Kind == QuickFixKind.MergeWithAtlas, "V3C028 offers the merge with an atlas"))
+        {
+            old.ApplyQuickFix(diagnostic!.QuickFixes[0], diagnostic);
+            ctx.Check(old.Current.Submeshes.Single().Lods[0].Textures.Length == 7, "the fix leaves one submesh of 7 textures");
+            ctx.Check(File.Exists(Path.Combine(oldFolder, "busy_atlas.tga")), "the fix writes the atlas beside the mesh");
+            ctx.Check(!old.Diagnostics.Any(d => d.Code == MeshRules.SeveralSubmeshes), "V3C028 is gone");
+        }
+    }
+
+    /// <summary>A one-submesh description cut into 7 and 2 textures, as earlier versions wrote.</summary>
+    private static V3dMeshDescription SplitForTest(V3dMeshDescription d)
+    {
+        var sub = d.Submeshes[0];
+        V3dSubmeshDescription Part(string name, int from, int count) => sub with
+        {
+            Name = FixedString.FromText(name, V3dSubmesh.NameSize),
+            Materials = [.. sub.Materials.Skip(from).Take(count)],
+            Lods = [.. sub.Lods.Select(l => l with { Groups = [.. l.Groups.Where(g => g.Material >= from && g.Material < from + count).Select(g => g with { Material = g.Material - from })], MorphVertices = null })],
+        };
+        return d with { Submeshes = [Part("busy", 0, 7), Part("busy_2", 7, 2)] };
+    }
+
     [SelfTest("rfa.rf2-meshes")]
     public static async Task Rf2Meshes(ShellSelfTestContext ctx)
     {
@@ -67,6 +121,8 @@ internal static class Rf2MeshSelfTests
                 ctx.Check(gltf is not null && File.Exists(gltf) && pngs.Count == 2,
                     $"the glTF export writes the pack's textures beside it as PNG ({Path.GetFileName(gltf)}: {string.Join(", ", pngs)})");
             }
+
+            await ManyTextures(ctx, folder, opened);
 
             // a character: its skeleton, weights and the texture from guard_vcm.peg
             var character = await Open(ctx, guard, opened);

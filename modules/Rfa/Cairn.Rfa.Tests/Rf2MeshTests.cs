@@ -289,7 +289,7 @@ public class Rf2MeshTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void MoreThanSevenTexturesInALod_SplitsTheObject()
+    public void MoreThanSevenTexturesInALod_SplitsAStaticObject()
     {
         var mesh = new SynthRf2();
         var lod = new SynthLod { Name = "busy" };
@@ -569,8 +569,11 @@ public class Rf2MeshTests(ITestOutputHelper output)
             Assert.True(ok, $"{where}/{name}: {error?.Message}");
             Assert.True(mesh!.IsRedFactionII);
             Assert.Equal(name.EndsWith(".rfc", StringComparison.OrdinalIgnoreCase), mesh.Description.Kind == V3dKind.Character);
-            var conversion = LegacyMeshSupport.Convert(mesh, name);
+            var entries = EntriesOf(where);
+            var packs = LegacyMeshSupport.TexturePacksFor(name, mesh.Description.Kind == V3dKind.Character, entries.Keys, n => entries.TryGetValue(n, out var r) ? r() : null, where);
+            var conversion = LegacyMeshSupport.Convert(mesh, name, new LegacyConvertOptions { TexturePacks = packs });
             var back = V3dReader.Read(conversion.Bytes, conversion.OutputName);
+            Assert.True(mesh.Description.Kind != V3dKind.Character || back.Submeshes.Count() == 1, $"{where}/{name}: a character must convert to one submesh");
             var errors = MeshLinter.Analyze(back, new MeshLintContext { FileName = conversion.OutputName }).Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
             Assert.True(errors.Count == 0, $"{where}/{name}: {string.Join("; ", errors.Select(e => e.Message))}");
             Assert.Equal(mesh.Description.Submeshes.Sum(s => s.Lods.Sum(l => l.Groups.Sum(g => g.Triangles.Length))),
@@ -579,8 +582,6 @@ public class Rf2MeshTests(ITestOutputHelper output)
             read++;
             if (all)
             {
-                var entries = EntriesOf(where);
-                var packs = LegacyMeshSupport.TexturePacksFor(name, mesh.Description.Kind == V3dKind.Character, entries.Keys, n => entries.TryGetValue(n, out var r) ? r() : null, where);
                 foreach (string texture in mesh.Description.Submeshes.SelectMany(s => s.Materials).Select(m => m.DiffuseMap.Text).Distinct(StringComparer.OrdinalIgnoreCase))
                 {
                     textureUses++;

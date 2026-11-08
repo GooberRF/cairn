@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.2.0
+
+Red Faction II characters now convert whole: every one becomes a single submesh, with a texture atlas when it uses too many
+textures, and Cairn reports and repairs a `.v3c` with several submeshes.
+
+**Meshes and animations**
+
+- Fixed **Red Faction II characters converting with most of the mesh missing in game**. A character with more than 7
+  textures was split into several submeshes, but the game keeps only the last submesh of a `.v3c`; this hit most
+  first-person weapons, the mech suit, the Shrike and the Repta Plus. Characters now always convert to one submesh, and
+  the fewest textures needed are combined into an atlas (`<mesh>_atlas.tga`), written beside the mesh from the `.peg`
+  packs and listed in the report. Tiling textures and textures with different material settings are never combined. If
+  no atlas can be made, the conversion stops and says which textures are in the way. Static meshes convert as before.
+- Added **V3C028** (mesh Problems): a `.v3c` with more than one submesh. Its fix merges them into one, and makes an
+  atlas when the merged mesh would use more than 7 textures. A converted character from an earlier version can be
+  repaired this way, or converted again.
+- Added **MI028** (glTF and OBJ import): a character with more than one submesh.
+- **V3C009** no longer suggests splitting a character into submeshes.
+
+## 1.1.1
+
+**Suite**
+
+- Added **3D viewport mouse** inversion (Tools › Settings… › General): **Invert horizontal** and **Invert vertical**
+  for the left-drag orbit of every 3D preview (meshes, animations, effects, levels and packfile previews), and
+  separately for the level preview's fly-mode mouse look. Panning is unchanged. Everything starts off, so the camera
+  behaves as before until you tick a box.
+
 ## 1.1.0
 
 Adds a **Levels & groups** module for levels (`.rfl`) and the level editor's group files (`.rfg`), with a 3D preview

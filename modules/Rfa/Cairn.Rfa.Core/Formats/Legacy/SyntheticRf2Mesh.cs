@@ -88,6 +88,44 @@ public static class SyntheticRf2Mesh
         return w.ToArray();
     }
 
+    /// <summary>A one-bone character (<c>.rfc</c>) with one triangle per texture, each on its own three vertices.</summary>
+    public static byte[] SampleManyTextures(IReadOnlyList<string> textures)
+    {
+        ArgumentNullException.ThrowIfNull(textures);
+        var w = new Writer();
+        w.Header(skinned: true);
+        w.I(0);
+        w.I(0);
+        w.I(1);
+        w.Z("root"); w.I(-1); foreach (float f in new float[] { 1, 0, 0, 0, 1, 0, 0, 0, 1 }) w.F(f); w.V(Vector3.Zero);
+        w.I(1); w.I(1);
+        w.I(1); w.F(float.MaxValue);
+        w.LodHeader("busy", textures.Count);
+        w.I(textures.Count);
+        foreach (string t in textures) w.Z(t);
+        w.U((uint)textures.Count);
+        foreach (string t in textures) w.Material(t);
+        w.I(textures.Count);
+        for (int i = 0; i < textures.Count; i++)
+        {
+            w.I(1);
+            foreach (var (v, uv) in new (int, Vector2)[] { (i * 3, new(0, 0)), (i * 3 + 1, new(0, 1)), (i * 3 + 2, new(1, 0)) })
+            {
+                w.I(v); w.F(uv.X); w.F(uv.Y);
+            }
+            w.I(i); w.I(i); w.F(0); w.U(0xCDCDCDCD);
+        }
+        w.Tail(Vector3.Zero, 1f);
+        w.I(textures.Count * 3); w.I(textures.Count * 3);
+        for (int i = 0; i < textures.Count * 3; i++)
+        {
+            w.V(new Vector3(i / 3, i % 3 == 1 ? 1 : 0, i % 3 == 2 ? 1 : 0)); w.V(Vector3.UnitY); w.H((ushort)i);
+            w.I(0); w.F(1f);
+            for (int s = 1; s < 4; s++) { w.I(Rf2MeshFile.NoBone); w.F(0); }
+        }
+        return w.ToArray();
+    }
+
     /// <summary>
     /// A Red Faction II texture pack (GEKV version 6) of 32-bit textures, each a two-colour checker of the given colour
     /// (BGRA) and a darker one, so a preview shows which texture went where.

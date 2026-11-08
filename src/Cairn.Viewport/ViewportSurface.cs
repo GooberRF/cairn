@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using Cairn.Ui.Services;
 
 namespace Cairn.Viewport;
 
@@ -263,8 +264,9 @@ public class ViewportSurface : Grid
         if (!_dragMoved) return;
         if (_drag == DragMode.Orbit)
         {
-            Camera.Yaw -= delta.X * 0.4;
-            Camera.Pitch += delta.Y * 0.4;
+            var mouse = ViewportMouse.Current;
+            Camera.Yaw -= delta.X * 0.4 * mouse.OrbitX;
+            Camera.Pitch += delta.Y * 0.4 * mouse.OrbitY;
         }
         else
         {

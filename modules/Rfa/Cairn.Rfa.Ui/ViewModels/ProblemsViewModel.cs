@@ -31,6 +31,7 @@ public sealed class QuickFixViewModel
         QuickFixKind.OpenSearchSettings => "Open Settings to set the game directory and search folders",
         QuickFixKind.ConformToSkeleton => "Open Clip › Conform to Skeleton with the mesh this problem names (or the preview mesh) picked",
         QuickFixKind.LocateFile => "Choose the texture to use from the files the game can find; the material's texture name changes (one undo step)",
+        QuickFixKind.MergeWithAtlas => "Merge the submeshes (one undo step) and write an atlas of the textures it combines beside the mesh",
         _ => "Apply this fix",
     };
 

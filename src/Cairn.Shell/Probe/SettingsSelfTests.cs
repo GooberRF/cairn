@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Windows;
 using Cairn.Shell.Dialogs;
 using Cairn.Ui.Diagnostics;
+using Cairn.Ui.Services;
 using Cairn.Workspace;
 
 namespace Cairn.Shell;
@@ -83,8 +84,24 @@ public static class SettingsSelfTests
             var model = new SettingsViewModel(shell);
             model.GameDirectory = Path.Combine(folder, "elsewhere");
             model.SearchFolders.Add(Path.Combine(folder, "c"));
+            var mouseBefore = ViewportMouse.Current;
+            model.InvertOrbitY = true;
+            model.InvertFlyX = true;
             model.Revert();
             ctx.Check(JsonSerializer.Serialize(shell.Settings) == before, "cancelled settings dialog changes nothing");
+            ctx.Check(ReferenceEquals(ViewportMouse.Current, mouseBefore), "cancelled settings dialog leaves the viewport mouse as it was");
+
+            // The viewport mouse options survive a save and load, and only the inversion flags are stored.
+            var m = new AppSettings();
+            ctx.Check(ViewportMouse.Read(m) is { InvertOrbitX: false, InvertOrbitY: false, InvertFlyX: false, InvertFlyY: false },
+                "viewport mouse defaults to nothing inverted");
+            var mousePath = Path.Combine(folder, "mouse.json");
+            m.Set(ViewportMouse.SettingsKey, new ViewportMouse { InvertOrbitY = true, InvertFlyX = true });
+            ctx.Check(SettingsStore.Save(m, mousePath), "viewport mouse settings saved");
+            var mouse = ViewportMouse.Read(SettingsStore.Load(mousePath));
+            ctx.Check(mouse is { InvertOrbitX: false, InvertOrbitY: true, InvertFlyX: true, InvertFlyY: false }, "viewport mouse flags survive");
+            ctx.Check(mouse.OrbitX == 1 && mouse.OrbitY == -1 && mouse.FlyX == -1 && mouse.FlyY == 1, "viewport mouse signs follow the flags");
+            ctx.Check(!m.Values[ViewportMouse.SettingsKey].TryGetProperty("orbitX", out _), "viewport mouse signs are not stored");
         }
         finally
         {

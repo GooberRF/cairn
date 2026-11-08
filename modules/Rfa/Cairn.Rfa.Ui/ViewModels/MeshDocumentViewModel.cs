@@ -710,7 +710,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
             SetDiagnostics(legacy);
             return;
         }
-        SetDiagnostics([.. legacy, .. MeshLinter.Analyze(mesh, new MeshLintContext { FileName = LintName })]);
+        SetDiagnostics([.. legacy, .. Lint(mesh, new MeshLintContext { FileName = LintName })]);
         var cts = new CancellationTokenSource();
         _lintCts = cts;
         var resolver = Resolver;
@@ -722,7 +722,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
             await Task.Delay(100, cts.Token).ConfigureAwait(false);
             // V3C021 resolves every texture: not while the library build is still reading the archives.
             await indexed.WaitAsync(cts.Token).ConfigureAwait(false);
-            return MeshLinter.Analyze(mesh, new MeshLintContext { FileName = name, Resolver = resolver });
+            return Lint(mesh, new MeshLintContext { FileName = name, Resolver = resolver });
         }, cts.Token).ContinueWith(task =>
         {
             Shell.Dispatcher.BeginInvoke(new Action(() =>
@@ -734,13 +734,20 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         }, TaskScheduler.Default);
     }
 
+    /// <summary>The mesh's problems. A Red Faction II character's texture count is left out: converting it makes the atlas, and its note says so.</summary>
+    private IEnumerable<Diagnostic> Lint(V3dFile mesh, MeshLintContext context)
+    {
+        bool atlased = _legacy?.Mesh is { IsRedFactionII: true, Description.Kind: V3dKind.Character };
+        return [.. MeshLinter.Analyze(mesh, context).Where(d => !atlased || d.Code != MeshRules.TooManyTextures)];
+    }
+
     /// <summary>The name the linter checks: a legacy mesh is checked as the .v3m/.v3c converting it makes.</summary>
     private string LintName => _legacy is null ? DisplayName : Path.ChangeExtension(DisplayName, Extension);
 
     public override bool CanApplyQuickFix(QuickFix fix) => fix.Kind switch
     {
         QuickFixKind.Edit => !IsReadOnly && fix.MeshEdit is not null,
-        QuickFixKind.LocateFile => !IsReadOnly,
+        QuickFixKind.LocateFile or QuickFixKind.MergeWithAtlas => !IsReadOnly,
         QuickFixKind.SaveAs or QuickFixKind.OpenSearchSettings => true,
         _ => false,
     };
@@ -754,6 +761,9 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
                 break;
             case QuickFixKind.LocateFile:
                 LocateTexture(diagnostic);
+                break;
+            case QuickFixKind.MergeWithAtlas:
+                MergeSubmeshesWithAtlas();
                 break;
             case QuickFixKind.SaveAs:
                 Shell.SaveAs(this);
@@ -786,6 +796,43 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         if (string.IsNullOrEmpty(picked)) return false;
         return Apply($"Set texture of material {mi} to '{picked}'",
             m => MeshEdit.SetTextureName(m, si, mi, picked, LodTextureUpdate.MatchingName));
+    }
+
+    /// <summary>
+    /// The merge fix of V3C028 when the merged mesh would use too many textures: an atlas from the images the tab
+    /// resolves, written beside the mesh (or into its packfile), then the merge as one undo step. Returns true when the
+    /// mesh changed.
+    /// </summary>
+    internal bool MergeSubmeshesWithAtlas()
+    {
+        if (IsReadOnly) return false;
+        var resolver = Resolver;
+        try
+        {
+            var merged = V3dSubmeshMerge.Merge(Current);
+            var atlas = V3dTextureAtlas.Combine(merged.Submeshes[0], Path.GetFileNameWithoutExtension(DisplayName), name => ReadImage(resolver, name));
+            if (!Shell.Legacy.WriteBeside(this, atlas.Files)) return false;
+            var joined = V3dBuilder.Build(merged with { Submeshes = [atlas.Submesh] }, V3dBuildOptions.Preserve);
+            return Apply("Merge the submeshes", _ => joined);
+        }
+        catch (Exception ex) when (ex is AssetFormatException or ArgumentException)
+        {
+            Shell.Dialogs.ShowError($"Could not merge the submeshes of {DisplayName}", ex.Message);
+            return false;
+        }
+    }
+
+    private static BgraImage? ReadImage(AssetResolver? resolver, string name)
+    {
+        if (resolver?.Resolve(name) is not { } found || found.ResolvedName.EndsWith(".vbm", StringComparison.OrdinalIgnoreCase)) return null;
+        try
+        {
+            return ImageDecoder.Decode(found.ReadAllBytes(), found.ResolvedName);
+        }
+        catch (Exception ex) when (ex is ImageDecodeException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     /// <summary>The (submesh, material) owning the LOD texture entry <paramref name="location"/> points at, or null.</summary>
