@@ -46,6 +46,25 @@
               <TextBlock Style="{StaticResource HintText}" Margin="0,6,0,0" Text="The theme changes as you pick it. Cancel puts the old one back." />
             </StackPanel>
 
+            <!-- Document tabs -->
+            <StackPanel Style="{StaticResource DialogGroup}">
+              <TextBlock Style="{StaticResource DialogSubheading}" Text="DOCUMENT TABS" />
+              <StackPanel Orientation="Horizontal">
+                <RadioButton GroupName="DocumentTabs" MinWidth="0" Margin="0,0,16,0" IsChecked="{Binding IsTabsOneRow, Mode=TwoWay}"
+                             ToolTip="Keep the tabs in one row; arrows at its ends scroll it while some tabs are out of sight"
+                             AutomationProperties.Name="Document tabs in one scrolling row">
+                  <AccessText Text="_One scrolling row" />
+                </RadioButton>
+                <RadioButton GroupName="DocumentTabs" MinWidth="0" IsChecked="{Binding IsTabsRows, Mode=TwoWay}"
+                             ToolTip="Wrap the tabs onto as many rows as they need, so every tab is always in sight"
+                             AutomationProperties.Name="Document tabs on several rows">
+                  <AccessText Text="S_everal rows" />
+                </RadioButton>
+              </StackPanel>
+              <TextBlock Style="{StaticResource HintText}" Margin="0,6,0,0"
+                         Text="What happens when the open tabs do not fit the window. Either way, the button beside + lists every open tab, and Ctrl+Tab or Ctrl+PageDown moves to the next." />
+            </StackPanel>
+
             <!-- Viewport mouse -->
             <StackPanel Style="{StaticResource DialogGroup}">
               <TextBlock Style="{StaticResource DialogSubheading}" Text="3D VIEWPORT MOUSE" />

@@ -21,8 +21,10 @@ namespace Cairn.Vpp.Ui.Documents;
 /// </summary>
 public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent, IDocument
 {
-    /// <summary>Why a Red Faction II packfile group's commands that change it are off (tooltips, status messages).</summary>
-    public const string ReadOnlyReason = "Red Faction II packfiles are read only in Cairn: extract, preview, open and convert their files instead.";
+    /// <summary>Why a read-only package's commands that change it are off (tooltips, status messages).</summary>
+    public string ReadOnlyReason => Current.Cache is not null
+        ? "Alpine Faction cache packs are read only in Cairn: extract, preview and convert their entries instead."
+        : "Red Faction II packfiles are read only in Cairn: extract, preview, open and convert their files instead.";
 
     private readonly FileChangeWatcher _diskWatcher;
     private VppArchiveStamp? _diskStamp;
@@ -103,13 +105,14 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
         : DisplayName.EndsWith(".vpp", StringComparison.OrdinalIgnoreCase) || Path.HasExtension(DisplayName) ? DisplayName : DisplayName + ".vpp";
 
     /// <summary>
-    /// The PEG texture pack it was opened from, a Red Faction II group's own group file, else the packfile as Save would
-    /// write it (unsaved changes included).
+    /// The PEG texture pack it was opened from, a Red Faction II group's own group file, an Alpine Faction cache pack's
+    /// own file, else the packfile as Save would write it (unsaved changes included).
     /// </summary>
     public byte[] CurrentBytes() => PegSource is not null && PegBytes is { } peg ? peg
-        : Current.Rf2 is { } rf2 ? File.ReadAllBytes(rf2.TocPath) : Serialize();
+        : Current.Rf2 is { } rf2 ? File.ReadAllBytes(rf2.TocPath)
+        : Current.Cache is { } cache ? File.ReadAllBytes(cache.PackPath) : Serialize();
 
-    /// <summary>True for a Red Faction II packfile group: listed, previewed and extracted, never changed or saved.</summary>
+    /// <summary>True for a Red Faction II packfile group or an Alpine Faction cache pack: listed, previewed and extracted, never changed or saved.</summary>
     public override bool IsReadOnly => History is { } history && history.Current.IsReadOnly;
 
     /// <summary>A read-only packfile group has nothing Cairn writes: Save and Save As are off.</summary>
@@ -197,7 +200,7 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
         var p = Current;
         _work?.Follow(p); // work copies follow their entries through rename, undo and redo
         var problems = VppValidator.Validate(p).ToList();
-        if (FilePath is { } path && p.Rf2 is null) problems.AddRange(VppValidator.ValidateTargetPath(path));
+        if (FilePath is { } path && !p.IsReadOnly) problems.AddRange(VppValidator.ValidateTargetPath(path));
         List.Load(p, problems); // rows show their own warnings and errors
         // keep the selection on the same names (snapshots replace the item records)
         if (_selected.Count > 0)
@@ -214,8 +217,8 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
             if (item.OriginalIndex >= 0) kept++;
         }
         PendingChanges = changed + Math.Max(0, p.OriginalCount - kept);
-        // a Red Faction II group holds .peg and .rfm/.rfc too, but it is no PlayStation 2 packfile
-        IsPs2Packfile = p.Rf2 is null && Cairn.Vpp.Ps2.Ps2Packfiles.IsPs2(p);
+        // a Red Faction II group holds .peg and .rfm/.rfc too, but it is no PlayStation 2 packfile (nor is a cache pack)
+        IsPs2Packfile = !p.IsReadOnly && Cairn.Vpp.Ps2.Ps2Packfiles.IsPs2(p);
         PegEntryCount = p.Items.Count(i => Cairn.Vpp.Ps2.Ps2Packfiles.IsPeg(i.Name));
         Problems = problems;
         Raise(nameof(PendingChanges));
@@ -231,6 +234,7 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
         if (_operation is { } op) items.Add(new StatusItem(op.StatusText + "  (cancel)", "Click to cancel " + op.Title.ToLowerInvariant(), op.CancelCommand));
         items.Add(new StatusItem(p.Count == 1 ? "1 entry" : $"{p.Count:N0} entries", "Entries in the packfile"));
         if (p.Rf2 is { } rf2) items.Add(new StatusItem(VppEntryRow.FormatSize(p.DataBytes), $"{p.DataBytes:N0} bytes of file data ({rf2.ModeText}); read only"));
+        else if (p.Cache is not null) items.Add(new StatusItem(VppEntryRow.FormatSize(p.DataBytes), $"{p.DataBytes:N0} bytes of entry data (Alpine Faction cache pack); read only"));
         else items.Add(new StatusItem(VppEntryRow.FormatSize(p.ArchiveBytes), $"The packfile will be {p.ArchiveBytes:N0} bytes when saved ({p.DataBytes:N0} bytes of file data)"));
         if (PendingChanges > 0) items.Add(new StatusItem(PendingChanges == 1 ? "1 pending change" : $"{PendingChanges:N0} pending changes", "Added, replaced, renamed or removed entries not saved yet"));
         int errors = _problems.Count(x => x.Severity == VppSeverity.Error), warnings = _problems.Count(x => x.Severity == VppSeverity.Warning);
@@ -455,9 +459,13 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
         return false;
     }
 
-    /// <summary>Opens a packfile, or a Red Faction II packfile group (<c>.toc_group</c>) as a read-only package.</summary>
+    /// <summary>
+    /// Opens a packfile, or a Red Faction II packfile group (<c>.toc_group</c>) or an Alpine Faction cache pack
+    /// (<c>.cache</c>) as a read-only package.
+    /// </summary>
     public static VppPackage OpenPackage(string path) =>
-        Cairn.Vpp.Rf2.Rf2Packfiles.IsGroupFile(path) ? Cairn.Vpp.Rf2.Rf2Packfiles.Open(path) : VppPackage.Open(path);
+        Cairn.Vpp.Rf2.Rf2Packfiles.IsGroupFile(path) ? Cairn.Vpp.Rf2.Rf2Packfiles.Open(path)
+        : Cairn.Vpp.Alpine.CachePacks.IsCachePack(path) ? Cairn.Vpp.Alpine.CachePacks.Open(path) : VppPackage.Open(path);
 
     /// <summary>Reads the packfile again from disk; pending changes are dropped (after a confirmation when there are any).</summary>
     public void ReloadFromDisk()

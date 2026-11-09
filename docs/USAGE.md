@@ -120,6 +120,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Convert the PS2 version's textures for the PC game](#convert-the-ps2-versions-textures-for-the-pc-game) ·
     [Open a PEG texture pack on its own](#open-a-peg-texture-pack-on-its-own) ·
     [Open a Red Faction II packfile group](#open-a-red-faction-ii-packfile-group) ·
+    [Look inside an Alpine Faction cache pack](#look-inside-an-alpine-faction-cache-pack) ·
     [Good to know (packfiles)](#good-to-know-packfiles) · [Limitations (packfiles)](#limitations-packfiles)
 - [Tables (TBL)](#tables-tbl)
   - [Open a table](#open-a-table) · [Find your way around a table](#find-your-way-around-a-table) ·
@@ -184,8 +185,12 @@ by side; the menus and panes change to suit the tab in front.
 ### Tabs, panes and menus
 
 - **Tabs.** One per open file. An asterisk marks unsaved changes; the tooltip shows the full path, or the packfile a
-  file came from. Opening a file that is already open switches to its tab. **Ctrl+Tab** and **Ctrl+Shift+Tab** move
-  between tabs.
+  file came from. Opening a file that is already open switches to its tab. **Ctrl+Tab** and **Ctrl+Shift+Tab** (or
+  **Ctrl+PageDown** and **Ctrl+PageUp**) move between tabs. When more tabs are open than fit the window, the strip
+  scrolls: use the arrows at its ends or the mouse wheel over it; the tab in front is always in sight. To see every
+  tab at once instead, choose **Tools › Settings… › General › Document tabs › Several rows**. The button beside **+**
+  at the end of the strip lists every open tab: choose one to bring it to the front. Right-click a tab for **Close**,
+  **Close Others**, **Close Tabs to the Right** and **Close All**; a middle-click closes it.
 - **Left pane.** Belongs to the tab in front: the **Animations** library for clips and meshes, the **Effects**
   library for effects, the **File types** panel and **Packfiles** browser for a packfile, the **Outline** for a
   table. Other types have no left pane. **Ctrl+Shift+L** shows or hides it.
@@ -1690,6 +1695,24 @@ or off. The types Cairn does not read (effects, cutscene scripts, videos) can on
 on disk or differ in size, names listed twice in different case, and empty files. What to do with the files is in
 [Use Red Faction II content](#use-red-faction-ii-content).
 
+### Look inside an Alpine Faction cache pack
+
+Alpine Faction keeps data it fetched or built in cache packs (`.cache`) in the game's `alpine_cache` folder. The map
+browser's level previews, for example, are in `map_thumbs.cache`: one JPEG per level, named after the level.
+
+1. Choose **File › Open…** and pick the `.cache`. A `.cache` file from another program is refused with the reason.
+2. The pack opens as a packfile tab under a bar that says what it is. With nothing selected, the details pane describes
+   the pack: its entry count, sizes and write ID.
+3. An entry whose data does not match its name is listed with the data's type added: the thumbnail stored as
+   `dm01.rfl` is listed as `dm01.rfl.jpg`, so it previews as an image and extracts as a `.jpg`. The details show the
+   name as stored, the entry's tag and its CRC. An entry whose data does not match its CRC is corrupt (the game does
+   not use it) and gets a warning.
+4. **Extract** works as usual.
+
+A cache pack is read only: nothing can be added, removed, renamed or saved. The game rewrites the pack whole whenever
+it saves it; if that happens while the tab is open, previews and extraction refuse with a message until the pack is
+reloaded.
+
 ### Good to know (packfiles)
 
 - The game finds files by name, ignoring case; when two loaded packfiles hold the same name, which one wins depends
@@ -2571,6 +2594,9 @@ mask image.
 **Brush.** A solid shape the level editor builds a level from. A **solid** brush is cut into the level's rooms when
 the level is built; a **detail** brush is drawn and collided with but not cut into rooms.
 
+**Cache pack (`.cache`).** Alpine Faction's own store of data it fetched or built, such as the map browser's level
+previews (`alpine_cache\map_thumbs.cache`). Cairn opens it read-only.
+
 **Clip (`.rfa`).** One character animation: a walk, a reload, a death. Tables spell clips `.mvf`. Red Faction II's
 animations are `.rfa` files too, in a version Red Faction cannot play; Cairn converts them.
 
@@ -2655,6 +2681,7 @@ box. See [Help and keyboard shortcuts](#help-and-keyboard-shortcuts).
 | **Ctrl+W**, **Ctrl+F4** | Close the tab |
 | **Ctrl+Shift+T** | Reopen the last closed tab |
 | **Ctrl+Tab**, **Ctrl+Shift+Tab** | Next or previous tab |
+| **Ctrl+PageDown**, **Ctrl+PageUp** | Next or previous tab |
 | **Ctrl+Z** | Undo |
 | **Ctrl+Y**, **Ctrl+Shift+Z** | Redo |
 | **Ctrl+Shift+L** | Show or hide the left pane |

@@ -848,27 +848,5 @@
       </Setter>
     </Style>
 
-    <!-- The tab strip only: each document's view lives in DocumentHost, one instance per tab kept alive. -->
-    <Style x:Key="DocumentTabControl" TargetType="TabControl">
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="TabControl">
-            <Border Background="{DynamicResource App.ChromeBackground}" BorderBrush="{DynamicResource App.Border}" BorderThickness="0,0,0,1">
-              <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource ToolButton}" Margin="4,2,6,2" VerticalAlignment="Center"
-                        Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                        ToolTip="Open a file (Ctrl+O)" AutomationProperties.Name="Open a file">
-                  <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="11" />
-                </Button>
-                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Padding="6,0,0,0">
-                  <TabPanel IsItemsHost="True" />
-                </ScrollViewer>
-              </DockPanel>
-            </Border>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-
 
 </ResourceDictionary>

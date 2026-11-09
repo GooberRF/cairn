@@ -22,6 +22,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly AppSettings _working;
     private readonly AppTheme _originalTheme;
     private readonly ViewportMouse _mouse;
+    private bool _tabRows;
     private string? _selectedFolder;
     private string? _validatedDirectory;
     private bool _directoryLooksRight;
@@ -37,6 +38,7 @@ public sealed class SettingsViewModel : ObservableObject
         _working = shell.Settings.Clone();
         _originalTheme = shell.Settings.Theme;
         _mouse = ViewportMouse.Read(_working);
+        _tabRows = shell.DocumentTabRows;
         foreach (var folder in _working.SearchFolders) SearchFolders.Add(folder);
         Associations = new AssociationsPage(new AssociationsModel(associations ?? new WindowsAssociationStore(), shell.Modules, shell.Dialogs, shell.ShowStatus));
         Pages = [Associations, .. shell.Modules.SelectMany(m => m.SettingsPages)];
@@ -79,6 +81,20 @@ public sealed class SettingsViewModel : ObservableObject
     public bool IsThemeLight { get => Theme == AppTheme.Light; set { if (value) Theme = AppTheme.Light; } }
 
     public bool IsThemeDark { get => Theme == AppTheme.Dark; set { if (value) Theme = AppTheme.Dark; } }
+
+    // ── Document tabs ────────────────────────────────────────────────────────
+
+    /// <summary>Tabs that do not fit scroll in one row (false) or wrap onto more rows (true): <see cref="ShellViewModel.DocumentTabRows"/>.</summary>
+    public bool IsTabsOneRow { get => !_tabRows; set { if (value) SetTabRows(false); } }
+
+    public bool IsTabsRows { get => _tabRows; set { if (value) SetTabRows(true); } }
+
+    private void SetTabRows(bool rows)
+    {
+        if (_tabRows == rows) return;
+        _tabRows = rows;
+        RaiseAll(nameof(IsTabsOneRow), nameof(IsTabsRows));
+    }
 
     // ── Viewport mouse ───────────────────────────────────────────────────────
 
@@ -264,6 +280,7 @@ public sealed class SettingsViewModel : ObservableObject
         s.SearchFolders = [.. SearchFolders];
         s.Set(FoundViaKey, _working.Get<string>(FoundViaKey));
         ViewportMouse.Apply(s, _mouse);
+        _shell.DocumentTabRows = _tabRows;
         // The shared resolver first: a module page that rebuilds its own asset services shares its indexes.
         _shell.Assets.Reconfigure(s);
         foreach (var page in Pages) page.Commit();

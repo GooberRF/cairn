@@ -105,7 +105,7 @@ public sealed partial class VppModule : IArchiveEntryTarget
         }
         if (doc.IsReadOnly)
         {
-            Shell.Dialogs.ShowError($"Could not add to {doc.DisplayName}", VppDocument.ReadOnlyReason);
+            Shell.Dialogs.ShowError($"Could not add to {doc.DisplayName}", doc.ReadOnlyReason);
             return null;
         }
         if (doc.IsBusy)

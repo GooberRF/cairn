@@ -31,20 +31,37 @@
       <Setter Property="Fill" Value="{DynamicResource App.Border}" />
     </Style>
 
-    <!-- The tab strip only (each document's view lives in DocumentHost), with a generic "open" button on the right. -->
+    <!--
+      The tab strip only (each document's view lives in DocumentHost), with a list of the open tabs and a generic "open"
+      button on the right. Tabs that do not fit either scroll in one row, with an arrow at each end while some are out of
+      sight, or wrap onto more rows (Settings > General > Document tabs). MainWindow wires the named parts. A WrapPanel,
+      not a TabPanel: a TabPanel moves the selected tab's row next to the content, so the rows would jump on every click.
+    -->
     <Style x:Key="ShellDocumentTabControl" TargetType="TabControl">
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="TabControl">
             <Border Background="{DynamicResource App.ChromeBackground}" BorderBrush="{DynamicResource App.Border}" BorderThickness="0,0,0,1">
               <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource ToolButton}" Margin="4,2,6,2" VerticalAlignment="Center"
+                <Button DockPanel.Dock="Right" Style="{StaticResource ToolButton}" Margin="2,3,6,2" VerticalAlignment="Top"
                         Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                         ToolTip="Open a file (Ctrl+O)" AutomationProperties.Name="Open a file">
                   <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="11" />
                 </Button>
-                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Padding="6,0,0,0">
-                  <TabPanel IsItemsHost="True" />
+                <Button x:Name="PART_TabList" DockPanel.Dock="Right" Style="{StaticResource ToolButton}" Margin="4,3,0,2" VerticalAlignment="Top"
+                        ToolTip="List the open tabs: choose one to bring it to the front" AutomationProperties.Name="List the open tabs">
+                  <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                </Button>
+                <Button x:Name="PART_ScrollRight" DockPanel.Dock="Right" Style="{StaticResource ToolButton}" MinWidth="20" Padding="2,0" Margin="2,3,0,2"
+                        VerticalAlignment="Top" Visibility="Collapsed" ToolTip="Scroll the tabs right" AutomationProperties.Name="Scroll the tabs right">
+                  <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                </Button>
+                <Button x:Name="PART_ScrollLeft" DockPanel.Dock="Left" Style="{StaticResource ToolButton}" MinWidth="20" Padding="2,0" Margin="4,3,0,2"
+                        VerticalAlignment="Top" Visibility="Collapsed" ToolTip="Scroll the tabs left" AutomationProperties.Name="Scroll the tabs left">
+                  <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="10" />
+                </Button>
+                <ScrollViewer x:Name="PART_TabScroller" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Padding="6,0,0,0" Focusable="False">
+                  <WrapPanel IsItemsHost="True" />
                 </ScrollViewer>
               </DockPanel>
             </Border>
@@ -152,7 +169,7 @@
                   Visibility="{Binding HasDocuments, Converter={StaticResource Truthy}}" AutomationProperties.Name="Open documents">
         <TabControl.ItemTemplate>
           <DataTemplate>
-            <TextBlock Text="{Binding TabHeader}" ToolTip="{Binding TabToolTip}" />
+            <TextBlock Text="{Binding TabHeader}" ToolTip="{Binding TabToolTip}" MaxWidth="240" TextTrimming="CharacterEllipsis" />
           </DataTemplate>
         </TabControl.ItemTemplate>
         <TabControl.ContentTemplate>

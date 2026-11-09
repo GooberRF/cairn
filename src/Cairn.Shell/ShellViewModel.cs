@@ -284,12 +284,29 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
     }
 
     /// <summary>Closes every tab after one prompt listing the unsaved ones; false when cancelled.</summary>
-    public bool CloseAll()
+    public bool CloseAll() => CloseMany([.. OpenDocuments], keep: null);
+
+    /// <summary>The tab menu's Close others: closes every tab but <paramref name="keep"/> after one prompt listing the unsaved ones; false when cancelled.</summary>
+    public bool CloseOthers(IDocument keep) => CloseMany([.. OpenDocuments.Where(d => !ReferenceEquals(d, keep))], keep);
+
+    /// <summary>The tab menu's Close tabs to the right: closes the tabs after <paramref name="document"/> after one prompt listing the unsaved ones; false when cancelled.</summary>
+    public bool CloseToTheRight(IDocument document)
     {
-        foreach (var d in OpenDocuments) d.CommitPendingEdits();
-        var dirty = OpenDocuments.Where(d => d.IsDirty).ToList();
+        int index = OpenDocuments.IndexOf(document);
+        return index < 0 || CloseMany([.. OpenDocuments.Skip(index + 1)], document);
+    }
+
+    /// <summary>
+    /// Closes <paramref name="documents"/> after one prompt listing the unsaved ones; false when cancelled. When the tab in
+    /// front is among them, <paramref name="keep"/> comes to the front first, so no other tab is activated on the way.
+    /// </summary>
+    private bool CloseMany(IReadOnlyList<IDocument> documents, IDocument? keep)
+    {
+        foreach (var d in documents) d.CommitPendingEdits();
+        var dirty = documents.Where(d => d.IsDirty).ToList();
         if (dirty.Count > 0 && !ResolveUnsaved(dirty)) return false;
-        foreach (var d in OpenDocuments.ToList()) Remove(d);
+        if (keep is not null && _active is { } active && documents.Contains(active)) ActiveDocument = keep;
+        foreach (var d in documents) Remove(d);
         return true;
     }
 
@@ -546,6 +563,8 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
         new("Edit", "Redo", Key.Z, ModifierKeys.Control | ModifierKeys.Shift, RedoCommand),
         new("Window", "Next tab", Key.Tab, ModifierKeys.Control, new RelayCommand(() => Cycle(1)), AllowInTextInput: true),
         new("Window", "Previous tab", Key.Tab, ModifierKeys.Control | ModifierKeys.Shift, new RelayCommand(() => Cycle(-1)), AllowInTextInput: true),
+        new("Window", "Next tab", Key.PageDown, ModifierKeys.Control, new RelayCommand(() => Cycle(1)), AllowInTextInput: true),
+        new("Window", "Previous tab", Key.PageUp, ModifierKeys.Control, new RelayCommand(() => Cycle(-1)), AllowInTextInput: true),
         new("Help", "Help for the active document (else keyboard shortcuts)", Key.F1, ModifierKeys.None, new RelayCommand(ShowContextHelp), AllowInTextInput: true),
         new("View", "Show or hide the left pane", Key.L, ModifierKeys.Control | ModifierKeys.Shift, ToggleLeftPaneCommand, AllowInTextInput: true),
         new("View", "Show or hide the bottom pane", Key.M, ModifierKeys.Control | ModifierKeys.Shift, ToggleBottomPaneCommand, AllowInTextInput: true),
@@ -557,6 +576,26 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
         ActiveDocument = OpenDocuments[(OpenDocuments.IndexOf(_active) + step + OpenDocuments.Count) % OpenDocuments.Count];
     }
 
+
+    // ---- document tabs ----
+
+    /// <summary>The <see cref="AppSettings.Values"/> key of <see cref="DocumentTabRows"/>.</summary>
+    public const string DocumentTabRowsKey = "shell.documentTabRows";
+
+    /// <summary>
+    /// How the document tabs fit the window when there are more than one row holds: false (the default) keeps one row
+    /// that scrolls, with arrows at its ends; true wraps the tabs onto as many rows as they need.
+    /// </summary>
+    public bool DocumentTabRows
+    {
+        get => Settings.Get<bool>(DocumentTabRowsKey);
+        set
+        {
+            if (value == DocumentTabRows) return;
+            Settings.Set<bool?>(DocumentTabRowsKey, value ? true : null);
+            Raise(nameof(DocumentTabRows));
+        }
+    }
 
     // ---- pane toggles (the main window owns the panes) ----
 

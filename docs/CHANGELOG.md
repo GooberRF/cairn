@@ -3,7 +3,34 @@
 ## 1.2.0
 
 Red Faction II characters now convert whole: every one becomes a single submesh, with a texture atlas when it uses too many
-textures, and Cairn reports and repairs a `.v3c` with several submeshes.
+textures, and Cairn reports and repairs a `.v3c` with several submeshes. Alpine Faction's cache packs (`.cache`) open
+read-only in a packfile tab, and every tab stays within reach however many are open.
+
+**Suite**
+
+- Fixed **tabs out of reach**: with more tabs than fit the window, the ones on the right could not be reached. The tab
+  strip now scrolls, with an arrow at each end while tabs are out of sight and the mouse wheel over the strip, and the
+  tab in front is always scrolled into sight. **Tools › Settings… › General › Document tabs** can wrap the tabs onto
+  **Several rows** instead of **One scrolling row**. Long file names are shortened on their tab (the tooltip shows
+  the whole path).
+- Added the **list of open tabs** (the button beside **+** at the end of the tab strip): choose a tab to bring it to
+  the front.
+- Added a **tab menu** (right-click a tab): **Close**, **Close Others**, **Close Tabs to the Right** and **Close All**,
+  each asking once about every unsaved file it closes.
+- Added **Ctrl+PageDown** and **Ctrl+PageUp** for the next and previous tab, beside **Ctrl+Tab** and
+  **Ctrl+Shift+Tab**.
+
+**Packfiles**
+
+- Added **Alpine Faction cache packs** (`.cache`, such as `alpine_cache\map_thumbs.cache`; File › Open): open
+  read-only in a packfile tab to list, preview, extract and convert their entries. An entry whose data does not match
+  its name is listed with the data's type added, so the map browser's thumbnails (JPEGs named after their levels,
+  `dm01.rfl`) are listed, previewed and extracted as `dm01.rfl.jpg`; the details show the stored name, tag and CRC,
+  and with nothing selected, the pack's facts. A pack that is damaged or of another version, or another program's
+  `.cache`, is refused with the reason. **ACP003** warns of a corrupt entry (data that does not match its CRC, which
+  the game does not use); **ACP001** (names that differ only in case) and **ACP002** (empty entries) are information
+  only. `.cache` is offered under Tools › Settings… › File associations, but **Select all** leaves it, as
+  other programs use the extension too.
 
 **Meshes and animations**
 

@@ -29,6 +29,7 @@ public sealed partial class VppModule : ModuleBase
         Kind = new VppKind(this);
         PegKind = new PegKind(this);
         Rf2Kind = new Rf2GroupKind(this);
+        CacheKind = new CachePackKind(this);
         Settings = new VppSettings(() => _store);
         SettingsPages = [new VppSettingsPage(Settings)];
     }
@@ -43,7 +44,9 @@ public sealed partial class VppModule : ModuleBase
     public IShellContext Host => Shell;
     /// <summary>The Red Faction II packfile group kind (.toc_group, read only).</summary>
     public Rf2GroupKind Rf2Kind { get; }
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [Kind, PegKind, Rf2Kind];
+    /// <summary>The Alpine Faction cache pack kind (.cache, read only).</summary>
+    public CachePackKind CacheKind { get; }
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [Kind, PegKind, Rf2Kind, CacheKind];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     public override IReadOnlyList<ToolbarContribution> ToolbarItems => _toolbar;
     public override IReadOnlyList<ShortcutInfo> Shortcuts => _shortcuts;
@@ -62,11 +65,11 @@ public sealed partial class VppModule : ModuleBase
 
     private void UpdateEditTips()
     {
-        bool readOnly = Active is { IsReadOnly: true };
+        var readOnly = Active is { IsReadOnly: true } active ? active : null;
         foreach (var (item, tip) in _editItems)
         {
-            item.ToolTip = readOnly ? VppDocument.ReadOnlyReason : tip;
-            if (item.Command is null) item.IsEnabled = !readOnly; // a submenu (Sort by)
+            item.ToolTip = readOnly?.ReadOnlyReason ?? tip;
+            if (item.Command is null) item.IsEnabled = readOnly is null; // a submenu (Sort by)
         }
     }
 
@@ -307,6 +310,36 @@ public sealed class Rf2GroupKind(VppModule module) : IDocumentKind
         throw new InvalidDataException($"{displayName} ({originText}) lists files stored beside it: its .packfile or loose files below the game folder. Open it from the Red Faction II folder instead.");
 
     /// <summary>Never needed (a read-only group is never dirty); handled as a packfile's recovery data.</summary>
+    public IDocument Restore(RecoverySnapshot snapshot) => module.Kind.Restore(snapshot);
+}
+
+/// <summary>
+/// The Alpine Faction cache pack kind: a <c>.cache</c> (such as <c>alpine_cache\map_thumbs.cache</c>) opens as a
+/// read-only packfile of its entries. Nothing is ever written to it.
+/// </summary>
+public sealed class CachePackKind(VppModule module) : IDocumentKind
+{
+    public string Id => "vpp.cache";
+    public string DisplayName => "Alpine cache pack";
+    public IReadOnlyList<string> Extensions { get; } = [Cairn.Formats.Alpine.CachePack.Extension];
+    public string FileFilter => "Alpine Faction cache packs (*.cache)|*.cache";
+    public bool CanCreateNew => false;
+    public string AssociationDescription => "Alpine Faction cache pack";
+
+    public IDocument? CreateNew() => null;
+
+    /// <summary>Reads the pack's index; throws <see cref="Cairn.Formats.AssetFormatException"/> with the reason when it cannot (another program's .cache included).</summary>
+    public IDocument Open(string path)
+    {
+        string full = Path.GetFullPath(path);
+        return new VppDocument(module, Cairn.Vpp.Alpine.CachePacks.Open(full), Path.GetFileName(full), full, kind: this);
+    }
+
+    /// <summary>Refused: the entries are read from the pack on disk as they are needed.</summary>
+    public IDocument OpenBytes(byte[] bytes, string displayName, string originText) =>
+        throw new InvalidDataException($"{displayName} ({originText}) is an Alpine Faction cache pack stored inside another file. Extract it first, then open the extracted copy.");
+
+    /// <summary>Never needed (a read-only pack is never dirty); handled as a packfile's recovery data.</summary>
     public IDocument Restore(RecoverySnapshot snapshot) => module.Kind.Restore(snapshot);
 }
 

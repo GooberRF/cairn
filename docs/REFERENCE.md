@@ -44,7 +44,8 @@ Read the guide for how to do things; come here when you need the exact meaning o
     [Packfile problem codes](#packfile-problem-codes) · [Packfile settings](#packfile-settings) ·
     [Packfile limits](#packfile-limits) · [DDS conversion options](#dds-conversion-options) ·
     [PEG conversion rules](#peg-conversion-rules) ·
-    [Red Faction II packfile groups](#red-faction-ii-packfile-groups)
+    [Red Faction II packfile groups](#red-faction-ii-packfile-groups) ·
+    [Alpine Faction cache packs](#alpine-faction-cache-packs)
 - [Tables (TBL)](#tables-tbl)
   - [Tables Cairn knows](#tables-cairn-knows) · [Table menus and shortcuts](#table-menus-and-shortcuts) ·
     [Table panels, status bar and settings](#table-panels-status-bar-and-settings) ·
@@ -86,6 +87,13 @@ Read the guide for how to do things; come here when you need the exact meaning o
 The toolbar has **New** (a split button listing every kind of file), **Open**, **Save**, **Undo**, **Redo**, the pane
 toggles and the buttons of the module in front.
 
+The tab strip ends with a button listing every open tab (the one in front ticked) and **+** (**Open…**). Tabs that do
+not fit the window scroll in one row, with an arrow at each end while tabs are out of sight and the mouse wheel over the
+strip, or wrap onto several rows (**Document tabs** below). Right-clicking a tab offers **Close** (**Ctrl+W**),
+**Close Others**, **Close Tabs to the Right** and **Close All**; closing several tabs asks once about every unsaved
+file. A middle-click closes a tab. **Ctrl+Tab** / **Ctrl+Shift+Tab** and **Ctrl+PageDown** / **Ctrl+PageUp** move to
+the next / previous tab.
+
 ### Settings pages
 
 **Tools › Settings…** has a **General** page, a **File associations** page and one page per module.
@@ -93,6 +101,7 @@ toggles and the buttons of the module in front.
 | General page section | Settings |
 |---|---|
 | **Appearance** | **Follow Windows**, **Light**, **Dark**. The theme changes as you pick it; **Cancel** puts the old one back. |
+| **Document tabs** | What happens when the open tabs do not fit the window: **One scrolling row** (the default; arrows at its ends and the mouse wheel scroll it, and the tab in front is always scrolled into sight) or **Several rows** (the tabs wrap onto as many rows as they need). |
 | **3D viewport mouse** | **Orbit** and **Fly mode**, each with **Invert horizontal** and **Invert vertical**: reverse the left-drag orbit of every 3D preview, and the level preview's fly-mode mouse look, along either axis. Panning is not affected. Off at first. |
 | **Red Faction folder** | The game folder, **Auto-detect** (from Alpine Faction's or Dash Faction's settings), **Browse…**. The page says whether the folder looks like an install. |
 | **Search folders** | Extra folders searched for referenced files, in order: **Add…**, **Remove**, **Move up**, **Move down**. |
@@ -2023,6 +2032,46 @@ listed names differ only in case and hold the same data, extracting writes the f
 | RF2002 | Info | Two listed names differ only in case: on Windows they are one file. |
 | RF2003 | Warning | A loose file's size differs from the size the group lists; the file on disk is used. |
 | RF2004 | Info | A listed file is empty (0 bytes). |
+
+### Alpine Faction cache packs
+
+Walk-through: [Look inside an Alpine Faction cache pack](USAGE.md#look-inside-an-alpine-faction-cache-pack).
+
+**The format.** Alpine Faction keeps data it fetched or built in cache packs (`.cache`) in the game's `alpine_cache`
+folder; `map_thumbs.cache` holds the map browser's level previews, one JPEG (at most 480 × 270) per level, named after
+the level file in lower case (`dm01.rfl`). All values are little-endian. A 20-byte header (signature `AFCP`, version 1,
+a 64-bit write ID and the entry count), then the index: per entry its name's length (16 bits) and bytes, a 64-bit tag,
+its data size (32 bits) and the CRC-32 of its data (zlib's). The data follows the index, each entry's bytes in index
+order with no padding, and ends at the end of the file. The game rewrites the whole pack whenever it saves it, with a new write ID. The tag is the
+writer's own value for what the data was made from; the map thumbnails store 0.
+
+**Opening.** Cairn reads only the index, as strictly as the game: the signature and version 1, names that are not
+empty and are unique (compared byte for byte, so case counts), an index that fits the file, and data sizes that add up
+to exactly what follows the index. A file that fails a check is refused with the reason (the game would discard it
+and start a new pack). An entry whose data does not match its CRC is corrupt: the game does not use it, but the rest of
+the pack is still valid, so Cairn lists it with a warning (ACP003). A `.cache` from another program is refused as not a
+cache pack. Names are taken byte for byte
+(Latin-1). An entry whose data is of a type Cairn recognises (JPEG, PNG, DDS, WAV, Ogg and the game's own formats) that
+its name does not say is listed with that type's extension added (`dm01.rfl.jpg`), so previews, **Convert to** and
+extraction treat it as what it is. If the pack changes on disk while the tab is open, previews and extraction refuse
+with a message until it is read again.
+
+**What works.** The list with its filter, type panel, sorting and Info column; previews and details (with the stored
+name, tag and CRC of each entry); **Extract** (selected, all, here, by dragging, **Ctrl+C**); **Convert to** on one entry,
+writing into a folder. With nothing selected, the details pane shows the pack's facts: format, write ID, entry count,
+data and index sizes, how many entries are listed with their type added, how many are corrupt, and the pack's path. A cache pack is not a
+packfile the game loads assets from, so its entries are not offered to other modules (meshes, clips, textures).
+
+**What is off.** Everything that changes the pack: adding, removing, renaming, replacing, sorting entries, **Save** and
+**Save As**, dropping files on the list, **Update packfile** for work copies, **Convert images to DDS…**.
+
+**Problems** (the packfile rules for Red Faction do not apply to a cache pack):
+
+| Code | Kind | Meaning |
+|---|---|---|
+| ACP001 | Info | Two listed names differ only in case: on Windows they are one file, so extracting both into one folder writes it once. |
+| ACP002 | Info | An entry is empty (0 bytes). |
+| ACP003 | Warning | An entry is corrupt: its data does not match its CRC, so the game does not use it. |
 
 ## Tables (TBL)
 

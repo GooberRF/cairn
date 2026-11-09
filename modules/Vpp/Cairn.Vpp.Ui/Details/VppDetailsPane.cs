@@ -33,6 +33,7 @@ public sealed class VppDetailsPane : AssetDetailsPane
         {
             // a Red Faction II group shows what it says about itself until a file is selected
             if (package?.Rf2 is { } rf2) ShowDetails(GroupDetails(rf2, package));
+            else if (package?.Cache is { } cache) ShowDetails(CacheDetails(cache, package));
             else ShowMessage("Select a file to see its details.");
             return;
         }
@@ -51,6 +52,13 @@ public sealed class VppDetailsPane : AssetDetailsPane
         const string entry = "Entry";
         var rows = new List<AssetDetailRow> { new(entry, "Name", item.Name) };
         if (item.IsRenamed) rows.Add(new(entry, "Original name", item.OriginalName!));
+        if (package?.Cache is { } cache && cache.EntryOf(item) is { } stored)
+        {
+            if (stored.Name != item.Name) rows.Add(new(entry, "Stored name", stored.Name + " (the data's type is added to the listed name)"));
+            rows.Add(new(entry, "Tag", string.Format(CultureInfo.InvariantCulture, "0x{0:X16} (the game's own value for what the data was made from)", stored.Tag)));
+            rows.Add(new(entry, "CRC", string.Format(CultureInfo.InvariantCulture, "0x{0:X8} ({1})", stored.Crc,
+                cache.Corrupt.Contains(item.OriginalIndex) ? "does not match the data: the entry is corrupt" : "matches the data")));
+        }
         foreach (var label in new[] { "Type", "Size", "Game" })
             if (sheet[label] is { } value) rows.Add(new(entry, label, value));
         switch (item.Source)
@@ -74,7 +82,7 @@ public sealed class VppDetailsPane : AssetDetailsPane
                 rows.Add(new(entry, "Source", "in memory (not saved yet)"));
                 break;
         }
-        if (package?.Rf2 is null) rows.Add(new(entry, "State", item.State switch
+        if (package is not { IsReadOnly: true }) rows.Add(new(entry, "State", item.State switch
         {
             VppItemState.Added => "Added (not saved yet)",
             VppItemState.Replaced => "Replaced (not saved yet)",
@@ -132,6 +140,18 @@ public sealed class VppDetailsPane : AssetDetailsPane
             rows.Add(new(type ? "Types" : "Packfile group", type ? label[5..] : label, value, Flagged: label == "Missing on disk" || label == "Size differs"));
         }
         return new AssetDetails(Path.GetFileName(rf2.TocPath), rows, []);
+    }
+
+    /// <summary>An Alpine Faction cache pack's own facts (format, write id, counts, types).</summary>
+    internal static AssetDetails CacheDetails(Cairn.Vpp.Alpine.CachePackInfo cache, VppPackage package)
+    {
+        var rows = new List<AssetDetailRow>();
+        foreach (var (label, value) in cache.Facts(package.Items))
+        {
+            bool type = label.StartsWith("Type ", StringComparison.Ordinal);
+            rows.Add(new(type ? "Types" : "Cache pack", type ? label[5..] : label, value));
+        }
+        return new AssetDetails(Path.GetFileName(cache.PackPath), rows, []);
     }
 
     private static AssetDetails Summary(IReadOnlyList<VppItem> selection, IReadOnlyList<VppProblem>? problems)

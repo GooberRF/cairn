@@ -245,7 +245,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     {
         newName = newName.Trim();
         if (doc.IsBusy) return "Wait for the current operation to finish.";
-        if (doc.RefuseReadOnly()) return VppDocument.ReadOnlyReason;
+        if (doc.RefuseReadOnly()) return doc.ReadOnlyReason;
         if (string.Equals(oldName, newName, StringComparison.Ordinal)) return null;
         // checked here, before the core's normalising (which would quietly keep only the part after a '/')
         if (VppNames.Validate(newName) is { } invalid) { doc.ShowStatus("Not renamed: " + invalid); return invalid; }

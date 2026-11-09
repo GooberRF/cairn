@@ -42,7 +42,7 @@ public sealed partial class VppModule : IAssetFactsProvider, IAssetSiblingsProvi
 
     /// <inheritdoc/>
     public bool CanOpenArchive(string archivePath) =>
-        Kind.Extensions.Concat(Rf2Kind.Extensions).Contains(Path.GetExtension(archivePath), StringComparer.OrdinalIgnoreCase);
+        Kind.Extensions.Concat(Rf2Kind.Extensions).Concat(CacheKind.Extensions).Contains(Path.GetExtension(archivePath), StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc/>
     public bool OpenArchiveEntry(string archivePath, string entryName)
@@ -137,6 +137,8 @@ public sealed partial class VppModule : IAssetFactsProvider, IAssetSiblingsProvi
         foreach (var doc in Shell.Documents.OfType<VppDocument>())
         {
             var package = doc.Current;
+            // a cache pack holds the game's own data (map thumbnails), never assets another file refers to
+            if (package.Cache is not null) continue;
             if (!_sourceOf.TryGetValue(doc, out var source) || !ReferenceEquals(source.Version, package) || source.Label != doc.DisplayName || source.ArchivePath != doc.FilePath)
             {
                 var owner = doc;

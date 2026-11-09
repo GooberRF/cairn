@@ -176,6 +176,8 @@ public static partial class VppFacts
         // Alpine Faction is the baseline: only whether the game loads the type at all (with the first Alpine version
         // when an Alpine-added type has a known one).
         if (input.Context.Package?.Rf2 is not null) sheet.Add("Game", "Red Faction II (read only in Cairn)");
+        // what a cache pack holds is the game's own data, never an asset it loads from a packfile
+        else if (input.Context.Package?.Cache is not null) sheet.Add("Game", "Alpine Faction cache data (read only in Cairn)");
         else sheet.Add("Game", !type.GameLoads ? "Not loaded by the game"
             : type.AlpineSince is { } since ? $"Loaded by the game (Alpine Faction {since} or later)" : "Loaded by the game");
         // nothing to read (Red Faction II ships 0-byte .peg placeholders): no type error for a file without content

@@ -94,6 +94,7 @@ public sealed class AssociationsModel : ObservableObject
     {
         ".gltf", ".glb", ".obj", ".fbx", ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".dds", ".wav", ".ogg", ".mp3", ".txt",
         ".aif", ".aiff", ".aifc",
+        ".cache", // Alpine Faction's cache packs, but many programs keep .cache files
     };
 
     /// <summary>True for a general format other programs usually own (.wav, .ogg...): listed when a kind opens it, but "Select all" leaves it.</summary>

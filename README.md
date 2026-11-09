@@ -22,6 +22,7 @@ for menus, settings, problem codes and format limits.
 | `.v3m` static mesh | ✓ | | Copy | ✓ | New from glTF |
 | `.vfx` effect | ✓ | ✓ | ✓ | ✓ | Older versions convert before editing |
 | `.vpp` packfile | ✓ | ✓ | ✓ | ✓ | |
+| `.cache` Alpine Faction cache pack | ✓ | | | | Read only; preview and extract its entries (such as the map thumbnails) |
 | `.tbl` table | ✓ | ✓ | ✓ | ✓ | |
 | `.vf` font | ✓ | ✓ | ✓ | | |
 | `.vbm` bitmap | ✓ | ✓ | ✓ | ✓ | |

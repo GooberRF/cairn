@@ -44,6 +44,7 @@ public partial class MainWindow : Window
         Drop += OnDrop;
         shell.PaneToggleRequested += (_, key) => { if (key == "left") TogglePane("left", LeftPane); else TogglePane("bottom", BottomPane); };
         DocumentTabs.PreviewMouseUp += OnTabStripMiddleClick;
+        SetUpTabStrip();
         Closing += OnClosing;
         SizeChanged += OnWindowSizeChanged;
         OnActiveChanged();
@@ -399,6 +400,158 @@ public partial class MainWindow : Window
             if (d is TabItem { DataContext: Cairn.Ui.Documents.IDocument doc } && _shell.CloseTabCommand.CanExecute(doc))
             {
                 _shell.CloseTabCommand.Execute(doc);
+                e.Handled = true;
+                return;
+            }
+        }
+    }
+
+    // ---- document tab strip ----
+
+    private ScrollViewer? _tabScroller;
+    private Button? _tabsLeft, _tabsRight, _tabList;
+    private bool _bringTabPending;
+
+    /// <summary>The strip's scroller and its arrows (self-tests).</summary>
+    internal ScrollViewer? TabScroller => _tabScroller;
+    internal Button? TabsLeft => _tabsLeft;
+    internal Button? TabsRight => _tabsRight;
+
+    /// <summary>
+    /// Wires the document tab strip's parts: the arrows and the mouse wheel scroll it, the list button lists every open
+    /// tab, a right-click on a tab opens its menu, and the tab in front is kept in sight. The layout follows
+    /// <see cref="ShellViewModel.DocumentTabRows"/>.
+    /// </summary>
+    private void SetUpTabStrip()
+    {
+        DocumentTabs.ApplyTemplate();
+        T? Part<T>(string name) where T : class => DocumentTabs.Template.FindName(name, DocumentTabs) as T;
+        _tabScroller = Part<ScrollViewer>("PART_TabScroller");
+        _tabsLeft = Part<Button>("PART_ScrollLeft");
+        _tabsRight = Part<Button>("PART_ScrollRight");
+        _tabList = Part<Button>("PART_TabList");
+        if (_tabsLeft is not null) _tabsLeft.Click += (_, _) => ScrollTabs(-1);
+        if (_tabsRight is not null) _tabsRight.Click += (_, _) => ScrollTabs(1);
+        if (_tabList is not null) _tabList.Click += (_, _) => { var menu = TabListMenu(); menu.PlacementTarget = _tabList; menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom; menu.IsOpen = true; };
+        if (_tabScroller is not null)
+        {
+            _tabScroller.PreviewMouseWheel += OnTabStripWheel;
+            _tabScroller.ScrollChanged += (_, e) =>
+            {
+                // more or fewer tabs, a longer name or a resized window: the tab in front stays in sight
+                if (e.ExtentWidthChange != 0 || e.ViewportWidthChange != 0) BringActiveTabIntoView();
+                UpdateTabArrows();
+            };
+        }
+        DocumentTabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, DocumentTabs)) BringActiveTabIntoView(); };
+        DocumentTabs.MouseRightButtonUp += OnTabStripRightClick;
+        _shell.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(ShellViewModel.DocumentTabRows)) ApplyTabLayout(); };
+        ApplyTabLayout();
+    }
+
+    /// <summary>One scrolling row, or as many rows as the tabs need (the scroller then gives the panel the strip's width to wrap in).</summary>
+    private void ApplyTabLayout()
+    {
+        if (_tabScroller is null) return;
+        bool rows = _shell.DocumentTabRows;
+        _tabScroller.HorizontalScrollBarVisibility = rows ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden;
+        if (rows) _tabScroller.ScrollToHorizontalOffset(0);
+        UpdateTabArrows();
+        BringActiveTabIntoView();
+    }
+
+    /// <summary>The arrows show while tabs are out of sight in the one-row layout; each is off at its end.</summary>
+    private void UpdateTabArrows()
+    {
+        if (_tabScroller is null || _tabsLeft is null || _tabsRight is null) return;
+        bool scrolls = !_shell.DocumentTabRows && _tabScroller.ScrollableWidth > 0.5;
+        _tabsLeft.Visibility = _tabsRight.Visibility = scrolls ? Visibility.Visible : Visibility.Collapsed;
+        _tabsLeft.IsEnabled = scrolls && _tabScroller.HorizontalOffset > 0.5;
+        _tabsRight.IsEnabled = scrolls && _tabScroller.HorizontalOffset < _tabScroller.ScrollableWidth - 0.5;
+    }
+
+    /// <summary>The left and right edges of a tab in the scroller's content, or null when it has none yet.</summary>
+    private (double Left, double Right)? TabEdges(Cairn.Ui.Documents.IDocument doc)
+    {
+        if (DocumentTabs.ItemContainerGenerator.ContainerFromItem(doc) is not TabItem item || !item.IsVisible
+            || System.Windows.Media.VisualTreeHelper.GetParent(item) is not Panel panel) return null;
+        var left = item.TransformToAncestor(panel).Transform(new Point(0, 0)).X;
+        return (left, left + item.ActualWidth);
+    }
+
+    /// <summary>An arrow: brings the first tab cut off on that side fully into sight.</summary>
+    internal void ScrollTabs(int direction)
+    {
+        if (_tabScroller is null) return;
+        double from = _tabScroller.HorizontalOffset, to = from + _tabScroller.ViewportWidth;
+        var edges = _shell.OpenDocuments.Select(TabEdges).Where(e => e is not null).Select(e => e!.Value).ToList();
+        int i = direction > 0 ? edges.FindIndex(e => e.Right > to + 0.5) : edges.FindLastIndex(e => e.Left < from - 0.5);
+        if (i >= 0) _tabScroller.ScrollToHorizontalOffset(direction > 0 ? edges[i].Right - _tabScroller.ViewportWidth : edges[i].Left);
+    }
+
+    /// <summary>The wheel over the one-row strip scrolls it sideways.</summary>
+    private void OnTabStripWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (_tabScroller is null || _shell.DocumentTabRows || _tabScroller.ScrollableWidth <= 0) return;
+        _tabScroller.ScrollToHorizontalOffset(_tabScroller.HorizontalOffset - e.Delta);
+        e.Handled = true;
+    }
+
+    /// <summary>Scrolls the tab in front fully into sight once the strip has been laid out (one request at a time).</summary>
+    private void BringActiveTabIntoView()
+    {
+        if (_bringTabPending) return;
+        _bringTabPending = true;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            _bringTabPending = false;
+            if (_tabScroller is null || _shell.DocumentTabRows || _shell.ActiveDocument is not { } doc || TabEdges(doc) is not { } e) return;
+            if (e.Left < _tabScroller.HorizontalOffset) _tabScroller.ScrollToHorizontalOffset(e.Left);
+            else if (e.Right > _tabScroller.HorizontalOffset + _tabScroller.ViewportWidth) _tabScroller.ScrollToHorizontalOffset(e.Right - _tabScroller.ViewportWidth);
+        });
+    }
+
+    /// <summary>The list button's menu: every open tab in order, the one in front ticked; choosing one brings it to the front.</summary>
+    internal ContextMenu TabListMenu()
+    {
+        var menu = new ContextMenu();
+        foreach (var doc in _shell.OpenDocuments)
+        {
+            var item = new MenuItem { Header = doc.TabHeader.Replace("_", "__"), IsChecked = ReferenceEquals(doc, _shell.ActiveDocument), ToolTip = doc.TabToolTip };
+            item.Click += (_, _) => _shell.ActiveDocument = doc;
+            menu.Items.Add(item);
+        }
+        return menu;
+    }
+
+    /// <summary>A tab's right-click menu: Close, Close others, Close tabs to the right and Close all.</summary>
+    internal ContextMenu TabMenu(Cairn.Ui.Documents.IDocument doc)
+    {
+        int index = _shell.OpenDocuments.IndexOf(doc), count = _shell.OpenDocuments.Count;
+        MenuItem Entry(string header, Action action, bool enabled = true, string? gesture = null)
+        {
+            var item = new MenuItem { Header = header, IsEnabled = enabled, InputGestureText = gesture ?? string.Empty };
+            item.Click += (_, _) => action();
+            return item;
+        }
+        var menu = new ContextMenu();
+        menu.Items.Add(Entry("_Close", () => _shell.Close(doc), gesture: "Ctrl+W"));
+        menu.Items.Add(Entry("Close _Others", () => _shell.CloseOthers(doc), count > 1));
+        menu.Items.Add(Entry("Close Tabs to the _Right", () => _shell.CloseToTheRight(doc), index >= 0 && index < count - 1));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Entry("Close _All", () => _shell.CloseAll()));
+        return menu;
+    }
+
+    private void OnTabStripRightClick(object sender, MouseButtonEventArgs e)
+    {
+        for (var d = e.OriginalSource as DependencyObject; d != null && d != DocumentTabs; d = System.Windows.Media.VisualTreeHelper.GetParent(d))
+        {
+            if (d is TabItem { DataContext: Cairn.Ui.Documents.IDocument doc } tab)
+            {
+                var menu = TabMenu(doc);
+                menu.PlacementTarget = tab;
+                menu.IsOpen = true;
                 e.Handled = true;
                 return;
             }
