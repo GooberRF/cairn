@@ -24,6 +24,7 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
     /// <summary>Why a read-only package's commands that change it are off (tooltips, status messages).</summary>
     public string ReadOnlyReason => Current.Cache is not null
         ? "Alpine Faction cache packs are read only in Cairn: extract, preview and convert their entries instead."
+        : Current.Cfl is not null ? "X-Forge CFL archives (Red Faction for N-Gage) are read only in Cairn: extract, preview, open and convert their files instead."
         : "Red Faction II packfiles are read only in Cairn: extract, preview, open and convert their files instead.";
 
     private readonly FileChangeWatcher _diskWatcher;
@@ -110,7 +111,8 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
     /// </summary>
     public byte[] CurrentBytes() => PegSource is not null && PegBytes is { } peg ? peg
         : Current.Rf2 is { } rf2 ? File.ReadAllBytes(rf2.TocPath)
-        : Current.Cache is { } cache ? File.ReadAllBytes(cache.PackPath) : Serialize();
+        : Current.Cache is { } cache ? File.ReadAllBytes(cache.PackPath)
+        : Current.Cfl is { } cfl ? File.ReadAllBytes(cfl.ArchivePath) : Serialize();
 
     /// <summary>True for a Red Faction II packfile group or an Alpine Faction cache pack: listed, previewed and extracted, never changed or saved.</summary>
     public override bool IsReadOnly => History is { } history && history.Current.IsReadOnly;
@@ -235,6 +237,7 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
         items.Add(new StatusItem(p.Count == 1 ? "1 entry" : $"{p.Count:N0} entries", "Entries in the packfile"));
         if (p.Rf2 is { } rf2) items.Add(new StatusItem(VppEntryRow.FormatSize(p.DataBytes), $"{p.DataBytes:N0} bytes of file data ({rf2.ModeText}); read only"));
         else if (p.Cache is not null) items.Add(new StatusItem(VppEntryRow.FormatSize(p.DataBytes), $"{p.DataBytes:N0} bytes of entry data (Alpine Faction cache pack); read only"));
+        else if (p.Cfl is { } cfl) items.Add(new StatusItem(VppEntryRow.FormatSize(p.DataBytes), $"{p.DataBytes:N0} bytes of file data unpacked, {cfl.Archive.Length:N0} bytes packed (X-Forge CFL archive); read only"));
         else items.Add(new StatusItem(VppEntryRow.FormatSize(p.ArchiveBytes), $"The packfile will be {p.ArchiveBytes:N0} bytes when saved ({p.DataBytes:N0} bytes of file data)"));
         if (PendingChanges > 0) items.Add(new StatusItem(PendingChanges == 1 ? "1 pending change" : $"{PendingChanges:N0} pending changes", "Added, replaced, renamed or removed entries not saved yet"));
         int errors = _problems.Count(x => x.Severity == VppSeverity.Error), warnings = _problems.Count(x => x.Severity == VppSeverity.Warning);
@@ -433,7 +436,8 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
         if (package.Rf2 is { PackfilePath: { } packfile } && items.Any(i => i.Source is ArchiveSource a && string.Equals(a.ArchivePath, packfile, StringComparison.OrdinalIgnoreCase)))
             return Cairn.Vpp.Rf2.Rf2Packfiles.StaleProblem(package);
         if (package.Path is not { } path || package.Stamp is not { } stamp) return null;
-        var affected = items.Where(i => i.Source is ArchiveSource a && string.Equals(a.ArchivePath, path, StringComparison.OrdinalIgnoreCase)).ToList();
+        var affected = items.Where(i => (i.Source is ArchiveSource a && string.Equals(a.ArchivePath, path, StringComparison.OrdinalIgnoreCase))
+            || (i.Source is Cairn.Vpp.XForge.CflEntrySource c && string.Equals(c.ArchivePath, path, StringComparison.OrdinalIgnoreCase))).ToList();
         if (affected.Count == 0) return null;
         VppArchiveStamp? now;
         try { now = File.Exists(path) ? VppArchiveStamp.Of(path) : null; }
@@ -460,12 +464,13 @@ public sealed class VppDocument : SnapshotDocument<VppPackage>, IDocumentContent
     }
 
     /// <summary>
-    /// Opens a packfile, or a Red Faction II packfile group (<c>.toc_group</c>) or an Alpine Faction cache pack
-    /// (<c>.cache</c>) as a read-only package.
+    /// Opens a packfile, or a Red Faction II packfile group (<c>.toc_group</c>), an Alpine Faction cache pack
+    /// (<c>.cache</c>) or an X-Forge CFL archive (<c>.cfl</c>) as a read-only package.
     /// </summary>
     public static VppPackage OpenPackage(string path) =>
         Cairn.Vpp.Rf2.Rf2Packfiles.IsGroupFile(path) ? Cairn.Vpp.Rf2.Rf2Packfiles.Open(path)
-        : Cairn.Vpp.Alpine.CachePacks.IsCachePack(path) ? Cairn.Vpp.Alpine.CachePacks.Open(path) : VppPackage.Open(path);
+        : Cairn.Vpp.Alpine.CachePacks.IsCachePack(path) ? Cairn.Vpp.Alpine.CachePacks.Open(path)
+        : Cairn.Vpp.XForge.CflArchives.IsCflArchive(path) ? Cairn.Vpp.XForge.CflArchives.Open(path) : VppPackage.Open(path);
 
     /// <summary>Reads the packfile again from disk; pending changes are dropped (after a confirmation when there are any).</summary>
     public void ReloadFromDisk()

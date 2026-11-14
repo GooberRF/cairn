@@ -14,7 +14,8 @@ internal static class LvlHelp
         void Heading(string text) => doc.Blocks.Add(new Paragraph(new Run(text)) { FontSize = 16, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
         void Para(string text) => doc.Blocks.Add(new Paragraph(new Run(text)) { Margin = new Thickness(0, 0, 0, 6) });
         doc.Blocks.Add(new Paragraph(new Run("Levels and groups")) { FontSize = 20, FontWeight = FontWeights.SemiBold });
-        Para("The Levels & groups module opens Red Faction levels (.rfl: Red Faction, Alpine Faction and Red Faction II) and the " +
+        Para("The Levels & groups module opens Red Faction levels (.rfl: Red Faction, Alpine Faction and Red Faction II; and Red " +
+             "Faction for N-Gage's .xff levels) and the " +
              "level editor's group files (.rfg) in read-only tabs. A tab lists the file's facts on the left and shows its geometry in 3D " +
              "on the right. Cairn never changes a level or a group file: Save is off, and File > Convert to… (or Level > Convert…, " +
              "Ctrl+Shift+E) makes other files from it. Alpine Faction's level editor is the tool for editing levels.");
@@ -36,6 +37,9 @@ internal static class LvlHelp
              "colour; Shaded adds a light from the camera's side to show the shapes. Lightmaps are not drawn. Textures are found " +
              "beside the file first (the rest of its packfile for a level opened from one), then in the game data; a face whose " +
              "texture is missing is drawn in a flat colour, and the toolbar counts the missing textures.");
+        Para("View: Faces and edges draws each face's outline over the faces (nearer faces hide the edges behind them); Edges only " +
+             "draws the outlines alone, as a wireframe. Statistics shows the counts in a corner: faces, triangles, vertices, edges, " +
+             "rooms or brushes, movers, textures and objects.");
         Para("A Red Faction II level's textures come from the .peg texture packs beside it (in its folder or its packfile), then " +
              "from the shared packs of the Red Faction II install it belongs to, when Cairn can tell which one that is.");
         Para("Objects chooses the object markers: lights, the player start and respawn points, and items at first; entities, clutter, " +
@@ -76,6 +80,37 @@ internal static class LvlHelp
         Para("After a conversion the report lists the files written, the counts, and what was approximated, dropped or split, and " +
              "any engine limit the output breaks (for example a static mesh's texture limit), each with a code. In a packfile, " +
              "select levels and group files and use Convert levels... to convert them all with the same options.");
+        Heading("Red Faction for N-Gage levels");
+        Para("Red Faction for N-Gage's levels are .xff scenes in its redfaction.cfl archive. Open the archive with File > Open and " +
+             "use Open in Cairn on a level_*.xff, so that the doors, walls and scripts it places and its textures are found in " +
+             "the archive (a loose .xff needs them beside it). Cairn tells a level from a model by its content; models and " +
+             "characters open in the Meshes module. The compiled geometry is the level's meshes, one room per area. The brushes " +
+             "are made as Red Faction's rooms are: RED's world starts solid and air brushes cut its rooms, so each area's own " +
+             "walls, floors and ceilings become one air brush, joined where their corners meet; each doorway becomes a short " +
+             "tunnel into the next room, so neighbouring rooms overlap, and any other hole a short recess. A tunnel's sides " +
+             "carry on the walls beside them, and only a doorway's far end is invisible. Props, " +
+             "decals, see-through parts and placed doors and walls are detail brushes. An area with only props has no air brush " +
+             "of its own. The facts list the rooms, brushes, the files placed as geometry, the objects by class, what is " +
+             "not converted, the script triggers and the textures.");
+        Para("A level converts to glTF, OBJ, a static mesh or a group file. The Convert window's Red Faction for N-Gage section " +
+             "sets the Red Faction metres per N-Gage unit (2.35 by default, measured from the game's sizes, from 0.01 to 100 as " +
+             "in the Meshes module; Default scale puts it back) and whether the textures are copied beside a .v3m or .rfg. A " +
+             ".v3m or .rfg names each .pcx texture as .tga, as Red Faction's editor and levels take .tga, and the copy is " +
+             "written as that .tga. Some 16-bit .tga textures declare an alpha bit that no pixel sets; the N-Gage game " +
+             "draws them opaque, and so does Cairn, in the tab, the preview, the copies (written with no alpha in their header, " +
+             "the pixels the same) and the glTF and OBJ images. The archive is read only, so conversions go next to it or into " +
+             "a folder.");
+        Para("What becomes what (report codes LC100 to LC102): enemies, items, ammunition, weapons, the exploding barrel " +
+             "(Oil Drum), the ATV and the sub follow a table of N-Gage files to Red Faction classes; the player start comes " +
+             "from player.xff, and deathmatch spawns become multiplayer respawn points. An enemy spawn point becomes an entity " +
+             "hidden at the start, and the enemy-group volume named after it a trigger linked to an UnHide event, so the enemy " +
+             "appears when the player walks in, as in the N-Gage game; enemies placed in the level are there from the start. " +
+             "Script volumes and the level end become triggers: link them to events yourself (Red Faction cannot run the N-Gage " +
+             "scripts; link the level end to a Load_Level event). Doors, buttons and walls are static geometry, because their " +
+             "files hold no animation. The levels are lit by baked vertex colours, which are dropped, and no lights are made: " +
+             "add lights and build the lighting in the editor (the report counts the flare sprites that mark the lamps). " +
+             "What has no counterpart (some enemies, death and damage volumes, sprites, particle emitters, lights) is listed " +
+             "in the report.");
         Heading("Where levels load from");
         Para("Red Faction and Alpine Faction load levels from packfiles (.vpp). A converted or extracted file on disk is for other " +
              "tools; to play a level, it has to be in a packfile the game loads.");

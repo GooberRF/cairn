@@ -55,6 +55,8 @@ public static class VppFileTypes
         new(".jpg", "JPEG image", VppFileCategory.Image, false, Alpine),
         new(".jpeg", "JPEG image", VppFileCategory.Image, false, Alpine),
         new(".atx", "Animated texture", VppFileCategory.Image, true, Alpine),
+        // stock bmpman reads PCX, and Alpine's texture chain resolves it after .tga; Cairn reads it, never writes it
+        new(".pcx", "PCX image", VppFileCategory.Image, false, Stock),
         new(".bmp", "Bitmap image", VppFileCategory.Image, false, No),
         new(".psd", "Photoshop document", VppFileCategory.Image, false, No),
         new(".wav", "WAVE audio", VppFileCategory.Audio, false, Stock),
@@ -85,6 +87,12 @@ public static class VppFileTypes
         new(".vcm", "Character mesh (exporter)", VppFileCategory.Mesh, true, No),
         new(".vse", "PS2 sound effect", VppFileCategory.Audio, true, No),
         new(".vmu", "PS2 music", VppFileCategory.Audio, true, No),
+        new(".xm", "FastTracker 2 music", VppFileCategory.Audio, true, No), // played and converted, never written
+        // Red Faction for N-Gage's own types (Fathammer's X-Forge engine); the PC game loads none of them. Cairn reads
+        // them and never writes them (its .pcx textures, .tga images and .wav sounds are the PC game's types).
+        new(".xff", "X-Forge scene", VppFileCategory.Mesh, true, No),
+        new(".pr3", "X-Forge particle system", VppFileCategory.Effect, false, No),
+        new(".cfl", "X-Forge archive", VppFileCategory.Other, true, No),
         new(".arr", "PS2 texture arrangement list", VppFileCategory.Text, false, No),
         new(".ver", "Version text", VppFileCategory.Text, false, No),
     }.ToDictionary(t => t.Extension, StringComparer.OrdinalIgnoreCase);

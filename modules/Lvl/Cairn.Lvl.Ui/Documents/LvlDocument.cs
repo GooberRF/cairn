@@ -56,17 +56,22 @@ public sealed class LvlDocument : DocumentBase, IDocumentContent, IDocument
     /// <summary>The file as opened (levels are never edited).</summary>
     public byte[] CurrentBytes() => _bytes;
 
+    /// <summary>A Red Faction for N-Gage scene is told from a model by its content, so its converters get the whole file.</summary>
+    public ReadOnlyMemory<byte> ContentHead => LvlSource.IsXffName(DisplayName) ? _bytes : ReadOnlyMemory<byte>.Empty;
+
     private async Task LoadAsync(CancellationToken ct)
     {
         byte[] bytes = _bytes;
         string name = DisplayName;
+        // an N-Gage level reads the doors and walls it places from beside it (its .cfl for a work copy, or its folder)
+        var xff = LvlSource.IsXffName(name) ? _module.XffReadOptions(LvlModule.FilesBeside(null, Resolver)) : null;
         LvlSource? source = null;
         string? error = null;
         using (BusyTracker.Begin("level read " + name))
         {
             try
             {
-                source = await Task.Run(() => LvlSource.Read(bytes, name), ct);
+                source = await Task.Run(() => LvlSource.Read(bytes, name, xff), ct);
             }
             catch (OperationCanceledException) { return; }
             catch (AssetFormatException ex) { error = ex.Message; }
@@ -119,7 +124,9 @@ public sealed class LvlDocument : DocumentBase, IDocumentContent, IDocument
             var items = new List<StatusItem>();
             if (source.Level is { } level)
             {
-                items.Add(new StatusItem(VersionText(level.Version), "The level's format version"));
+                items.Add(level.IsXff
+                    ? new StatusItem("Red Faction for N-Gage level", string.Format(CultureInfo.CurrentCulture, "An X-Forge scene, shown at {0:0.###} Red Faction metres per N-Gage unit", level.Xff!.Scale))
+                    : new StatusItem(VersionText(level.Version), "The level's format version"));
                 items.Add(new StatusItem(string.Format(CultureInfo.CurrentCulture, "{0:N0} faces · {1:N0} brushes", level.StaticGeometry.Faces.Length, level.Brushes.Length),
                     "Faces of the compiled geometry, and the editor's brushes"));
             }

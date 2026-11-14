@@ -48,6 +48,9 @@ public static class LocalPaths
     /// <summary>A Red Faction II install (the folder holding <c>pc_media</c> and its <c>.toc_group</c> files), only ever read.</summary>
     public const string Rf2GameDirectoryVariable = "CAIRN_RF2_GAME_DIR";
 
+    /// <summary>Red Faction for N-Gage (the folder holding <c>redfaction.cfl</c> and <c>6r09.app</c>), only ever read.</summary>
+    public const string NgageDirectoryVariable = "CAIRN_NGAGE_DIR";
+
     /// <summary>The optional local file in the research folder.</summary>
     public const string FileName = "local-paths.json";
 
@@ -93,6 +96,9 @@ public static class LocalPaths
 
     /// <summary>A Red Faction II install (<c>CAIRN_RF2_GAME_DIR</c> / <c>rf2GameDirectory</c>: <c>pc_media\*.toc_group</c>), or null. Tests only read it.</summary>
     public static string? Rf2GameDirectory { get; } = Resolve(Rf2GameDirectoryVariable, "rf2GameDirectory");
+
+    /// <summary>Red Faction for N-Gage (<c>CAIRN_NGAGE_DIR</c> / <c>ngageDirectory</c>: <c>redfaction.cfl</c>), or null. Tests only read it.</summary>
+    public static string? NgageDirectory { get; } = Resolve(NgageDirectoryVariable, "ngageDirectory");
 
     /// <summary>A corpus file's full path, or null when the corpus or the file is absent.</summary>
     public static string? CorpusFile(string name)

@@ -12,7 +12,8 @@ namespace Cairn.Rfa.Ui.Viewport;
 /// <summary>
 /// Turns a <see cref="SceneViewModel"/>'s mesh into WPF 3D models (one <see cref="GeometryModel3D"/>
 /// per batch, plus a second one sharing its vertices for the batch's double-sided triangles, which gets
-/// a back material) and keeps their vertices skinned to the current pose.
+/// a back material) and keeps their vertices skinned to the current pose. The triangles' edges (wireframe, or
+/// edges on the mesh) follow the same skinned vertices.
 /// </summary>
 /// <remarks>
 /// <para>Vertices stay in RF space; the view matrix carries the handedness (see <see cref="OrbitCamera"/>).
@@ -38,6 +39,7 @@ internal sealed class MeshRenderer
 
     private readonly List<RenderBatch> _batches = [];
     private readonly Dictionary<string, Material?> _textureMaterials = new(StringComparer.OrdinalIgnoreCase);
+    private readonly WireframeLines _edges = new();
     private Matrix4x4[] _skin = [];
     private Vector3[] _morphed = [];
     private int _textureGeneration;
@@ -49,6 +51,7 @@ internal sealed class MeshRenderer
         Root.Children.Add(Headlight);
         Root.Children.Add(Opaque);
         Root.Children.Add(Transparent);
+        Root.Children.Add(_edges.Root);
     }
 
     /// <summary>The model group the viewport shows.</summary>
@@ -64,6 +67,12 @@ internal sealed class MeshRenderer
 
     /// <summary>Number of vertices currently drawn (for the frame-time report).</summary>
     public int VertexCount { get; private set; }
+
+    /// <summary>The triangles' edges drawn (none unless the mesh is drawn as a wireframe or with its edges).</summary>
+    public WireframeLines Edges => _edges;
+
+    /// <summary>The face models drawn (none in wireframe), for self-tests.</summary>
+    public int FaceModelCount => Opaque.Children.Count + Transparent.Children.Count;
 
     /// <summary>Texture loads in flight (the screenshot waits for these through <see cref="BusyTracker"/>).</summary>
     public int PendingTextures { get; private set; }
@@ -96,9 +105,12 @@ internal sealed class MeshRenderer
         _batches.Clear();
         Opaque.Children.Clear();
         Transparent.Children.Clear();
+        _edges.Clear();
         VertexCount = 0;
         var mesh = scene.Mesh;
         var mode = scene.Display.MeshMode;
+        bool wireframe = mode == MeshDisplayMode.Wireframe;
+        bool edges = wireframe || scene.Display.ShowEdges;
         if (mesh is null || mode == MeshDisplayMode.Off)
         {
             _skin = [];
@@ -156,6 +168,7 @@ internal sealed class MeshRenderer
                     target.Add(FlipWinding ? t.C : t.B);
                     target.Add(FlipWinding ? t.B : t.C);
                 }
+                int[]? edgeList = edges ? WireframeLines.TriangleEdges(single.Concat(dbl)) : null;
                 single.Freeze();
                 dbl.Freeze();
 
@@ -198,8 +211,9 @@ internal sealed class MeshRenderer
                     UseMorphMap = useMap,
                 };
                 _batches.Add(rb);
-                if (singleModel is not null) Opaque.Children.Add(singleModel);
-                if (doubleModel is not null) Opaque.Children.Add(doubleModel);
+                if (edgeList is not null) _edges.Add(rb.Skinned, edgeList);
+                if (!wireframe && singleModel is not null) Opaque.Children.Add(singleModel);
+                if (!wireframe && doubleModel is not null) Opaque.Children.Add(doubleModel);
                 VertexCount += n;
                 if (rb.IsLod0OfFirstSubmesh) morphLength = Math.Max(morphLength, 1);
             }
@@ -209,6 +223,14 @@ internal sealed class MeshRenderer
 
         if (mode == MeshDisplayMode.Textured) LoadTextures(scene, tint);
         UpdatePose(scene);
+    }
+
+    /// <summary>Turns the edges to face the camera (after it, the pose or the mesh changed), in <paramref name="color"/>.</summary>
+    public void UpdateEdges(OrbitCamera camera, Size size, Color color)
+    {
+        if (_edges.EdgeCount == 0) return;
+        _edges.Color = color;
+        _edges.Update(camera, size);
     }
 
     /// <summary>Lighting: full-bright (ambient white) or a headlight from the camera.</summary>

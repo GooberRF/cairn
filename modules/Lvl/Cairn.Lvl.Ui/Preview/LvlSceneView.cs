@@ -31,6 +31,8 @@ public sealed class LvlSceneView : DockPanel, IDisposable
     private readonly LvlMarkerMeshes _markerMeshes;
     private readonly LvlSelectionLayer _selectionLayer;
     private readonly Model3DGroup _opaque = new(), _transparent = new();
+    private readonly WireframeLines _edges = new();
+    private readonly StatisticsPanel _statsPanel = new();
     private readonly ViewportDisplaySettingsBase _display = new("lvl.viewport") { ShowGrid = true };
     private readonly TextureService _textures;
     private readonly LvlSettings? _settings;
@@ -41,7 +43,7 @@ public sealed class LvlSceneView : DockPanel, IDisposable
     private readonly Border _infoBox = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(8), Padding = new Thickness(10, 6, 10, 6), CornerRadius = new CornerRadius(4), MaxWidth = 560, Visibility = Visibility.Collapsed };
     private readonly TextBox _infoText = new() { IsReadOnly = true, BorderThickness = new Thickness(0), Background = Brushes.Transparent, TextWrapping = TextWrapping.Wrap };
     private readonly ToggleButton _compiled, _brushes, _flyToggle;
-    private readonly Button _faces, _objects, _lighting;
+    private readonly Button _faces, _objects, _lighting, _view;
     private readonly TextBlock _stats;
     private readonly WrapPanel _toolbarPanel;
     private readonly Dictionary<string, TextureImage?> _textureCache = new(StringComparer.OrdinalIgnoreCase);
@@ -51,7 +53,9 @@ public sealed class LvlSceneView : DockPanel, IDisposable
     private IReadOnlyList<LvlMarker> _markers = [];
     private LvlSceneSettings _sceneSettings;
     private LvlLighting _lightingMode;
-    private bool _bothSides, _framed, _largeConfirmed, _disposed, _updatingToggles;
+    private LvlEdges _edgesMode;
+    private LvlPreviewScene? _edgesFor;
+    private bool _bothSides, _showStatistics, _framed, _largeConfirmed, _disposed, _updatingToggles;
     private CancellationTokenSource? _buildCts;
     private int _generation, _pendingTextures;
     private Color _ambient = Colors.White;
@@ -68,16 +72,20 @@ public sealed class LvlSceneView : DockPanel, IDisposable
             : LvlSceneSettings.Default with { HiddenClasses = settings.HiddenFaceClasses, ShowNormalFaces = settings.ShowNormalFaces };
         _lightingMode = settings?.Lighting ?? LvlLighting.FullBright;
         _bothSides = settings?.BothSides ?? false;
+        _edgesMode = settings?.Edges ?? LvlEdges.Off;
+        _showStatistics = settings?.ShowStatistics ?? false;
         TriangleLimit = settings?.TriangleLimit ?? LvlSettings.DefaultTriangleLimit;
         SetResourceReference(BackgroundProperty, "Viewport.Background");
         AutomationProperties.SetName(this, "Level preview");
 
         _surface.Display = _display;
         _markerMeshes = new LvlMarkerMeshes(this) { Shown = settings?.Markers ?? LvlMarkerKinds.Default };
-        _surface.Models.Add(_opaque);
-        _surface.Models.Add(_markerMeshes.Root);
-        _surface.Models.Add(_transparent);
-        _surface.Render += (_, _) => _markerMeshes.Update(_surface.Camera, _surface.RenderSize);
+        ArrangeModels();
+        _surface.Render += (_, _) =>
+        {
+            _markerMeshes.Update(_surface.Camera, _surface.RenderSize);
+            UpdateEdges();
+        };
         _surface.ToolTip = "Left-drag: orbit · Middle or Shift+left-drag: pan · Wheel: zoom · Click: show a face or object · F: frame · V: fly camera";
         _markerLayer = new LvlMarkerLayer(_surface) { Shown = _markerMeshes.Shown };
         _selectionLayer = new LvlSelectionLayer(_surface);
@@ -101,11 +109,12 @@ public sealed class LvlSceneView : DockPanel, IDisposable
         _faces = MenuButton("Faces", "Choose which face classes are shown (portal and invisible faces are not drawn by the game)", BuildFacesMenu);
         _objects = MenuButton("Objects", "Choose which object markers are shown", BuildObjectsMenu);
         _lighting = MenuButton("Lighting", "Choose how faces are lit (lightmaps are not drawn)", BuildLightingMenu);
+        _view = MenuButton("View", "Draw the faces' edges, and show the statistics", BuildViewMenu);
         _flyToggle = Toggle("Fly", "Fly camera: drag to look around, W A S D to move, Q and E for down and up, Shift faster, Ctrl slower (V)", (_, _) => { if (!_updatingToggles) FlyMode = _flyToggle!.IsChecked == true; });
         var frame = PreviewUi.Button("Frame", "Show the whole level (F)", (_, _) => Frame());
         _stats = PreviewUi.Secondary("");
         AutomationProperties.SetName(_stats, "Preview statistics");
-        var bar = PreviewUi.Toolbar(_compiled, _brushes, PreviewUi.Divider(), _faces, _objects, _lighting, PreviewUi.Divider(), _flyToggle, frame, PreviewUi.Divider(), _stats);
+        var bar = PreviewUi.Toolbar(_compiled, _brushes, PreviewUi.Divider(), _faces, _objects, _lighting, _view, PreviewUi.Divider(), _flyToggle, frame, PreviewUi.Divider(), _stats);
         _toolbarPanel = (WrapPanel)bar.Child;
         SetDock(bar, Dock.Top);
         Children.Add(bar);
@@ -127,6 +136,7 @@ public sealed class LvlSceneView : DockPanel, IDisposable
         _infoBox.Child = infoPanel;
         _stage.Children.Add(_surface);
         _stage.Children.Add(_infoBox);
+        _stage.Children.Add(_statsPanel);
         _stage.Children.Add(_messageBox);
         Children.Add(_stage);
 
@@ -223,6 +233,42 @@ public sealed class LvlSceneView : DockPanel, IDisposable
             ApplyMaterials();
         }
     }
+
+    /// <summary>Whether the faces' edges are drawn (over the faces, or alone).</summary>
+    public LvlEdges Edges
+    {
+        get => _edgesMode;
+        set
+        {
+            if (_edgesMode == value) return;
+            _edgesMode = value;
+            if (_remember) _settings!.Edges = value;
+            EnsureEdges();
+            ArrangeModels();
+        }
+    }
+
+    /// <summary>True to show the counts in a corner.</summary>
+    public bool ShowStatistics
+    {
+        get => _showStatistics;
+        set
+        {
+            if (_showStatistics == value) return;
+            _showStatistics = value;
+            if (_remember) _settings!.ShowStatistics = value;
+            UpdateStats();
+        }
+    }
+
+    /// <summary>The edges drawn (self-tests).</summary>
+    internal WireframeLines EdgeLines => _edges;
+
+    /// <summary>True while the faces are drawn (not edges only).</summary>
+    internal bool FacesShown => _surface.Models.Contains(_opaque);
+
+    /// <summary>The statistics shown (empty while the panel is off).</summary>
+    internal IReadOnlyList<(string Label, string Value)> StatisticsRows => _statsPanel.Visibility == Visibility.Visible ? _statsPanel.Rows : [];
 
     /// <summary>True while the fly camera is on.</summary>
     public bool FlyMode
@@ -403,6 +449,7 @@ public sealed class LvlSceneView : DockPanel, IDisposable
             _models.Add((batch, model));
             (batch.Kind is LvlBatchKind.Alpha or LvlBatchKind.Liquid ? _transparent : _opaque).Children.Add(model);
         }
+        EnsureEdges();
         ApplyMaterials();
         if (scene.IsEmpty)
         {
@@ -428,11 +475,48 @@ public sealed class LvlSceneView : DockPanel, IDisposable
         _opaque.Children.Clear();
         _transparent.Children.Clear();
         _models.Clear();
+        _edges.Clear();
+        _edgesFor = null;
+        _statsPanel.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>The faces (unless edges only), the object markers, then the edges (when drawn).</summary>
+    private void ArrangeModels()
+    {
+        _surface.Models.Clear();
+        bool faces = _edgesMode != LvlEdges.Only;
+        if (faces) _surface.Models.Add(_opaque);
+        _surface.Models.Add(_markerMeshes.Root);
+        if (faces) _surface.Models.Add(_transparent);
+        if (_edgesMode != LvlEdges.Off) _surface.Models.Add(_edges.Root);
+    }
+
+    /// <summary>Makes the edges of the built scene the first time they are drawn.</summary>
+    private void EnsureEdges()
+    {
+        if (_edgesMode == LvlEdges.Off || Scene is not { } scene || ReferenceEquals(_edgesFor, scene)) return;
+        _edges.Clear();
+        _edges.Add(scene.EdgePoints);
+        _edgesFor = scene;
+        _surface.Invalidate();
+    }
+
+    /// <summary>Turns the edges to face the camera (each frame the view is redrawn).</summary>
+    private void UpdateEdges()
+    {
+        if (_edgesMode == LvlEdges.Off || _edges.EdgeCount == 0) return;
+        _edges.Color = _edgesMode == LvlEdges.OverFaces ? WireframeLines.OverFacesColor
+            : WireframeLines.ContrastWith(_surface.Background is SolidColorBrush b ? b.Color : Colors.Black);
+        _edges.Update(_surface.Camera, _surface.RenderSize);
     }
 
     private void UpdateStats()
     {
-        if (Scene is not { } scene) return;
+        if (Scene is not { } scene)
+        {
+            _statsPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
         var text = new StringBuilder();
         text.Append(string.Format(CultureInfo.CurrentCulture, "{0:N0} triangles · {1:N0} textures", scene.Triangles, scene.Textures.Count));
         int missing = scene.Textures.Count(t => _textureCache.TryGetValue(t, out var image) && image is null);
@@ -440,6 +524,21 @@ public sealed class LvlSceneView : DockPanel, IDisposable
         if (_pendingTextures > 0) text.Append(string.Format(CultureInfo.CurrentCulture, " · loading {0:N0}", _pendingTextures));
         _stats.Text = text.ToString();
         _stats.ToolTip = missing > 0 ? "Not found: " + string.Join(", ", MissingTextures.Take(20)) + (missing > 20 ? ", ..." : "") : null;
+        _statsPanel.Visibility = _showStatistics ? Visibility.Visible : Visibility.Collapsed;
+        if (!_showStatistics) return;
+        var rows = new List<(string, string)>
+        {
+            ("Faces", LvlSceneBuilder.N(scene.Faces)),
+            ("Triangles", LvlSceneBuilder.N(scene.Triangles)),
+            ("Vertices", LvlSceneBuilder.N(scene.Vertices)),
+            ("Edges", LvlSceneBuilder.N(scene.EdgePoints.Length / 2)),
+        };
+        if (_sceneSettings.Compiled && _source?.HasCompiledGeometry == true) rows.Add(("Rooms", LvlSceneBuilder.N(scene.Rooms)));
+        else rows.Add(("Brushes", LvlSceneBuilder.N(scene.Brushes)));
+        rows.Add(("Movers", LvlSceneBuilder.N(scene.Movers)));
+        rows.Add(("Textures", LvlSceneBuilder.N(scene.Textures.Count) + (missing > 0 ? string.Format(CultureInfo.CurrentCulture, " ({0:N0} missing)", missing) : "")));
+        rows.Add(("Objects", LvlSceneBuilder.N(_markers.Count)));
+        _statsPanel.Show(rows);
     }
 
     // ── camera ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -646,6 +745,25 @@ public sealed class LvlSceneView : DockPanel, IDisposable
         Add(LvlLighting.FullBright, "Full bright", "Every face at its texture's own colours");
         Add(LvlLighting.LevelAmbient, "Level ambient light", string.Format(CultureInfo.CurrentCulture, "Every face at the level's ambient light ({0}, {1}, {2}); full-bright faces at their own colours", _ambient.R, _ambient.G, _ambient.B));
         Add(LvlLighting.Shaded, "Shaded", "A light from the camera's side, to read the shapes");
+    }
+
+    private void BuildViewMenu(ContextMenu menu)
+    {
+        void Add(LvlEdges mode, string text, string tip)
+        {
+            var item = Check(text, tip, _edgesMode == mode);
+            item.StaysOpenOnClick = false;
+            item.Click += (_, _) => Edges = mode;
+            menu.Items.Add(item);
+        }
+        Add(LvlEdges.Off, "Faces", "Draw the faces");
+        Add(LvlEdges.OverFaces, "Faces and edges", "Draw the faces with their edges over them");
+        Add(LvlEdges.Only, "Edges only", "Draw only the faces' edges (a wireframe)");
+        menu.Items.Add(new Separator());
+        var stats = Check("Statistics", "Show the counts in a corner: faces, triangles, vertices, edges, rooms or brushes, movers, textures, objects", _showStatistics);
+        stats.StaysOpenOnClick = false;
+        stats.Click += (_, _) => ShowStatistics = stats.IsChecked;
+        menu.Items.Add(stats);
     }
 
     private static MenuItem Check(string text, string tip, bool isChecked)

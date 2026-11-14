@@ -96,8 +96,16 @@ public abstract partial class DocumentViewModel : IDocumentContent
         catch (ArgumentException ex) { throw new InvalidOperationException(ex.Message, ex); }
     }
 
-    /// <summary>A clip's signature and version (a Red Faction II clip has its own Convert to targets); empty for a mesh.</summary>
-    ReadOnlyMemory<byte> IDocumentContent.ContentHead => this is ClipDocumentViewModel clip ? clip.Head() : ReadOnlyMemory<byte>.Empty;
+    /// <summary>
+    /// A clip's signature and version (a Red Faction II clip has its own Convert to targets); an N-Gage scene's whole file
+    /// (a model and a character have different targets, a level none here); empty for any other mesh.
+    /// </summary>
+    ReadOnlyMemory<byte> IDocumentContent.ContentHead => this switch
+    {
+        ClipDocumentViewModel clip => clip.Head(),
+        MeshDocumentViewModel { Legacy: { SourceFormat: "xff" } legacy } => legacy.Bytes,
+        _ => ReadOnlyMemory<byte>.Empty,
+    };
 
     /// <summary>1.0.1's status bar: error and warning counts (open the Problems tab), bones, duration, playhead and speed.</summary>
     public IReadOnlyList<StatusItem> StatusItems

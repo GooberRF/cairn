@@ -1,4 +1,5 @@
 using Cairn.Formats;
+using Cairn.Formats.XForge;
 using Cairn.Lvl.Conversion;
 using Cairn.Lvl.Model;
 using Cairn.Lvl.Reading;
@@ -43,23 +44,33 @@ public sealed class LvlSource
     /// <summary>The problems the reader reported.</summary>
     public ImmutableArray<string> Problems => Level?.Problems ?? GroupFile!.Problems;
 
-    /// <summary>True when <paramref name="name"/> is a level or group file by its extension.</summary>
-    public static bool Handles(string name) => IsLevelName(name) || IsGroupName(name);
+    /// <summary>True when <paramref name="name"/> is a level or group file by its extension (an <c>.xff</c> scene may be a model instead: its content decides).</summary>
+    public static bool Handles(string name) => IsLevelName(name) || IsGroupName(name) || IsXffName(name);
 
     public static bool IsLevelName(string name) => Path.GetExtension(name).Equals(".rfl", StringComparison.OrdinalIgnoreCase);
 
     public static bool IsGroupName(string name) => Path.GetExtension(name).Equals(".rfg", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>True for a Red Faction for N-Gage scene (<c>.xff</c>): a level when its content says so.</summary>
+    public static bool IsXffName(string name) => XffLevelReader.HasExtension(name);
+
+    /// <summary>True when <paramref name="data"/> is a Red Faction for N-Gage scene of kind level (cheap enough for a content claim; never throws).</summary>
+    public static bool IsXffLevel(ReadOnlySpan<byte> data, string name) => XffClassifier.TryClassify(data, name) is XffKind.Level;
+
     /// <summary>
-    /// Reads a level (.rfl) or group file (.rfg) by its extension (anything else is read as a level). Any thread; the
-    /// largest levels take seconds, so callers run it on a worker.
+    /// Reads a level (.rfl), group file (.rfg) or Red Faction for N-Gage level (.xff) by its extension (anything else is
+    /// read as a level). Any thread; the largest levels take seconds, so callers run it on a worker.
     /// </summary>
-    /// <exception cref="AssetFormatException">The file cannot be read.</exception>
-    public static LvlSource Read(byte[] bytes, string name)
+    /// <param name="bytes">The file.</param>
+    /// <param name="name">Its name.</param>
+    /// <param name="xff">An N-Gage level's scale and the files beside it (its placed doors and walls, its scripts); null reads it alone at the default scale.</param>
+    /// <exception cref="AssetFormatException">The file cannot be read (or an <c>.xff</c> is a model, not a level).</exception>
+    public static LvlSource Read(byte[] bytes, string name, XffLevelReadOptions? xff = null)
     {
         ArgumentNullException.ThrowIfNull(bytes);
         ArgumentNullException.ThrowIfNull(name);
         if (IsGroupName(name)) return new LvlSource(name, bytes, null, RfgReader.Read(bytes, name));
+        if (IsXffName(name)) return new LvlSource(name, bytes, XffLevelReader.Read(bytes, name, xff), null);
         return new LvlSource(name, bytes, RflLevelReader.Read(bytes, name), null);
     }
 

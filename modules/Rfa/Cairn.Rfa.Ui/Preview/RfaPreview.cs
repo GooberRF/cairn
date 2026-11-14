@@ -100,7 +100,9 @@ public sealed class RfaPreview : Grid, IDisposable
         try
         {
             // Exporter (.v3d/.vcm) and PS2 (.rfm/.rfc) meshes show as the mesh converting them makes.
+            // an N-Gage scene keeps what was read with it (the generated colours, a character's loop)
             parsed = await Task.Run<object>(() => IsClip ? RfaReader.Read(bytes, fileName)
+                : Formats.Legacy.LegacyMeshSupport.IsXffName(fileName) ? Formats.Legacy.LegacyMeshSupport.ReadCompiled(bytes, fileName)
                 : Formats.Legacy.LegacyMeshSupport.Identify(bytes, fileName) is not null ? Formats.Legacy.LegacyMeshSupport.ReadCompiled(bytes, fileName).Compiled
                 : V3dReader.Read(bytes, fileName), ct);
         }
@@ -119,6 +121,13 @@ public sealed class RfaPreview : Grid, IDisposable
             Children.Remove(_message);
             Children.Add(_viewport);
             if (parsed is RfaClip clip) ShowClip(host, clip);
+            else if (parsed is (Formats.Legacy.LegacyMesh xff, V3dFile compiled))
+            {
+                host.Scene.SetMesh(compiled, fileName, ViewModels.LegacyMeshTextures.PreviewResolver(xff, _siblings, _assets?.Resolver));
+                // a character plays its own loop on itself
+                if (xff.Xff?.Clip is { } loop) ShowLoop(host, loop);
+                _meshLoaded.TrySetResult();
+            }
             else
             {
                 // a Red Faction II mesh finds its textures inside the .peg entries beside it
@@ -137,6 +146,13 @@ public sealed class RfaPreview : Grid, IDisposable
 
     private void ShowClip(RfaPreviewHost host, RfaClip clip)
     {
+        ShowLoop(host, clip);
+        ChooseMesh(host, clip);
+    }
+
+    /// <summary>A clip playing with the transport: on the mesh shown (an N-Gage character's own loop), or on the one <see cref="ChooseMesh"/> finds.</summary>
+    private void ShowLoop(RfaPreviewHost host, RfaClip clip)
+    {
         host.Clip = clip;
         host.Playback.SetClip(clip);
         host.Scene.SetAnimation(clip, host.Playback.Time);
@@ -148,7 +164,6 @@ public sealed class RfaPreview : Grid, IDisposable
         dock.Children.Add(bar);
         dock.Children.Add(_viewport);
         Children.Add(dock);
-        ChooseMesh(host, clip);
         if (IsLoaded) host.Playback.Play();
     }
 

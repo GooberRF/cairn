@@ -55,6 +55,7 @@ public static class ImageProbe
                 ImageContainer.Dds => DdsCodec.Probe(bytes, name),
                 ImageContainer.Vbm => VbmCodec.Probe(bytes, name),
                 ImageContainer.Tga => TgaCodec.Probe(bytes, name),
+                ImageContainer.Pcx => PcxCodec.Probe(bytes, name),
                 _ => throw new ImageDecodeException(
                     $"'{name}' is not an image format Cairn can read."),
             };
@@ -68,7 +69,8 @@ public static class ImageProbe
 
     /// <summary>
     /// Works out the container from the file's magic bytes, falling back to its extension. TGA has
-    /// no magic at the start of the file, so it is only ever the fallback.
+    /// no magic at the start of the file, so it is only ever the fallback; nor is PCX's single
+    /// leading byte enough to tell it from a TGA, so it too comes from the extension.
     /// </summary>
     public static ImageContainer Detect(ReadOnlySpan<byte> bytes, string name)
     {
@@ -88,7 +90,7 @@ public static class ImageProbe
     /// maps to a known container.
     /// </summary>
     public static IReadOnlyList<string> ReadableExtensions { get; } =
-        [".dds", ".png", ".jpg", ".jpeg", ".vbm", ".tga"];
+        [".dds", ".png", ".jpg", ".jpeg", ".vbm", ".tga", ".pcx"];
 
     /// <summary>The container an extension implies, or <see cref="ImageContainer.Unknown"/>.</summary>
     public static ImageContainer FromExtension(string name)
@@ -101,6 +103,7 @@ public static class ImageProbe
             ".vbm" => ImageContainer.Vbm,
             ".png" => ImageContainer.Png,
             ".jpg" or ".jpeg" => ImageContainer.Jpeg,
+            ".pcx" => ImageContainer.Pcx,
             _ => ImageContainer.Unknown,
         };
     }

@@ -14,7 +14,8 @@ using Cairn.Workspace;
 namespace Cairn.Snd.Ui;
 
 /// <summary>
-/// The sounds module: opens PlayStation 2 sounds (.vse effects, .vmu music) and PC sounds (.wav, .ogg, .aif) in read-only
+/// The sounds module: opens PlayStation 2 sounds (.vse effects, .vmu music), PC sounds (.wav, .ogg, .aif) and FastTracker 2
+/// music (.xm, rendered by libopenmpt) in read-only
 /// tabs with a waveform, playback (loops included) and the format's details, and converts them to WAV or Ogg Vorbis, one at a time
 /// from a tab or in a batch from a packfile ("Convert sounds..." in the packfile's menus).
 /// </summary>
@@ -335,7 +336,7 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter, IAssetConver
     // ── converting a batch from a packfile (IArchiveBatchConverter) ───────────────────────────────────────────
 
     public string CommandText => "Convert _sounds...";
-    public string CommandToolTip => "Convert the selected sounds (PS2 .vse/.vmu, .wav, .ogg, .aif) to WAV or Ogg Vorbis: into the packfile as new entries (one undo step) or into a folder";
+    public string CommandToolTip => "Convert the selected sounds (PS2 .vse/.vmu, .wav, .ogg, .aif, .xm music) to WAV or Ogg Vorbis: into the packfile as new entries (one undo step) or into a folder";
 
     public bool CanConvert(string entryName) => SoundDecoder.CanDecode(entryName);
 
@@ -535,7 +536,7 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter, IAssetConver
         void Para(string text) => doc.Blocks.Add(new Paragraph(new Run(text)) { Margin = new Thickness(0, 0, 0, 6) });
         doc.Blocks.Add(new Paragraph(new Run("Sounds")) { FontSize = 20, FontWeight = FontWeights.SemiBold });
         Para("The Sounds module opens sound files in read-only tabs: the PlayStation 2 version's sound effects (.vse) and music (.vmu), " +
-             "and the PC's .wav, .ogg and .aif files. A tab shows the waveform of each channel, plays the sound (Space), repeats its loop " +
+             "the PC's .wav, .ogg and .aif files, and FastTracker 2 music (.xm). A tab shows the waveform of each channel, plays the sound (Space), repeats its loop " +
              "(L), and lists the format, codec, sample rate, channels, bit depth, duration, loop points, size, the header's fields and " +
              "what is special about the format. Damaged data is decoded as well as it can be and listed in the Problems tab.");
         Heading("PlayStation 2 sounds");
@@ -543,6 +544,15 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter, IAssetConver
              "console's 4-bit ADPCM (\"PS ADPCM\"), which is lossy: Cairn decodes it exactly as the console's sound chip does. The rate is " +
              "stored as a pitch value, so the console plays a 22,050 Hz sound at 22,043 Hz; converted files use the standard rate. Looping " +
              "sounds carry their loop in the data, in steps of 28 samples. Cairn never writes .vse or .vmu files.");
+        Heading("Music modules (.xm)");
+        Para("An .xm file is a FastTracker 2 module: music stored as patterns and instruments, such as Red Faction for N-Gage's " +
+             "songs. Cairn opens any XM file (other module formats, such as .mod, .s3m and .it, are not opened) and renders it " +
+             "with libopenmpt at 44,100 Hz, 16-bit stereo: the first song, once, stopping where the song would start over, and " +
+             "at most 15 minutes (SND030). Loop (L) repeats the whole render. The details' Module heading lists the title, " +
+             "artist and tracker, the format, channels, patterns, orders, instruments and samples, the songs (when there are " +
+             "several; only the first plays, SND031), the length, the frequency table, the start speed and BPM. Converting " +
+             "writes a recording of the render (the WAV is exactly what plays), not a module. Cairn never writes .xm files, " +
+             "and the game does not load them.");
         Heading("Converting");
         Para("Sound > Convert... (Ctrl+Shift+E) writes a file with the same name: into the packfile the sound came from as a new " +
              "entry (one undo step in the packfile's tab), next to the source, or into a folder. The format is a 16-bit WAV (the decoded " +
@@ -556,7 +566,8 @@ public sealed class SndModule : ModuleBase, IArchiveBatchConverter, IAssetConver
              "replaced when Replace is ticked and Cairn has asked, and next to the source is off when that is the game directory.");
         Heading("Limits");
         Para("Sounds are not edited, and Save As writes WAV only (use Convert for Ogg Vorbis). The stock game loads .wav; Alpine Faction " +
-             "also loads .ogg. MP3 files are previewed in packfiles but not opened in tabs.");
+             "also loads .ogg. MP3 files are previewed in packfiles but not opened in tabs. If cairn-openmpt.dll is missing from the " +
+             "installation, .xm files cannot be played; reinstall Cairn.");
         return doc;
     }
 }
@@ -566,8 +577,8 @@ public sealed class SndKind(SndModule module) : IDocumentKind
 {
     public string Id => "snd";
     public string DisplayName => "Sound";
-    public IReadOnlyList<string> Extensions { get; } = [".wav", ".ogg", ".aif", ".aiff", ".aifc", ".vse", ".vmu"];
-    public string FileFilter => "Sounds (*.wav;*.ogg;*.aif;*.aiff;*.vse;*.vmu)|*.wav;*.ogg;*.aif;*.aiff;*.aifc;*.vse;*.vmu";
+    public IReadOnlyList<string> Extensions { get; } = [".wav", ".ogg", ".aif", ".aiff", ".aifc", ".vse", ".vmu", ".xm"];
+    public string FileFilter => "Sounds (*.wav;*.ogg;*.aif;*.aiff;*.vse;*.vmu;*.xm)|*.wav;*.ogg;*.aif;*.aiff;*.aifc;*.vse;*.vmu;*.xm";
     public bool CanCreateNew => false;
     public string AssociationDescription => "Sound";
 

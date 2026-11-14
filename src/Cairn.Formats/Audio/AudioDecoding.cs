@@ -9,7 +9,8 @@ public sealed record AudioPlayback(byte[] Bytes, string Extension);
 /// <summary>
 /// Turns the audio found in packfiles into something any player handles without extra codecs: PCM
 /// WAVE for Ogg Vorbis (NVorbis), AIFF/AIFF-C (PCM and Apple IMA4 ADPCM) and ADPCM WAVE (Microsoft
-/// and IMA); MP3 and MP3-in-WAVE are handed over as MP3. The type is taken from the content first and
+/// and IMA) and FastTracker 2 modules (rendered by <see cref="XmModule"/>); MP3 and MP3-in-WAVE are handed over as
+/// MP3. The type is taken from the content first and
 /// the name second, since some entries are named for a different type than they hold.
 /// </summary>
 public static class AudioDecoding
@@ -41,13 +42,27 @@ public static class AudioDecoding
         if (b.Length >= 12 && b[..4].SequenceEqual("RIFF"u8) && b.Slice(8, 4).SequenceEqual("WAVE"u8)) return FromWav(bytes, name);
         if (b.Length >= 4 && b[..4].SequenceEqual("OggS"u8)) return new AudioPlayback(FromOgg(bytes, name), ".wav");
         if (b.Length >= 12 && b[..4].SequenceEqual("FORM"u8)) return new AudioPlayback(FromAiff(bytes, name), ".wav");
+        if (XmModule.IsXm(b)) return new AudioPlayback(FromXm(bytes, name), ".wav");
         // PlayStation 2 sounds have no magic: by name, before the MP3 sniff (a header byte can look like a frame sync)
         if (Ps2Sound.IsPs2SoundName(name)) return new AudioPlayback(SoundWriter.ToWav(Ps2Sound.Decode(bytes, name)), ".wav");
         if (b.Length >= 3 && (b[..3].SequenceEqual("ID3"u8) || (b[0] == 0xFF && (b[1] & 0xE0) == 0xE0)))
         {
             return new AudioPlayback(bytes, ".mp3");
         }
-        throw new AssetFormatException($"'{name}' does not contain WAVE, Ogg Vorbis, AIFF, MP3 or PS2 (.vse, .vmu) audio.");
+        throw new AssetFormatException($"'{name}' does not contain WAVE, Ogg Vorbis, AIFF, MP3, PS2 (.vse, .vmu) or FastTracker 2 (.xm) audio.");
+    }
+
+    /// <summary>A FastTracker 2 module rendered once by <see cref="XmModule"/>, as a 16-bit stereo WAVE.</summary>
+    private static byte[] FromXm(byte[] bytes, string name)
+    {
+        try
+        {
+            return SoundWriter.Wav16(XmModule.Render(bytes, name).Samples, 2, XmModule.SampleRate);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new AssetFormatException(ex.Message, ex);
+        }
     }
 
     private static byte[] ReadAll(Stream stream, string name)

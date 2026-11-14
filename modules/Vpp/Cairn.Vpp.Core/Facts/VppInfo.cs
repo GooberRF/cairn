@@ -108,6 +108,7 @@ public static class VppInfo
     private static string Line(string ext, VppFactInput input, TimeZoneInfo zone) => ext switch
     {
         ".tga" => Tga(input),
+        ".pcx" => Pcx(input),
         ".dds" => Dds(input),
         ".vbm" => Vbm(input),
         ".png" or ".jpg" or ".jpeg" => StbImage(input),
@@ -117,6 +118,7 @@ public static class VppInfo
         ".ogg" => Ogg(input),
         ".mp3" => Mp3(input),
         ".vse" or ".vmu" => Ps2Audio(input),
+        ".xm" => Module(input),
         ".v3m" or ".v3c" or ".v3d" or ".vcm" or ".rfm" or ".rfc" => Mesh(input),
         ".rfa" => Clip(input),
         ".mvf" => "legacy motion file",
@@ -128,6 +130,8 @@ public static class VppInfo
         ".rfg" => Count(VppFacts.GroupCount(input.ReadHead(12), input.Name), "group"),
         ".rfl" => Level(input, zone),
         ".peg" => TexturePack(input),
+        ".pr3" => ParticleSystem(input),
+        ".xff" => Scene(input),
         ".arr" or ".ver" => Count(LineCount(VppFacts.DecodeText(input.ReadAll(), out _)), "line"),
         _ => string.Empty,
     };
@@ -175,6 +179,15 @@ public static class VppInfo
             : type is 3 or 11 ? $"{depth}-bit greyscale"
             : $"{depth}-bit";
         return $"{Size(info.Width, info.Height)}, {pixels}, {(type >= 9 ? "RLE compressed" : "uncompressed")}";
+    }
+
+    /// <summary>"64x64, 8-bit paletted, RLE compressed".</summary>
+    private static string Pcx(VppFactInput input)
+    {
+        byte[] b = input.ReadHead(PcxCodec.HeaderSize);
+        var info = PcxCodec.Probe(b, input.Name);
+        string pixels = info.Format == EngineFormat.Rgb888 ? "24-bit" : $"{b[3] * b[65]}-bit paletted";
+        return $"{Size(info.Width, info.Height)}, {pixels}, {(b[2] == 1 ? "RLE compressed" : "uncompressed")}";
     }
 
     private static string Dds(VppFactInput input)
@@ -273,6 +286,13 @@ public static class VppInfo
         return string.Join(", ", parts.Where(p => p.Length > 0));
     }
 
+    /// <summary>"FastTracker 2 v1.04, 8 channels, 2:31".</summary>
+    private static string Module(VppFactInput input)
+    {
+        var info = XmModule.ReadInfo(input.ReadAll(), input.Name);
+        return $"{info.Format}, {Count(info.Channels, "channel")}, {Duration(info.Duration)}";
+    }
+
     private static string Mp3(VppFactInput input) =>
         Compressed(AudioProbe.ProbeMp3(input.ReadHead(256 << 10), input.Size, input.Name), bitrate: true);
 
@@ -361,6 +381,29 @@ public static class VppInfo
         return mode == AtxAnimationMode.Static
             ? $"{Count(model.Frames.Count, "frame")}, {label}"
             : $"{Count(model.Frames.Count, "frame")}, {model.Header.EffectiveFrameTimeMs.ToString("N0", Inv)} ms each, {label}";
+    }
+
+    /// <summary>"6 frames, 500 ms life, up to 3 particles".</summary>
+    private static string ParticleSystem(VppFactInput input)
+    {
+        var ps = Formats.XForge.Pr3File.Read(input.ReadAll(), input.Name);
+        return $"{Count(ps.Frames.Count, "frame")}, {ps.LifetimeMs.ToString("N0", Inv)} ms life, up to {Count(ps.MaxParticles, "particle")}";
+    }
+
+    /// <summary>"level, 210 meshes, 3,019 triangles, 31 textures"; a character adds its animation's length.</summary>
+    private static string Scene(VppFactInput input)
+    {
+        var scene = Formats.XForge.XffScene.Read(input.ReadAll(), input.Name);
+        var kind = scene.Kind;
+        var parts = new List<string>
+        {
+            kind.ToString().ToLowerInvariant(),
+            Count(scene.Meshes.Count, "mesh", "meshes"),
+            Count(scene.Meshes.Sum(m => m.Submeshes.Sum(s => s.TriangleCount)), "triangle"),
+            Count(VppFacts.TextureNames(scene).Count, "texture"),
+        };
+        if (scene.Tracks.Any(t => t.Keys.Count > 0)) parts.Add($"{VppFacts.LongestTrackMs(scene).ToString("N0", Inv)} ms animation");
+        return string.Join(", ", parts);
     }
 
     // ---- text, tables, fonts -----------------------------------------------------------------------------------

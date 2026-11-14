@@ -13,8 +13,9 @@ namespace Cairn.Rfa.Ui.Diagnostics.SelfTests;
 /// Self-tests of mesh document editing (phase 6): every Structure-tab editor and Mesh menu command driven
 /// through the view-models, each adding exactly one labelled undo step that undo reverts to the exact
 /// snapshot; refusals that add no step and show a message; reorder + conform of an open clip with the
-/// FK pose unchanged; a quick fix; and the read-only .v3m editors. Uses the active mesh document, or opens
-/// the stock ult2_guard.v3c (and ult2_walk.rfa, a .v3m) from the research corpus and closes them after.
+/// FK pose unchanged; a quick fix; and a static mesh (.v3m) edited the same way, without bones. Uses the active
+/// mesh document, or opens the stock ult2_guard.v3c (and ult2_walk.rfa, a .v3m) from the research corpus and
+/// closes them after.
 /// </summary>
 internal static class MeshEditingSelfTests
 {
@@ -111,16 +112,15 @@ internal static class MeshEditingSelfTests
             while (doc.History.UndoLabels.Count > undoStart && doc.CanUndo) doc.Undo();
             ctx.Check(ReferenceEquals(doc.Current, original), "the mesh editing test leaves the mesh document as it found it");
 
-            // Read-only .v3m.
+            // A static mesh (.v3m) edits as a character mesh does, without bones.
             if (corpus is not null && Directory.EnumerateFiles(corpus, "*.v3m").FirstOrDefault() is { } v3m)
             {
                 if (model.OpenFile(v3m) is MeshDocumentViewModel staticDoc)
                 {
                     opened.Add(staticDoc);
+                    model.ActiveDocument = staticDoc;
                     await ctx.SettleAsync();
-                    ReadOnlyChecks(ctx, staticDoc);
-                    ctx.Check(!tools.AddSphereCommand.CanExecute(null) && !tools.ReorderBonesCommand.CanExecute(null) && !tools.AddPropPointCommand.CanExecute(null),
-                        "the Mesh menu's editing commands are disabled for a read-only .v3m");
+                    StaticChecks(ctx, staticDoc, tools);
                 }
             }
         }
@@ -560,6 +560,33 @@ internal static class MeshEditingSelfTests
         int steps = doc.History.UndoLabels.Count;
         bool changed = doc.LocateTexture(d);
         ctx.Check(!changed && doc.History.UndoLabels.Count == steps && ReferenceEquals(doc.Current, start), "locate quick fix: cancelling the browser changes nothing");
+    }
+
+    // ── Static mesh ──────────────────────────────────────────────────────────
+
+    private static void StaticChecks(SelfTestContext ctx, MeshDocumentViewModel doc, MeshCommands tools)
+    {
+        var original = doc.Current;
+        int undoStart = doc.History.UndoLabels.Count;
+        ctx.Check(doc is { IsReadOnly: false, Kind: DocumentKind.StaticMesh, Extension: ".v3m" } && !doc.Structure.IsReadOnly && original.Bones.Length == 0,
+            $"{doc.DisplayName} opens editable, as a static mesh without bones");
+        ctx.Check(tools.AddSphereCommand.CanExecute(null) && tools.AddPropPointCommand.CanExecute(null) && !tools.ReorderBonesCommand.CanExecute(null),
+            "on a static mesh, Add Collision Sphere and Add Prop Point are on and Reorder Bones is off");
+        LodAndSubmeshChecks(ctx, doc);
+        // a sphere added to a mesh without bones belongs to the model, and the mesh writes and reads back as a .v3m with it
+        int spheres = original.CollisionSpheres.Count();
+        doc.Structure.Reveal(new MeshNodeRef(MeshNodeKind.Header));
+        string name = MeshCommands.UniqueName(original.CollisionSpheres.Select(x => x.Name.Text), "sphere", V3dCollisionSphere.NameSize - 1);
+        if (Step(ctx, doc, $"Add collision sphere '{name}'", () => tools.AddSphereCommand.Execute(null),
+                m => m.CollisionSpheres.Count() == spheres + 1 && m.CollisionSpheres.Last().BoneIndex == -1, "Add Collision Sphere on a static mesh (on the model)"))
+        {
+            tools.AddSphereCommand.Execute(null);
+            var back = V3dReader.Read(V3dWriter.Write(doc.Current), doc.DisplayName);
+            ctx.Check(back.Kind == V3dKind.StaticMesh && back.CollisionSpheres.Count() == spheres + 1 && back.CollisionSpheres.Last().BoneIndex == -1,
+                "the static mesh with the added sphere writes and reads back as a .v3m");
+        }
+        while (doc.History.UndoLabels.Count > undoStart && doc.CanUndo) doc.Undo();
+        ctx.Check(ReferenceEquals(doc.Current, original), "the static mesh test leaves the mesh as it found it");
     }
 
     // ── Read-only ────────────────────────────────────────────────────────────

@@ -30,6 +30,7 @@ public sealed partial class VppModule : ModuleBase
         PegKind = new PegKind(this);
         Rf2Kind = new Rf2GroupKind(this);
         CacheKind = new CachePackKind(this);
+        CflKind = new CflArchiveKind(this);
         Settings = new VppSettings(() => _store);
         SettingsPages = [new VppSettingsPage(Settings)];
     }
@@ -46,7 +47,9 @@ public sealed partial class VppModule : ModuleBase
     public Rf2GroupKind Rf2Kind { get; }
     /// <summary>The Alpine Faction cache pack kind (.cache, read only).</summary>
     public CachePackKind CacheKind { get; }
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [Kind, PegKind, Rf2Kind, CacheKind];
+    /// <summary>The X-Forge CFL archive kind (.cfl, Red Faction for N-Gage, read only).</summary>
+    public CflArchiveKind CflKind { get; }
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [Kind, PegKind, Rf2Kind, CacheKind, CflKind];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     public override IReadOnlyList<ToolbarContribution> ToolbarItems => _toolbar;
     public override IReadOnlyList<ShortcutInfo> Shortcuts => _shortcuts;
@@ -340,6 +343,36 @@ public sealed class CachePackKind(VppModule module) : IDocumentKind
         throw new InvalidDataException($"{displayName} ({originText}) is an Alpine Faction cache pack stored inside another file. Extract it first, then open the extracted copy.");
 
     /// <summary>Never needed (a read-only pack is never dirty); handled as a packfile's recovery data.</summary>
+    public IDocument Restore(RecoverySnapshot snapshot) => module.Kind.Restore(snapshot);
+}
+
+/// <summary>
+/// The X-Forge CFL archive kind: a <c>.cfl</c> (Red Faction for N-Gage's <c>redfaction.cfl</c>) opens as a read-only
+/// packfile of its files, unpacked as they are read. Nothing is ever written to it.
+/// </summary>
+public sealed class CflArchiveKind(VppModule module) : IDocumentKind
+{
+    public string Id => "vpp.cfl";
+    public string DisplayName => "X-Forge CFL archive";
+    public IReadOnlyList<string> Extensions { get; } = [Cairn.Formats.XForge.CflArchive.Extension];
+    public string FileFilter => "X-Forge CFL archives (*.cfl)|*.cfl";
+    public bool CanCreateNew => false;
+    public string AssociationDescription => "X-Forge CFL archive (Red Faction for N-Gage)";
+
+    public IDocument? CreateNew() => null;
+
+    /// <summary>Reads the archive's directory and checks every entry; throws <see cref="Cairn.Formats.AssetFormatException"/> with the reason when it cannot.</summary>
+    public IDocument Open(string path)
+    {
+        string full = Path.GetFullPath(path);
+        return new VppDocument(module, Cairn.Vpp.XForge.CflArchives.Open(full), Path.GetFileName(full), full, kind: this);
+    }
+
+    /// <summary>Refused: the entries are read from the archive on disk as they are needed.</summary>
+    public IDocument OpenBytes(byte[] bytes, string displayName, string originText) =>
+        throw new InvalidDataException($"{displayName} ({originText}) is an X-Forge CFL archive stored inside another file. Extract it first, then open the extracted copy.");
+
+    /// <summary>Never needed (a read-only archive is never dirty); handled as a packfile's recovery data.</summary>
     public IDocument Restore(RecoverySnapshot snapshot) => module.Kind.Restore(snapshot);
 }
 

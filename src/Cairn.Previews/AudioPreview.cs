@@ -52,6 +52,12 @@ public sealed class AudioData : IDisposable
             format = string.Format(CultureInfo.CurrentCulture, "{0:N0} Hz, {1}, PS ADPCM{2}", info.SampleRate, info.Channels == 1 ? "mono" : "stereo",
                 info.Note?.Contains("loops", StringComparison.Ordinal) == true ? ", loops" : string.Empty);
         }
+        else if (XmModule.IsXm(bytes) && playback.Extension == ".wav")
+        {
+            // a module is a score: say what it is, then what it was rendered to
+            int channels = bytes.Length >= 70 ? BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(68)) : 0;
+            format = string.Format(CultureInfo.CurrentCulture, "XM module, {0:N0} channels, played at {1:N0} Hz", channels, XmModule.SampleRate);
+        }
         ct.ThrowIfCancellationRequested();
 
         Directory.CreateDirectory(TempFolder);

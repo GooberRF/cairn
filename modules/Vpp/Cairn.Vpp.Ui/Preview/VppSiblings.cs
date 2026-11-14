@@ -41,7 +41,12 @@ public sealed class VppSiblings : IAssetSiblings
 
     /// <summary>True when the entry's data is in the packfile file this snapshot was read from (an original entry).</summary>
     private bool InArchive(VppItem item) =>
-        _archivePath is not null && item.Source is ArchiveSource a && string.Equals(a.ArchivePath, _archivePath, StringComparison.OrdinalIgnoreCase);
+        _archivePath is not null && item.Source switch
+        {
+            ArchiveSource a => string.Equals(a.ArchivePath, _archivePath, StringComparison.OrdinalIgnoreCase),
+            XForge.CflEntrySource c => string.Equals(c.ArchivePath, _archivePath, StringComparison.OrdinalIgnoreCase),
+            _ => false,
+        };
 
     /// <summary>
     /// False when <paramref name="item"/> is stored in the packfile file and that file is no longer the one the snapshot

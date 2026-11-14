@@ -126,9 +126,6 @@ public sealed class ClipDocumentViewModel : DocumentViewModel<RfaClip>
     /// <summary>A Red Faction II clip is read-only.</summary>
     public override bool IsReadOnly => IsRedFactionII;
 
-    /// <summary>A Red Faction II clip has the convert banner instead.</summary>
-    public override bool ShowsReadOnlyBanner => base.ShowsReadOnlyBanner && !IsRedFactionII;
-
     /// <summary>Converts a Red Faction II clip (the banner's Convert, through the Convert window).</summary>
     public RelayCommand ConvertRf2Command { get; }
 
@@ -456,7 +453,7 @@ public sealed class ClipDocumentViewModel : DocumentViewModel<RfaClip>
     /// </summary>
     private void OnGameChanged()
     {
-        RaiseAll(nameof(IsRedFactionII), nameof(IsReadOnly), nameof(ShowsReadOnlyBanner), nameof(ConvertBannerText), nameof(ConvertCommand),
+        RaiseAll(nameof(IsRedFactionII), nameof(IsReadOnly), nameof(ConvertBannerText), nameof(ConvertCommand),
             nameof(TabToolTip), nameof(CanUndo), nameof(CanRedo));
         ConvertRf2Command.RaiseCanExecuteChanged();
         // the old mesh belongs to the other game: drop it (a search or load still running is stale too) and choose again

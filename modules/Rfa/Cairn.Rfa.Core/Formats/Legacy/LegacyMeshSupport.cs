@@ -28,8 +28,12 @@ public sealed record LegacyMeshConversion(
     /// </summary>
     public ImmutableArray<(string Name, byte[] Bytes)> Textures { get; init; } = [];
 
-    /// <summary>The mesh and its <see cref="Textures"/>, in writing order.</summary>
-    public IReadOnlyList<(string Name, byte[] Bytes)> AllFiles => [(OutputName, Bytes), .. Textures];
+    /// <summary>An N-Gage character's animation, converted with it to one Red Faction clip (<c>&lt;name&gt;_walk.rfa</c>); null otherwise.</summary>
+    public Rf2ClipConversion? Clip { get; init; }
+
+    /// <summary>The mesh, its <see cref="Clip"/> and its <see cref="Textures"/>, in writing order.</summary>
+    public IReadOnlyList<(string Name, byte[] Bytes)> AllFiles =>
+        Clip is { } clip ? [(OutputName, Bytes), (clip.OutputName, clip.Bytes), .. Textures] : [(OutputName, Bytes), .. Textures];
 }
 
 /// <summary>What a Red Faction II mesh's conversion does with its texture names.</summary>
@@ -60,6 +64,12 @@ public sealed record LegacyConvertOptions
     /// mode; read only then); null when there are none.
     /// </summary>
     public PegTextureSet? TexturePacks { get; init; }
+
+    /// <summary>Red Faction for N-Gage scenes: Red Faction metres per XFF unit (<see cref="Cairn.Formats.XForge.XffSpace.RfScale"/>, 2.35, by default).</summary>
+    public float XffScale { get; init; } = Cairn.Formats.XForge.XffSpace.RfScale;
+
+    /// <summary>Red Faction for N-Gage scenes: copy the textures the mesh names, unchanged, from its archive or folder beside the converted mesh (on by default).</summary>
+    public bool XffWriteTextures { get; init; } = true;
 }
 
 /// <summary>
@@ -73,7 +83,7 @@ public static class LegacyMeshSupport
     private static int s_registered;
 
     /// <summary>The legacy extensions, lower case with the dot.</summary>
-    public static ImmutableArray<string> Extensions { get; } = [".v3d", ".vcm", ".rfm", ".rfc"];
+    public static ImmutableArray<string> Extensions { get; } = [".v3d", ".vcm", ".rfm", ".rfc", ".xff"];
 
     /// <summary>Magic of the PlayStation 2 meshes (<c>12 87 12 87</c>), which Red Faction II's meshes share.</summary>
     public const uint Ps2Magic = 0x87128712;
@@ -131,7 +141,11 @@ public static class LegacyMeshSupport
         LegacyMeshFormats.Register(new ExporterVcmFormat());
         LegacyMeshFormats.Register(new RfmFormat());
         LegacyMeshFormats.Register(new RfcFormat());
+        LegacyMeshFormats.Register(new XffMeshFormat());
     }
+
+    /// <summary>True when <paramref name="name"/> is a Red Faction for N-Gage scene's (<c>.xff</c>: a model or character opens here, a level in the Levels module).</summary>
+    public static bool IsXffName(string? name) => Cairn.Formats.XForge.XffFile.HasExtension(name);
 
     /// <summary>True when <paramref name="name"/> has one of the legacy extensions.</summary>
     public static bool IsLegacyName(string? name) =>
@@ -260,6 +274,9 @@ public static class LegacyMeshSupport
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(name);
         var format = Identify(data, name);
+        // an N-Gage scene is read again at the chosen scale; its textures come from the files beside it
+        if (format is XffMeshFormat)
+            return XffMeshConverter.Finish(XffMeshConverter.Convert(data, name, (options ?? LegacyConvertOptions.Default).XffScale), name, sibling, options ?? LegacyConvertOptions.Default);
         if (format?.Extension is ".rfm" or ".rfc" && sibling is not null && !IsRedFactionII(data))
         {
             string twinName = Path.ChangeExtension(Path.GetFileName(name), format.Extension == ".rfc" ? ".vcm" : ".v3d");
@@ -287,6 +304,8 @@ public static class LegacyMeshSupport
     public static LegacyMeshConversion Convert(LegacyMesh mesh, string sourceName, LegacyConvertOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(mesh);
+        // an N-Gage scene read already: as it was read (its scale), with no files to copy its textures from
+        if (mesh.Xff is not null) return XffMeshConverter.Finish(mesh, sourceName, null, options ?? LegacyConvertOptions.Default);
         var textureNotes = new List<string>();
         var textures = ImmutableArray<(string, byte[])>.Empty;
         if (mesh.IsRedFactionII) (mesh, textureNotes, textures) = Rf2MeshTextures.Apply(mesh, options ?? LegacyConvertOptions.Default, sourceName);
@@ -334,11 +353,14 @@ public static class LegacyMeshSupport
         "vcm" => "exporter character mesh",
         "rfm" => redFactionII ? "Red Faction II static mesh" : "PS2 static mesh",
         "rfc" => redFactionII ? "Red Faction II character mesh" : "PS2 character mesh",
+        "xff" => "Red Faction for N-Gage scene",
         _ => "legacy mesh",
     };
 
-    /// <summary>The format name of a read mesh ("Red Faction II character mesh", "PS2 static mesh", ...).</summary>
-    public static string FormatName(LegacyMesh mesh) => FormatName(mesh?.SourceFormat ?? "", mesh?.IsRedFactionII == true);
+    /// <summary>The format name of a read mesh ("Red Faction II character mesh", "PS2 static mesh", "N-Gage character"...).</summary>
+    public static string FormatName(LegacyMesh mesh) => mesh?.Xff is { } xff
+        ? (xff.Facts.Kind == Cairn.Formats.XForge.XffKind.Character ? "Red Faction for N-Gage character" : "Red Faction for N-Gage model")
+        : FormatName(mesh?.SourceFormat ?? "", mesh?.IsRedFactionII == true);
 
     private static string Count(int n, string one, string? many = null) =>
         n.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " " + (n == 1 ? one : many ?? one + "s");

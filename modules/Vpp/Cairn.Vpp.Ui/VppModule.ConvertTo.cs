@@ -24,22 +24,23 @@ public sealed partial class VppModule : IAssetConverter
     public void FillConvertToMenu(VppDocument doc, MenuItem menu)
     {
         var item = doc.SelectedItems.Count == 1 ? doc.SelectedItems[0] : null;
-        // in a Red Faction II group a file missing on disk has nothing to convert
-        bool none = item is null || Shell is null || (doc.IsReadOnly && item.Source is MissingFileSource);
-        // some targets depend on what the entry holds (a Red Faction II .rfa): its first bytes go along
-        var choices = none ? [] : AssetConversions.TargetsFor(Shell!.Modules, item!.Name, HeadOf(item));
+        // in a Red Faction II group a file missing on disk has nothing to convert, nor has a CFL entry that cannot be unpacked
+        bool none = item is null || Shell is null || (doc.IsReadOnly && item.Source is MissingFileSource or XForge.CflEntrySource { Problem: not null });
+        // some targets depend on what the entry holds (a Red Faction II .rfa, a level or a mesh .xff): its first bytes go
+        // along, as many as the converters ask for the name (ContentClaims)
+        var choices = none ? [] : AssetConversions.TargetsFor(Shell!.Modules, item!.Name, HeadOf(item, ContentClaims.HeadLengthFor(Shell.Modules, item.Name)));
         AssetConversions.FillMenu(menu, choices, c => doc.Commands.Fire(() => ConvertEntryAsync(doc, item!, c)));
         menu.Visibility = choices.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         menu.IsEnabled = !doc.IsBusy;
     }
 
-    /// <summary>The first 16 bytes of an entry (fewer for a shorter one), or none when it cannot be read.</summary>
-    private static byte[] HeadOf(VppItem item)
+    /// <summary>The first <paramref name="length"/> bytes of an entry (fewer for a shorter one), or none when it cannot be read.</summary>
+    private static byte[] HeadOf(VppItem item, int length)
     {
         try
         {
             using var stream = item.Source.Open();
-            var head = new byte[(int)Math.Clamp(item.Size, 0, 16)];
+            var head = new byte[(int)Math.Clamp(item.Size, 0, length)];
             int read = 0;
             while (read < head.Length && stream.Read(head, read, head.Length - read) is int n and > 0) read += n;
             return read == head.Length ? head : head[..read];

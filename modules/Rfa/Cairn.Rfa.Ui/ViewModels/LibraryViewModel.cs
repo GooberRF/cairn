@@ -661,7 +661,7 @@ public sealed class LibraryViewModel : ObservableObject
         if (statics.Count > 0)
         {
             var group = new LibraryNode("Static meshes", $"{statics.Count:N0}", "",
-                "Meshes without bones (.v3m, and any mesh that could not be read). They open read-only.")
+                "Meshes without bones (.v3m, and any mesh that could not be read).")
             {
                 IsExpanded = filtering && statics.Count <= 200,
             };

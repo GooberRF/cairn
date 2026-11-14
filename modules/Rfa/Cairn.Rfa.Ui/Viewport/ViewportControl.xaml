@@ -45,7 +45,7 @@
             AutomationProperties.Name="Viewport toolbar">
       <WrapPanel Orientation="Horizontal">
         <Button x:Name="ViewMenuButton" Style="{StaticResource ToolButton}" Height="24" MinWidth="26" Padding="4,0"
-                Click="OnViewMenuClick" ToolTip="Mesh display, lighting, background and camera presets"
+                Click="OnViewMenuClick" ToolTip="Mesh display, edges, lighting, background, statistics and camera presets"
                 AutomationProperties.Name="Viewport display options">
           <StackPanel Orientation="Horizontal">
             <TextBlock Text="&#xE890;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" />
@@ -123,6 +123,9 @@
                    Foreground="{DynamicResource Viewport.NoticeText}" />
       </DockPanel>
     </Border>
+
+    <!-- Counts (View > Statistics). -->
+    <cv:StatisticsPanel x:Name="StatsPanel" />
 
     <!-- Pose-editing mode badge (phase 5): auto-key / layer edit / IK, or why there is no gizmo. -->
     <vp:PoseEditBadge x:Name="PoseBadge" DataContext="{x:Null}" />

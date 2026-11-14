@@ -4,7 +4,7 @@ using System.Windows.Media.Imaging;
 namespace Cairn.Formats.Imaging;
 
 /// <summary>
-/// Decodes any supported image into BGRA32. TGA, DDS and VBM are decoded in-house; PNG and JPEG
+/// Decodes any supported image into BGRA32. TGA, DDS, VBM and PCX are decoded in-house; PNG and JPEG
 /// go through WPF's decoders, which is what the design calls for.
 /// </summary>
 public static class ImageDecoder
@@ -51,6 +51,7 @@ public static class ImageDecoder
                 ImageContainer.Tga => TgaCodec.Decode(bytes, name),
                 ImageContainer.Dds => DdsCodec.Decode(bytes, name),
                 ImageContainer.Vbm => VbmCodec.Decode(bytes, name),
+                ImageContainer.Pcx => PcxCodec.Decode(bytes, name),
                 ImageContainer.Png or ImageContainer.Jpeg => DecodeWithWpf(bytes, name, maxOutputSize),
                 _ => throw new ImageDecodeException(
                     $"'{name}' is not an image format Cairn can read."),

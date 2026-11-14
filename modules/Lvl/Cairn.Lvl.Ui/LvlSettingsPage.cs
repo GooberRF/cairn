@@ -7,7 +7,7 @@ using Cairn.Ui.Services;
 
 namespace Cairn.Lvl.Ui;
 
-/// <summary>Settings &gt; Levels &amp; groups: the 3D preview's size limit and lighting, and where Convert writes.</summary>
+/// <summary>Settings &gt; Levels &amp; groups: the 3D preview's size limit, lighting, edges and statistics, and where Convert writes.</summary>
 public sealed class LvlSettingsPage : ISettingsPage
 {
     private readonly LvlSettings _settings;
@@ -17,6 +17,8 @@ public sealed class LvlSettingsPage : ISettingsPage
     internal readonly TextBox TriangleLimit = new() { Width = 120, HorizontalAlignment = HorizontalAlignment.Left };
     internal readonly ComboBox Lighting = new() { MinWidth = 260, HorizontalAlignment = HorizontalAlignment.Left };
     internal readonly CheckBox BothSides = new() { Content = "Draw _both sides of each face" };
+    internal readonly ComboBox Edges = new() { MinWidth = 260, HorizontalAlignment = HorizontalAlignment.Left };
+    internal readonly CheckBox Statistics = new() { Content = "Show the _statistics (faces, triangles, vertices, edges…)" };
     internal readonly RadioButton IntoPackfile = new() { Content = "Into the packfile, as new entries (one undo step)", GroupName = "lvlPlace", Margin = new Thickness(0, 2, 0, 2) };
     internal readonly RadioButton NextToSource = new() { Content = "Next to the source file (or its packfile)", GroupName = "lvlPlace", Margin = new Thickness(0, 2, 0, 2) };
     internal readonly RadioButton ToFolder = new() { Content = "Into a folder:", GroupName = "lvlPlace", Margin = new Thickness(0, 2, 0, 2) };
@@ -30,7 +32,11 @@ public sealed class LvlSettingsPage : ISettingsPage
         Lighting.Items.Add(new ComboBoxItem { Content = "Level ambient light", Tag = LvlLighting.LevelAmbient });
         Lighting.Items.Add(new ComboBoxItem { Content = "Shaded", Tag = LvlLighting.Shaded });
         AutomationProperties.SetName(TriangleLimit, "Triangle limit");
+        Edges.Items.Add(new ComboBoxItem { Content = "Faces", Tag = LvlEdges.Off });
+        Edges.Items.Add(new ComboBoxItem { Content = "Faces and edges", Tag = LvlEdges.OverFaces });
+        Edges.Items.Add(new ComboBoxItem { Content = "Edges only", Tag = LvlEdges.Only });
         AutomationProperties.SetName(Lighting, "Lighting");
+        AutomationProperties.SetName(Edges, "Edges");
         AutomationProperties.SetName(Folder, "Folder");
         TriangleLimit.ToolTip = "Levels with more triangles ask before their preview is built";
 
@@ -44,6 +50,11 @@ public sealed class LvlSettingsPage : ISettingsPage
         BothSides.Margin = new Thickness(0, 10, 0, 2);
         _view.Children.Add(BothSides);
         Note("The game draws the front of each face only, so a room seen from outside shows its inside.", 24);
+        Label("Edges");
+        _view.Children.Add(Edges);
+        Note("Each face's outline, over the faces or alone (a wireframe). The preview's View menu changes it too.", 0);
+        Statistics.Margin = new Thickness(0, 6, 0, 2);
+        _view.Children.Add(Statistics);
 
         Section("Convert");
         Label("Where the files go");
@@ -65,6 +76,8 @@ public sealed class LvlSettingsPage : ISettingsPage
         TriangleLimit.Text = _settings.TriangleLimit.ToString(CultureInfo.CurrentCulture);
         Lighting.SelectedIndex = (int)_settings.Lighting;
         BothSides.IsChecked = _settings.BothSides;
+        Edges.SelectedIndex = (int)_settings.Edges;
+        Statistics.IsChecked = _settings.ShowStatistics;
         (_settings.Place switch { LvlOutputPlace.Folder => ToFolder, LvlOutputPlace.NextToSource => NextToSource, _ => IntoPackfile }).IsChecked = true;
         Folder.Text = _settings.Folder;
     }
@@ -75,6 +88,8 @@ public sealed class LvlSettingsPage : ISettingsPage
             _settings.TriangleLimit = limit;
         if (Lighting.SelectedItem is ComboBoxItem { Tag: LvlLighting lighting }) _settings.Lighting = lighting;
         _settings.BothSides = BothSides.IsChecked == true;
+        if (Edges.SelectedItem is ComboBoxItem { Tag: LvlEdges edges }) _settings.Edges = edges;
+        _settings.ShowStatistics = Statistics.IsChecked == true;
         _settings.Place = ToFolder.IsChecked == true ? LvlOutputPlace.Folder : NextToSource.IsChecked == true ? LvlOutputPlace.NextToSource : LvlOutputPlace.IntoPackfile;
         _settings.Folder = Folder.Text.Trim();
     }

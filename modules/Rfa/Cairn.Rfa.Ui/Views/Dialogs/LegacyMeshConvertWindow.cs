@@ -25,6 +25,16 @@ public sealed record LegacyConvertChoice(LegacyConvertTarget Target, string? Fol
 {
     /// <summary>Red Faction II meshes: translate the texture names (the default) or keep them and write the textures.</summary>
     public Rf2TextureMode Rf2Textures { get; init; } = Rf2TextureMode.Translate;
+
+    /// <summary>Red Faction for N-Gage scenes: Red Faction metres per XFF unit (2.35 by default).</summary>
+    public float XffScale { get; init; } = Cairn.Formats.XForge.XffSpace.RfScale;
+
+    /// <summary>Red Faction for N-Gage scenes: copy the textures they name beside the converted meshes (on by default).</summary>
+    public bool XffWriteTextures { get; init; } = true;
+
+    /// <summary>The conversion options this choice stands for (texture packs aside, which the caller finds).</summary>
+    public LegacyConvertOptions Options(PegTextureSet? texturePacks = null) =>
+        new() { Rf2Textures = Rf2Textures, TexturePacks = texturePacks, XffScale = XffScale, XffWriteTextures = XffWriteTextures };
 }
 
 /// <summary>One mesh or clip the window lists: its name, what it becomes and what converting it approximates.</summary>
@@ -35,8 +45,10 @@ public sealed record LegacyConvertChoice(LegacyConvertTarget Target, string? Fol
 /// <param name="IsRedFactionII">True for a Red Faction II mesh (the window then offers what to do with its textures).</param>
 /// <param name="KeepTexturesReport">For a Red Faction II mesh: the report when its texture names are kept, or null.</param>
 /// <param name="IsClip">True for a Red Faction II clip (.rfa version 9), which becomes a Red Faction clip.</param>
+/// <param name="IsXff">True for a Red Faction for N-Gage scene (the window then offers the scale and the texture copies).</param>
+/// <param name="ClipName">The clip a character's conversion also writes (an N-Gage character's loop), or null.</param>
 public sealed record LegacyConvertItem(string SourceName, string OutputName, IReadOnlyList<string>? Report, string? Error = null,
-    bool IsRedFactionII = false, IReadOnlyList<string>? KeepTexturesReport = null, bool IsClip = false);
+    bool IsRedFactionII = false, IReadOnlyList<string>? KeepTexturesReport = null, bool IsClip = false, bool IsXff = false, string? ClipName = null);
 
 /// <summary>
 /// "Convert to .v3m/.v3c" (and Red Faction II clips to Red Faction clips): where the converted files go (into the
@@ -59,6 +71,13 @@ public sealed class LegacyMeshConvertWindow : Window
         Content = new TextBlock { Text = "Keep the Red Faction II texture names and write the textures from the .peg packs beside the mesh (.tga)", TextWrapping = TextWrapping.Wrap },
         Margin = new Thickness(0, 2, 0, 2),
         ToolTip = "Off: each texture name is translated to the name of the Red Faction texture made from it, where one is known; on: the names stay and the textures are written next to the converted mesh",
+    };
+    private readonly TextBox _xffScale = new() { Width = 70, Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly CheckBox _xffTextures = new()
+    {
+        Content = new TextBlock { Text = "Write the textures the meshes name beside them (from the same archive or folder, a .pcx as .tga)", TextWrapping = TextWrapping.Wrap },
+        Margin = new Thickness(0, 6, 0, 2),
+        ToolTip = "On: each texture is copied next to the converted mesh (or into the packfile) under the name the mesh uses, a .pcx written as the .tga the mesh names; off: only the meshes are written",
     };
     private readonly StackPanel _report = new();
     private readonly Button _convert = new() { Content = "_Convert", IsDefault = true, MinWidth = 90, Margin = new Thickness(0, 0, 8, 0), ToolTip = "Convert with these choices" };
@@ -108,7 +127,12 @@ public sealed class LegacyMeshConvertWindow : Window
         }.OfType<string>());
         _keepRf2Textures.IsChecked = defaults.Rf2Textures == Rf2TextureMode.KeepOriginals;
         AutomationProperties.SetName(_keepRf2Textures, "Keep the Red Faction II texture names");
+        _xffScale.Text = defaults.XffScale.ToString("0.###", CultureInfo.CurrentCulture);
+        _xffTextures.IsChecked = defaults.XffWriteTextures;
+        AutomationProperties.SetName(_xffScale, "Scale, metres per N-Gage unit");
+        AutomationProperties.SetName(_xffTextures, "Write the textures beside the meshes");
         Content = Build();
+        _xffScale.TextChanged += (_, _) => Update();
         _folder.TextChanged += (_, _) => { _toFolder.IsChecked = true; Update(); };
         foreach (var radio in new[] { _intoPackfile, _nextToSource, _toFolder }) radio.Checked += (_, _) => Update();
         _replace.Click += (_, _) => Update();
@@ -127,17 +151,36 @@ public sealed class LegacyMeshConvertWindow : Window
     {
         bool replace = _replace.IsChecked == true;
         var textures = KeepsRf2Textures ? Rf2TextureMode.KeepOriginals : Rf2TextureMode.Translate;
-        if (_intoPackfile.IsChecked == true && _packfile is not null) return new LegacyConvertChoice(LegacyConvertTarget.IntoPackfile, null, replace) { Rf2Textures = textures };
-        if (_nextToSource.IsChecked == true && _nextTo is not null) return new LegacyConvertChoice(LegacyConvertTarget.NextToSource, _nextTo, replace) { Rf2Textures = textures };
+        float scale = Cairn.Formats.XForge.XffSpace.RfScale;
+        if (OffersXff)
+        {
+            if (XffScaleOf(_xffScale.Text) is not { } chosen) return null;
+            scale = chosen;
+        }
+        bool xffTextures = !OffersXff || _xffTextures.IsChecked == true;
+        LegacyConvertChoice With(LegacyConvertChoice c) => c with { Rf2Textures = textures, XffScale = scale, XffWriteTextures = xffTextures };
+        if (_intoPackfile.IsChecked == true && _packfile is not null) return With(new LegacyConvertChoice(LegacyConvertTarget.IntoPackfile, null, replace));
+        if (_nextToSource.IsChecked == true && _nextTo is not null) return With(new LegacyConvertChoice(LegacyConvertTarget.NextToSource, _nextTo, replace));
         string folder = _folder.Text.Trim();
         if (folder.Length == 0) return null;
         try { folder = Path.GetFullPath(folder); }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
-        return new LegacyConvertChoice(LegacyConvertTarget.Folder, folder, replace) { Rf2Textures = textures };
+        return With(new LegacyConvertChoice(LegacyConvertTarget.Folder, folder, replace));
     }
+
+    /// <summary>The scale typed, or null when it is not a number the conversion takes.</summary>
+    private static float? XffScaleOf(string text) =>
+        (float.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out float v) || float.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out v))
+        && Cairn.Formats.XForge.XffSpace.IsValidScale(v) ? v : null;
 
     /// <summary>True when a Red Faction II mesh is listed (the texture choice shows).</summary>
     public bool OffersRf2Textures => _items.Any(i => i.IsRedFactionII);
+
+    /// <summary>True when an N-Gage scene is listed (the scale and the texture copies show).</summary>
+    public bool OffersXff => _items.Any(i => i.IsXff);
+
+    /// <summary>Sets the scale box (self-tests and captures).</summary>
+    internal void SetXffScale(string text) => _xffScale.Text = text;
 
     private bool KeepsRf2Textures => OffersRf2Textures && _keepRf2Textures.IsChecked == true;
 
@@ -157,8 +200,8 @@ public sealed class LegacyMeshConvertWindow : Window
             return t;
         }
         bool clips = _items.Any(i => i.IsClip), meshes = _items.Any(i => !i.IsClip);
-        const string meshIntro = "Cairn reads these meshes but does not save them. Converting makes the .v3m (static) or .v3c (character) the PC game loads, "
-            + "the way the game's own mesh compiler did; the source is left as it is.";
+        string meshIntro = "Cairn reads these meshes but does not save them. Converting makes the .v3m (static) or .v3c (character) the PC game loads, "
+            + (OffersXff ? "with an N-Gage character's animation as one looping .rfa clip" : "the way the game's own mesh compiler did") + "; the source is left as it is.";
         const string clipIntro = "Cairn reads Red Faction II animations but does not save them. Converting makes the version 8 .rfa clip Red Faction plays, "
             + "with every key kept; the source is left as it is.";
         var intro = new TextBlock
@@ -190,6 +233,21 @@ public sealed class LegacyMeshConvertWindow : Window
             Label("Red Faction II textures");
             panel.Children.Add(_keepRf2Textures);
             panel.Children.Add(Hint("Off: texture names are translated to the names of the Red Faction versions of those textures (REDUX's tables, a texture set that is not part of the stock game); names without a translation stay."));
+        }
+
+        if (OffersXff)
+        {
+            Label("Red Faction for N-Gage");
+            var scaleRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+            var scaleLabel = new TextBlock { Text = "Scale:", VerticalAlignment = VerticalAlignment.Center };
+            var unit = new TextBlock { Text = "metres per N-Gage unit", VerticalAlignment = VerticalAlignment.Center };
+            foreach (var t in new[] { scaleLabel, unit }) t.SetResourceReference(TextBlock.ForegroundProperty, "App.Text");
+            scaleRow.Children.Add(scaleLabel);
+            scaleRow.Children.Add(_xffScale);
+            scaleRow.Children.Add(unit);
+            panel.Children.Add(scaleRow);
+            panel.Children.Add(Hint("2.35 makes the N-Gage player as tall as Red Faction's (measured from the game's sizes; the files do not say)."));
+            panel.Children.Add(_xffTextures);
         }
 
         var failed = _items.Where(i => i.Error is not null).ToList();
@@ -239,13 +297,23 @@ public sealed class LegacyMeshConvertWindow : Window
     private void Update()
     {
         var choice = Current();
-        var outputs = _items.Where(i => i.Error is null).Select(i => i.OutputName).ToList();
+        var outputs = _items.Where(i => i.Error is null).SelectMany(i => i.ClipName is { } clip ? new[] { i.OutputName, clip } : [i.OutputName]).ToList();
         _convert.IsEnabled = choice is not null && outputs.Count > 0;
-        if (choice is null) { _plan.Text = "Choose a folder."; return; }
+        if (choice is null)
+        {
+            _plan.Text = OffersXff && XffScaleOf(_xffScale.Text) is null
+                ? string.Format(CultureInfo.CurrentCulture, "Enter a scale from {0} to {1}.", Cairn.Formats.XForge.XffSpace.MinScale, Cairn.Formats.XForge.XffSpace.MaxScale)
+                : "Choose a folder.";
+            return;
+        }
         if (outputs.Count == 0) { _plan.Text = "None of them can be converted."; return; }
         string where = choice.Target == LegacyConvertTarget.IntoPackfile ? "into " + _packfile : "to " + choice.Folder;
-        _plan.Text = outputs.Count == 1
-            ? $"Writes {outputs[0]} {where}."
-            : string.Format(CultureInfo.CurrentCulture, "Writes {0:N0} files {1}: {2} ... {3}.", outputs.Count, where, outputs[0], outputs[^1]);
+        _plan.Text = outputs.Count switch
+        {
+            1 => $"Writes {outputs[0]} {where}.",
+            2 => $"Writes {outputs[0]} and {outputs[1]} {where}.",
+            _ => string.Format(CultureInfo.CurrentCulture, "Writes {0:N0} files {1}: {2} ... {3}.", outputs.Count, where, outputs[0], outputs[^1]),
+        };
+        if (OffersXff && choice.XffWriteTextures) _plan.Text += " The textures they name go with them.";
     }
 }

@@ -663,7 +663,7 @@ public sealed class MeshEditController : ObservableObject, IGizmoTarget
             var scene = Document.Scene;
             if (Document.IsReadOnly)
             {
-                hint = "Static meshes (.v3m) are read-only: nothing here can be moved, rotated or resized.";
+                hint = MeshStructureViewModel.ReadOnlyReason(Document) + " Nothing here can be moved, rotated or resized.";
             }
             else
             {

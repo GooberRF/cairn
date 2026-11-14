@@ -1,0 +1,20 @@
+; Exports of cairn-openmpt.dll: the libopenmpt C API functions Cairn's XM player calls
+; (src/Cairn.Formats/Audio/XmModule.cs). Built by build.ps1.
+LIBRARY cairn-openmpt
+EXPORTS
+    openmpt_get_library_version
+    openmpt_get_string
+    openmpt_free_string
+    openmpt_log_func_silent
+    openmpt_module_create_from_memory2
+    openmpt_module_destroy
+    openmpt_module_get_metadata
+    openmpt_module_get_num_channels
+    openmpt_module_get_num_patterns
+    openmpt_module_get_num_orders
+    openmpt_module_get_num_instruments
+    openmpt_module_get_num_samples
+    openmpt_module_get_num_subsongs
+    openmpt_module_get_duration_seconds
+    openmpt_module_set_repeat_count
+    openmpt_module_read_interleaved_stereo

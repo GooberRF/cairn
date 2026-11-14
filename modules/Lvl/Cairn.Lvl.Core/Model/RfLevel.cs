@@ -112,6 +112,10 @@ public sealed record RfLevel
     public RfDashProperties? DashProperties { get; init; }
     /// <summary>Red Faction II data with no place in the RF1 model (RF2 levels only).</summary>
     public Rf2LevelData? Rf2 { get; init; }
+    /// <summary>Red Faction for N-Gage data (levels read from an <c>.xff</c> scene only).</summary>
+    public XffLevelData? Xff { get; init; }
+    /// <summary>True for a Red Faction for N-Gage level (read from an <c>.xff</c> scene).</summary>
+    public bool IsXff => Xff is not null;
 
     /// <summary>Sections kept as bytes (editor notes, Alpine lightmaps and terrain, foreign editors, unknown or damaged sections).</summary>
     public ImmutableArray<RfOpaqueSection> OpaqueSections { get; init; } = [];

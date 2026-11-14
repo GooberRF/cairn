@@ -37,7 +37,20 @@ public sealed partial class LvlModule
     public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName)
     {
         if (IsMeshSource(sourceName)) return RfgAvailable ? [MeshRfgTarget(sourceName)] : [];
-        if (!LvlSource.Handles(sourceName)) return [];
+        // an .xff is a level only when its content says so (models and characters are the meshes module's)
+        if (!LvlSource.Handles(sourceName) || LvlSource.IsXffName(sourceName)) return [];
+        return LevelTargets(sourceName);
+    }
+
+    /// <summary>The targets of <paramref name="sourceName"/> knowing its content: an <c>.xff</c> gets the level targets only when it is a level.</summary>
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName, ReadOnlySpan<byte> head) =>
+        LvlSource.IsXffName(sourceName) ? LvlSource.IsXffLevel(head, sourceName) ? LevelTargets(sourceName) : [] : TargetsFor(sourceName);
+
+    /// <summary>An <c>.xff</c> needs its whole content to tell a level from a model.</summary>
+    public int HeadLengthFor(string sourceName) => LvlSource.IsXffName(sourceName) ? ContentClaims.WholeFile : ContentClaims.DefaultHeadLength;
+
+    private static List<ConversionTarget> LevelTargets(string sourceName)
+    {
         var targets = new List<ConversionTarget>
         {
             new(".gltf", "glTF (.gltf + .bin)", "glTF 2.0 with the textures as PNG beside it; brushes, flags, groups and objects are kept in its extras", false),
@@ -45,7 +58,7 @@ public sealed partial class LvlModule
             new(".obj", "Wavefront OBJ (.obj + .mtl)", "Geometry and textures for other 3D tools (objects and most flags are dropped)", true),
             new(".v3m", "Static mesh (.v3m)", "A Red Faction static mesh of the level's geometry (objects and flags are dropped)", true),
         };
-        if (LvlSource.IsLevelName(sourceName) && RfgAvailable)
+        if ((LvlSource.IsLevelName(sourceName) || LvlSource.IsXffName(sourceName)) && RfgAvailable)
             targets.Add(new(".rfg", "Group file (.rfg)", "The level's brushes and objects as an editor group file (the compiled geometry and the level's settings are dropped)", true));
         return targets;
     }
@@ -54,7 +67,7 @@ public sealed partial class LvlModule
         IsMeshSource(sourceName)
             ? LvlConvertOptions.TargetOf(targetExtension) == LvlConvertTarget.Rfg && RfgAvailable
             : LvlSource.Handles(sourceName) && LvlConvertOptions.TargetOf(targetExtension) is { } target
-                && (target != LvlConvertTarget.Rfg || (LvlSource.IsLevelName(sourceName) && RfgAvailable));
+                && (target != LvlConvertTarget.Rfg || ((LvlSource.IsLevelName(sourceName) || LvlSource.IsXffName(sourceName)) && RfgAvailable));
 
     /// <summary>
     /// A level tab through its Convert window (starting at the chosen target); a packfile entry the same way, reading the
@@ -91,7 +104,8 @@ public sealed partial class LvlModule
             if (choice is null) return null;
         }
         var add = request.AddToArchive is { } addToArchive ? (Func<string, IReadOnlyList<(string Name, byte[] Bytes)>, bool, IReadOnlyList<string>?>)addToArchive : null;
-        var job = new LvlJob(name, _ => LvlSource.Read(bytes, name), source => TexturesFor(source, siblings, under, install, filePath))
+        var xff = LvlSource.IsXffName(name) ? XffReadOptions(FilesBeside(siblings, under)) : null;
+        var job = new LvlJob(name, _ => LvlSource.Read(bytes, name, xff), source => TexturesFor(source, siblings, under, install, filePath))
         {
             Rf2 = rf2 => LvlTexturePacks.Complete(rf2, name, filePath, siblings, install),
         };
@@ -224,7 +238,7 @@ public sealed partial class LvlModule
     // ── a batch from a packfile (IArchiveBatchConverter) ──────────────────────────────────────────────────────
 
     public string CommandText => "Convert _levels...";
-    public string CommandToolTip => "Convert the selected levels and group files (.rfl, .rfg) to glTF, OBJ or static meshes, or levels to group files: into the packfile as new entries (one undo step) or into a folder";
+    public string CommandToolTip => "Convert the selected levels and group files (.rfl, .rfg, N-Gage .xff levels) to glTF, OBJ or static meshes, or levels to group files: into the packfile as new entries (one undo step) or into a folder";
 
     public bool CanConvert(string entryName) => LvlSource.Handles(entryName);
 
@@ -250,7 +264,8 @@ public sealed partial class LvlModule
             name => request.AllEntries.FirstOrDefault(e => e.Name.Equals(Path.GetFileName(name), StringComparison.OrdinalIgnoreCase)) is { } entry ? SafeRead(entry) : null);
         var under = base.Shell.Assets.ResolverFor(request.ArchiveFolder);
         string? install = request.ArchiveFolder is { } archiveFolder ? LvlTexturePacks.Rf2InstallOf(Path.Combine(archiveFolder, request.ArchiveName)) : null;
-        var jobs = entries.Select(e => new LvlJob(e.Name, _ => LvlSource.Read(e.Read(), e.Name), source => TexturesFor(source, siblings, under, install))
+        var xff = XffReadOptions(FilesBeside(siblings, under));
+        var jobs = entries.Select(e => new LvlJob(e.Name, _ => LvlSource.Read(e.Read(), e.Name, LvlSource.IsXffName(e.Name) ? xff : null), source => TexturesFor(source, siblings, under, install))
         {
             Rf2 = rf2 => LvlTexturePacks.Complete(rf2, e.Name, null, siblings, install),
         }).ToList();

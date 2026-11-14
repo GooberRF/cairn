@@ -68,14 +68,14 @@ public static class VppInfoColumnSelfTests
         return s.ToArray();
     }
 
-    private static void WaitForInfo(VppDocument doc)
+    internal static void WaitForInfo(VppDocument doc)
     {
         var clock = Stopwatch.StartNew();
         while (doc.List.InfoCache is { IsFilling: true } && clock.ElapsedMilliseconds < 20_000) SelfTestPump.Pump(30);
         SelfTestPump.Pump(50); // the last batch is applied on the UI thread
     }
 
-    private static string InfoOf(VppDocument doc, string name) =>
+    internal static string InfoOf(VppDocument doc, string name) =>
         doc.List.AllRows.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase))?.InfoText ?? "(no row)";
 
     [SelfTest("vpp.info-column")]

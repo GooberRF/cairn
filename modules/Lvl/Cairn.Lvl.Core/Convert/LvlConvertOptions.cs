@@ -143,6 +143,9 @@ public sealed record LvlConvertOptions
     /// <summary>Red Faction II options.</summary>
     public LvlRf2Options Rf2 { get; init; } = new();
 
+    /// <summary>Red Faction for N-Gage options (scale, texture copies).</summary>
+    public LvlXffOptions Xff { get; init; } = new();
+
     /// <summary>The asset generator string of glTF output.</summary>
     public string Generator { get; init; } = "Cairn";
 

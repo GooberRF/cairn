@@ -48,7 +48,7 @@ public sealed class DiagnosticViewModel
     {
         _document = document;
         Diagnostic = diagnostic;
-        // Every kind Core produces has a handler in the clip and mesh documents (a read-only .v3m shows its
+        // Every kind Core produces has a handler in the clip and mesh documents (a read-only mesh shows its
         // edits and Locate disabled). A kind added to Core later is not offered until the documents carry it
         // out: a button that does nothing is worse than no button.
         QuickFixes = [.. diagnostic.QuickFixes

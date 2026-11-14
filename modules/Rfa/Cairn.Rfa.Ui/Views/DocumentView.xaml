@@ -97,17 +97,6 @@
           </DockPanel>
         </Border>
 
-        <Border Padding="12,6" Margin="0,0,0,6" CornerRadius="4" BorderThickness="1"
-                Background="{DynamicResource Banner.InfoBackground}" BorderBrush="{DynamicResource Banner.InfoBorder}"
-                Visibility="{Binding ShowsReadOnlyBanner, Converter={StaticResource Truthy}}"
-                AutomationProperties.Name="Read-only document">
-          <DockPanel>
-            <TextBlock DockPanel.Dock="Left" Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"
-                       Margin="0,0,10,0" Foreground="{DynamicResource Severity.Info}" />
-            <TextBlock Style="{StaticResource BannerText}" Text="Static meshes (.v3m) open read-only: view them, check their structure and problems, or Save As a copy." />
-          </DockPanel>
-        </Border>
-
         <Border x:Name="ConvertBanner" Padding="12,6" Margin="0,0,0,6" CornerRadius="4" BorderThickness="1"
                 Background="{DynamicResource Banner.InfoBackground}" BorderBrush="{DynamicResource Banner.InfoBorder}"
                 Visibility="{Binding ConvertBannerText, Converter={StaticResource Truthy}}"

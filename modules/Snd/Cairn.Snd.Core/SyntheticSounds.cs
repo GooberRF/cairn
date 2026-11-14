@@ -204,4 +204,85 @@ public static class SyntheticSounds
         list.CopyTo(b.AsSpan(44 + data + (data & 1)));
         return b;
     }
+
+    /// <summary>The rows of <see cref="Xm"/>'s pattern, and its speed (ticks per row) and tempo (BPM).</summary>
+    public const int XmRows = 16, XmSpeed = 6, XmTempo = 125;
+
+    /// <summary>How long <see cref="Xm"/>'s song plays once: 16 rows of 6 ticks of 2.5 / 125 s (1.92 s).</summary>
+    public static TimeSpan XmLength => TimeSpan.FromSeconds(XmRows * XmSpeed * 2.5 / XmTempo);
+
+    /// <summary>
+    /// A minimal FastTracker 2 module (version 1.04): one 16-row pattern on two channels playing C-4, E-4, G-4 and C-5
+    /// (with a fifth below on the second channel), and one instrument with one 32-sample looping 8-bit sine (delta-coded,
+    /// as XM stores samples).
+    /// </summary>
+    public static byte[] Xm(string title = "Cairn test song")
+    {
+        const int Channels = 2;
+        var b = new List<byte>();
+        void Text(string s, int length) { var t = new byte[length]; System.Text.Encoding.ASCII.GetBytes(s.AsSpan(0, Math.Min(s.Length, length)), t); b.AddRange(t); }
+        void U16(int v) { b.Add((byte)v); b.Add((byte)(v >> 8)); }
+        void U32(int v) { U16(v & 0xFFFF); U16(v >> 16); }
+
+        b.AddRange("Extended Module: "u8.ToArray());
+        Text(title, 20);
+        b.Add(0x1A);
+        Text("Cairn tests", 20);
+        U16(0x0104);
+        U32(276);           // header size from here
+        U16(1);             // song length (orders)
+        U16(0);             // restart position
+        U16(Channels);
+        U16(1);             // patterns
+        U16(1);             // instruments
+        U16(1);             // flags: linear frequencies
+        U16(XmSpeed);
+        U16(XmTempo);
+        b.AddRange(new byte[256]); // order table: pattern 0
+
+        // the pattern: unpacked cells (note, instrument, volume, effect, parameter); 0x80 is an empty packed cell
+        var cells = new List<byte>();
+        int[] melody = [49, 53, 56, 61]; // C-4, E-4, G-4, C-5
+        for (int row = 0; row < XmRows; row++)
+            for (int ch = 0; ch < Channels; ch++)
+            {
+                if (row % 4 == 0) cells.AddRange(new byte[] { (byte)(melody[row / 4] - (ch == 1 ? 7 : 0)), 1, 0, 0, 0 });
+                else cells.Add(0x80);
+            }
+        U32(9);             // pattern header size
+        b.Add(0);           // packing type
+        U16(XmRows);
+        U16(cells.Count);
+        b.AddRange(cells);
+
+        // the instrument, with one sample
+        const int SampleLength = 32;
+        U32(263);
+        Text("sine", 22);
+        b.Add(0);
+        U16(1);             // samples
+        U32(40);            // sample header size
+        b.AddRange(new byte[96 + 48 + 48]); // every note plays sample 0; no envelopes
+        b.AddRange(new byte[2 + 6 + 2 + 4]); // envelope point counts, sustain and loops, types, vibrato
+        U16(0);             // fadeout
+        b.AddRange(new byte[22]);
+        U32(SampleLength);
+        U32(0);             // loop start
+        U32(SampleLength);  // loop length
+        b.Add(48);          // volume
+        b.Add(0);           // finetune
+        b.Add(1);           // forward loop, 8-bit
+        b.Add(128);         // panning
+        b.Add(0);           // relative note
+        b.Add(0);
+        Text("sine", 22);
+        sbyte previous = 0;
+        for (int i = 0; i < SampleLength; i++)
+        {
+            var value = (sbyte)Math.Round(100 * Math.Sin(2 * Math.PI * i / SampleLength));
+            b.Add((byte)(value - previous));
+            previous = value;
+        }
+        return [.. b];
+    }
 }

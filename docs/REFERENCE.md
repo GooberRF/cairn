@@ -23,7 +23,9 @@ Read the guide for how to do things; come here when you need the exact meaning o
     [glTF options for clips and meshes](#gltf-options-for-clips-and-meshes) ·
     [OBJ options for meshes](#obj-options-for-meshes) ·
     [Exporter and PS2 mesh conversion](#exporter-and-ps2-mesh-conversion) ·
-    [Red Faction II animation conversion](#red-faction-ii-animation-conversion) · [Table usage panel](#table-usage-panel) ·
+    [Red Faction II animation conversion](#red-faction-ii-animation-conversion) ·
+    [Red Faction for N-Gage model conversion](#red-faction-for-n-gage-model-conversion) ·
+    [Table usage panel](#table-usage-panel) ·
     [Clip and mesh problem codes](#clip-and-mesh-problem-codes) ·
     [Animations and meshes settings](#animations-and-meshes-settings) ·
     [Saving clips and meshes](#saving-clips-and-meshes) ·
@@ -45,7 +47,10 @@ Read the guide for how to do things; come here when you need the exact meaning o
     [Packfile limits](#packfile-limits) · [DDS conversion options](#dds-conversion-options) ·
     [PEG conversion rules](#peg-conversion-rules) ·
     [Red Faction II packfile groups](#red-faction-ii-packfile-groups) ·
-    [Alpine Faction cache packs](#alpine-faction-cache-packs)
+    [Alpine Faction cache packs](#alpine-faction-cache-packs) ·
+    [Red Faction for N-Gage archives](#red-faction-for-n-gage-archives) ·
+    [N-Gage particle systems and scenes](#n-gage-particle-systems-and-scenes) ·
+    [PCX images and 8-bit text](#pcx-images-and-8-bit-text)
 - [Tables (TBL)](#tables-tbl)
   - [Tables Cairn knows](#tables-cairn-knows) · [Table menus and shortcuts](#table-menus-and-shortcuts) ·
     [Table panels, status bar and settings](#table-panels-status-bar-and-settings) ·
@@ -62,12 +67,13 @@ Read the guide for how to do things; come here when you need the exact meaning o
     [Bitmap problem codes](#bitmap-problem-codes)
 - [Sounds (VSE, VMU, WAV, OGG)](#sounds-vse-vmu-wav-ogg)
   - [Sound details pane](#sound-details-pane) · [PS2 sound formats](#ps2-sound-formats) ·
-    [Sound conversion details](#sound-conversion-details) · [Sound settings](#sound-settings) ·
-    [Sound problem codes](#sound-problem-codes)
+    [Sound conversion details](#sound-conversion-details) · [XM music](#xm-music) ·
+    [Sound settings](#sound-settings) · [Sound problem codes](#sound-problem-codes)
 - [Levels and groups (RFL, RFG)](#levels-and-groups-rfl-rfg)
   - [Level tabs and menu](#level-tabs-and-menu) · [Level preview](#level-preview) ·
     [Level convert window](#level-convert-window) · [Group files Cairn writes](#group-files-cairn-writes) ·
     [Red Faction II level options](#red-faction-ii-level-options) ·
+    [Red Faction for N-Gage levels](#red-faction-for-n-gage-levels) ·
     [Level conversion report codes](#level-conversion-report-codes) ·
     [Levels and groups settings](#levels-and-groups-settings)
 
@@ -121,7 +127,7 @@ packfiles (see [How the game finds your files](USAGE.md#how-the-game-finds-your-
    `user_maps\multi` (loose files and packfiles).
 
 A texture name also finds the other formats the game would take in its place: `.atx`, `.dds`, `.png`, `.jpg`,
-`.jpeg`, `.vbm`, `.tga` (in that order of preference). Clip names written `.mvf` find the `.rfa`; mesh names written
+`.jpeg`, `.vbm`, `.tga`, `.pcx` (in that order of preference). Clip names written `.mvf` find the `.rfa`; mesh names written
 `.v3d` or `.vcm` find the `.v3m` or `.v3c`.
 
 The **Packfiles** browser lists the game folder's packfiles, its `user_maps` folders, each folder of `mods` that holds
@@ -136,8 +142,9 @@ packfiles:
 - **Type** and **Description**: the extension and what it is.
 - **Opens now with**: the program Windows opens the type with now (its tooltip says where Windows got it).
 - **Open with Cairn**: tick to make Cairn open the type from Explorer; untick to give it back to the program Cairn
-  replaced. **Select all** and **Select none** change every row; general formats such as `.wav` and `.ogg` are left
-  out of **Select all**.
+  replaced. **Select all** and **Select none** change every row; general formats such as `.wav`, `.ogg`, `.xm` and
+  `.cache` are left out of **Select all**. A `.xff` opened from Explorer goes to the Meshes or the Levels module by
+  what the file holds.
 
 Nothing changes until **OK**, and then only the rows you changed. Changes apply to your Windows account and need no
 administrator rights. A type whose default you chose in Windows yourself is protected: Cairn adds itself to the
@@ -313,8 +320,8 @@ import instead (the Open dialog also lists them on their own under **glTF to imp
   **Bone** and **Key** inspector tabs, and uses the **Timeline**.
 - A **mesh tab** (`.v3c`) has the **Preview clip** picker (with a **Bind pose** entry for no clip) and the
   **Structure** inspector tab. You can watch clips on it but not edit them there; open the clip in its own tab.
-- A **static mesh tab** (`.v3m`) opens read-only, with a note saying so, and has no transport. You can view it,
-  read its structure and problems, and **Save As** a copy.
+- A **static mesh tab** (`.v3m`) has the **Structure** inspector tab and no transport. It is edited as a `.v3c` is,
+  except that it has no bones (see [Mesh editing](#mesh-editing)).
 - An **exporter or PS2 mesh tab** shows the converted mesh, read-only, with a **Convert…** banner; see
   [Exporter and PS2 mesh conversion](#exporter-and-ps2-mesh-conversion).
 
@@ -330,10 +337,15 @@ is remembered for that clip. If the bone counts differ, the viewport says so. Wh
 mesh you picked for that clip before, else one the tables play it on, else the mesh you last used for clips with
 that many bones, else any mesh with the same bone count.
 
-**The preview clip picker** (mesh tabs) lists **Bind pose**, then the clips of the open packfiles (the mesh's own
+**The preview clip picker** (mesh tabs) lists **Bind pose**, then `<mesh>_walk.rfa` beside the mesh with its bone
+count ("Beside this file"; a converted N-Gage character's clip), then the clips of the open packfiles (the mesh's own
 first) with its bone count, then the library's: the tables' clips for this mesh, then every clip with the same bone
 count. Only clips of the mesh's game are listed; a Red Faction II character's are ranked by fit (worked out in the
-background the first time). **Mesh › Choose Preview Clip…** opens it (it needs a mesh with bones).
+background the first time). **Mesh › Choose Preview Clip…** opens it (it needs a mesh with bones). When you open a
+mesh, Cairn plays the clip beside it, else the mesh's stand clip. A mesh whose skeleton no mesh of the library or an
+open packfile shares, and that the tables give no clips, plays only a clip of its own packfile, else starts in the
+bind pose, as clips match bones by index and one that merely has as many bones scatters the parts (a Red Faction II
+character always starts in the bind pose).
 
 **Banners** at the top of a tab:
 
@@ -341,7 +353,6 @@ background the first time). **Mesh › Choose Preview Clip…** opens it (it nee
   mine**.
 - "The file this tab came from was deleted or renamed on disk." with **Keep editing**.
 - For a file from an archive: which `.vpp` it came from, and that Save asks where to write a copy.
-- For a `.v3m`: that static meshes open read-only.
 
 **Edit menu** (with a clip or mesh in front).
 
@@ -477,7 +488,7 @@ off.
 
 | Control | What it does |
 |---|---|
-| Display menu (eye button) | **Textured**, **Flat** (one neutral colour) or **Hidden** mesh; **Full bright** (the textures' own colours, unlit); **Background** (Theme colour, Black, Dark grey, Mid grey, Light grey, White); **Ghost of the saved clip**; **Front view**, **Side view**, **Top view**. |
+| Display menu (eye button) | **Textured**, **Flat** (one neutral colour), **Wireframe** (the triangles' edges only) or **Hidden** mesh; **Edges on the mesh** (the triangles' edges over a textured or flat mesh, hidden behind nearer faces); **Full bright** (the textures' own colours, unlit); **Background** (Theme colour, Black, Dark grey, Mid grey, Light grey, White); **Ghost of the saved clip**; **Statistics** (in the lower right corner, for the LOD shown: submeshes, vertices, triangles with the double-sided ones, textures, bones, collision spheres, prop points; a clip without a mesh: its bones); **Front view**, **Side view**, **Top view**. |
 | Skeleton | Bones and joints. |
 | **Aa** | Bone names (and sphere and prop point names). |
 | Grid | Ground grid and axes (X red, Y green, Z blue). |
@@ -912,9 +923,11 @@ table lines) as Markdown or text.
 
 ### Mesh editing
 
-Character meshes (`.v3c`) are edited in the **Structure** inspector tab, the **Mesh** menu and, for bind poses,
-collision spheres and prop points, with the viewport's gizmos. Every change is one undo step. Static meshes (`.v3m`)
-show the same tree with the editors disabled, and no gizmos.
+Character meshes (`.v3c`) and static meshes (`.v3m`) are edited in the **Structure** inspector tab, the **Mesh**
+menu and, for bind poses, collision spheres and prop points, with the viewport's gizmos. Every change is one undo
+step. A static mesh has no bones: its collision spheres and prop points belong to the whole model (bone -1), and the
+bone commands are off. The triangles themselves are not edited in Cairn; change them in a modelling tool through
+glTF or OBJ.
 
 #### Structure tree
 
@@ -980,7 +993,8 @@ and the Problems list update when you let go. Each drag is one undo step, named 
 bind", "Rotate prop point 'muzzle_1'", "Resize collision sphere 'head'").
 
 **The badge** at the bottom left says what a drag will do (and what the stored values are relative to), or why there
-is no gizmo: nothing movable selected, a collision sphere with the rotate tool, or a read-only `.v3m`.
+is no gizmo: nothing movable selected, a collision sphere with the rotate tool, or a read-only mesh (a format Cairn
+only reads and converts).
 
 The tool and space are shared with clip tabs and remembered; **Children** is kept for the session. Typing in the
 editor pane does all of this from the keyboard.
@@ -1235,6 +1249,99 @@ the viewport says so, and a mesh picked from **Preview mesh** (with **Other game
   clip gets a free name.
 - The converted clip is checked like any clip; its errors and warnings join the report.
 
+### Red Faction for N-Gage model conversion
+
+Walk-through: [Convert Red Faction for N-Gage models and characters](USAGE.md#convert-red-faction-for-n-gage-models-and-characters).
+Levels are under [Red Faction for N-Gage levels](#red-faction-for-n-gage-levels).
+
+**The format.** An `.xff` is an X-Forge scene: chunks one after another to the end of the file, each a 12-byte header
+(16-bit type, 16-bit version, 32-bit id, 32-bit payload size) and its payload. All values are little-endian; names
+are a byte of length and Latin-1 characters. Chunks refer to each other by id. The types Cairn reads:
+
+| Type | Chunk |
+|---|---|
+| 2, 3 | Group node, object node: parent, name, position, rotation (a quaternion) and scale |
+| 4 | Mesh instance: its node and its submeshes (vertex buffer, index list, face attributes, material, texture) |
+| 5, 6, 7 | Camera, light (most fields unknown), helper (`Dummy01`, `IK Chain01`: a position only) |
+| 8, 9 | Particle emitter (names a `.pr3`), sprite (names a texture) |
+| 12 | Collision: a box with a transform, or the mesh of another node |
+| 1001, 1002 | Vertex buffer (positions and normals), index list (a triangle list of 16-bit indices) |
+| 1003, 1004 | Material (the blend is known, the other fields are not), texture (a file name in the archive) |
+| 1005 | Animation track: a node in the tree whose child it moves, with evenly spaced keys |
+| 1006 | Prefab: places another `.xff` (the levels place their doors, enemies and items this way) |
+| 1008 | Face attributes: a colour and UVs for each triangle corner |
+| 1009 | Property: text on a node (`room`, `portal:<area>`) |
+| 2000 and up | Game-object markers: the player, items, enemies, spawn points, triggers and the rest |
+
+Cairn is strict about the framing (a file cut short, or a chunk running past the end, is refused) and lenient inside
+it: a chunk it does not read, or one that does not match its layout, is kept as bytes and counted under **Raw
+chunks** in the details. References that do not resolve are listed and left out. Cairn never writes `.xff`.
+
+**Which module opens it.** A scene with a level marker (areas, the level end, spawn points, triggers and the other
+level-only types), or `room` volumes and no object marker of its own, is a level and opens in the Levels module. A
+scene with an enemy or player marker and parts moved by tracks is a character. Everything else is a model. The
+packfile preview, **Convert to** and the batch commands follow the same rule.
+
+**Space.** The N-Gage scenes use Red Faction's axes (left-handed, Y up, +Z forward) but the opposite front faces.
+Converting multiplies positions by the scale (2.35 Red Faction metres per N-Gage unit by default: the size that makes
+the N-Gage player Red Faction's, measured from the game's sizes, not stated anywhere), reorders each triangle's corners
+(A, B, C) to (A, C, B) with their colours and UVs, and reverses the normals. Rotations are kept.
+
+**Animation timing.** Times are in milliseconds. A track's keys are `floor(1000 / rate)` ms apart from time 0 (33 ms
+at 30 keys a second); before its first key a track holds the first, after its last the last, and a looping track
+wraps back into its range. Positions are interpolated in straight lines and rotations along the shortest arc (whether
+the game does exactly that is not known; on the shipped keys the difference is under a degree). The game has no
+clips: each character has one walk loop, which it plays faster or slower with the character's speed.
+
+**The conversion:**
+
+- A **model** becomes a `.v3m` with one submesh per mesh node, in the pose at the start of its tracks; a node with
+  more than 7 textures continues in a submesh named `<name>_2`.
+- A **character** becomes a `.v3c` with one submesh (the game keeps only the last submesh of a `.v3c`). Each track
+  that moves geometry becomes a bone, named after the part it moves, its parent the nearest such track above it;
+  helpers without geometry (`IK Chain01`, `Dummy01`) are left out. Parts no track moves hang from an added bone
+  `root`. Every vertex is weighted fully to its part's bone. The bind pose is each track at its start. Beyond 50
+  bones, the rest move with the nearest kept bone (no shipped character comes close). The bosses' nano shield
+  (`g_nanoshield` in `enemy_capek` and `enemy_masako`, a sphere drawn only while the shield is up) is left out, as a
+  `.v3c` cannot hide a part; the report says so. Opened in Cairn, the `.v3c` plays the clip beside it.
+- The **clip** `<name>_walk.rfa` is one looping version 8 clip starting at frame 1, as stock clips do: keys at the
+  shortest track's interval from 0 to the longest track's length, plus its end; each track sampled from its own start
+  with the hold and wrap rule above; each bone relative to its parent; weight 10, no ramps. The game's own tracks
+  run at most 1,920 ms (59 keys); a scene whose tracks declare a range needing more than 2,000 keys a bone converts
+  without its clip, and the report says why.
+- **Vertices** are split where position, normal or UV differ (the N-Gage UVs are stored per triangle corner).
+- **Materials** keep their texture and blend; everything else in them is unknown and dropped. Every face is
+  single-sided, as in the N-Gage files (they hold reversed copies where both sides show).
+
+| N-Gage blend | Becomes |
+|---|---|
+| One, zero | Opaque |
+| Source alpha, inverse source alpha | Alpha-blended: the texture's alpha decides (the N-Gage game also took alpha from the vertex colours, which are dropped) |
+| One, one | Additive (the additive render state on its batches) |
+| Zero, inverse source colour (darkening overlays) | Alpha-blended, which does not darken; reported |
+| Any other pair | Opaque; reported with the pair |
+
+- **Vertex colours** (the baked lighting) are dropped. Parts drawn only in their vertex colours get a cell of a
+  generated `<name>_colours.tga` (each part's average colour, 8-pixel cells) and UVs at its centre; that file is
+  always written beside the mesh.
+- **Textures** keep their names, except that a `.pcx` is named `.tga` (Red Faction's tools take `.tga`). **Write the
+  textures the meshes name beside them** copies each from the same archive or folder, a `.pcx` decoded and written as
+  a 24-bit `.tga` under that name (one that cannot be decoded is reported and not written). A name longer than 31 characters is shortened
+  (`<stem>_1.tga`) and the copy written under the new name. A 16-bit `.tga` whose header declares an alpha bit that no
+  pixel sets is copied with its header's alpha-bit count cleared, pixels unchanged, so it draws opaque as in the
+  N-Gage game; tabs, previews and the glTF and OBJ PNGs read such files the same way (as the Levels module does).
+  Only the textures an N-Gage scene names are changed. Textures that cannot be found are named in the report;
+  five are missing from the game's own archive too (`txtr_enviro_guard_*_mip2.tga` and `txtr_fcanister1.tga`).
+- **Not converted:** collision shapes, helper points (they could be prop points), cameras, lights, sprites and
+  particle emitters.
+- The result is checked like any mesh and clip; their findings join the report (LEG100 in the tab).
+
+**Options.** The Convert window's **Red Faction for N-Gage** section: **Scale** (metres per N-Gage unit, 0.01 to 100,
+default 2.35) and **Write the textures the meshes name beside them (from the same archive or folder, a .pcx as .tga)**
+(on by default). Both are remembered between runs, and a conversion made without the window uses them too, as in the
+Levels module. A scale outside 0.01 to 100 (the same range as the Levels module's) keeps **Convert** off. The archive
+is read only, so conversions from it go next to it or into a folder.
+
 ### Table usage panel
 
 The **Table usage** tab of the bottom panel reads the game's `entity.tbl`, `weapons.tbl`, `pc_multi.tbl` and
@@ -1270,7 +1377,7 @@ intended."
 Quick fixes that need a dialog open it: for a wrong preview mesh, **Choose another preview mesh…**; for a clip that
 does not fit a skeleton, **Conform to skeleton…** (with the mesh the problem names, or else the preview mesh,
 already picked); for a missing texture, **Locate the file…** (the material's texture browser: the texture you pick
-becomes the material's texture name; not on a read-only `.v3m`); for name problems, **Save as…**.
+becomes the material's texture name; not on a read-only mesh); for name problems, **Save as…**.
 
 #### Clip errors
 
@@ -1404,7 +1511,7 @@ Shown in the **PRE-FLIGHT** list of **Import Mesh from OBJ**, beside the glTF co
 | Code | Kind | Meaning |
 |---|---|---|
 | LEG001 | Error | The file is damaged or an early Red Faction II prototype; it cannot be converted. |
-| LEG100 | Info | What converting this mesh or Red Faction II clip approximates (shown on every exporter, PS2 or Red Faction II mesh tab and Red Faction II clip tab). |
+| LEG100 | Info | What converting this mesh or Red Faction II clip approximates (shown on every exporter, PS2, Red Faction II or Red Faction for N-Gage mesh tab and Red Faction II clip tab). |
 
 ### Animations and meshes settings
 
@@ -1415,7 +1522,7 @@ meshes** page.
 | Section | Options |
 |---|---|
 | LIBRARY | What double-click (or Enter) on a library entry does: **Preview on the current document (default)** or **Always open in a new tab**. |
-| VIEWPORT | What every viewport shows (the viewport toolbar changes the same settings): **Mesh** (**Textured**, **Flat**, **Hidden**), **Skeleton**, **Bone names**, **Grid and axes**, **Collision spheres**, **Prop points**, **Root motion path**, **Full bright**, **Perspective**, **Bind pose**, **Background**. |
+| VIEWPORT | What every viewport shows (the viewport toolbar changes the same settings): **Mesh** (**Textured**, **Flat**, **Wireframe**, **Hidden**), **Skeleton**, **Bone names**, **Grid and axes**, **Collision spheres**, **Prop points**, **Root motion path**, **Edges on the mesh**, **Statistics**, **Full bright**, **Perspective**, **Bind pose**, **Background**. |
 | TIME DISPLAY | **Frames** (30 fps), **Seconds**, **Ticks**. |
 | RESOLVED SEARCH ORDER | Where the active file (or any open file) looks for meshes, tables and textures, in order. |
 
@@ -1436,7 +1543,6 @@ types under **Tools › File Associations…**.
 - **Save All** (**Ctrl+Alt+S**) saves every changed tab and lists any that could not be saved.
 - No save, export, extract or retarget output defaults to the game folder, and writing a retargeted clip there asks
   first: that folder holds the game's own files (and the game loads assets only from packfiles, not loose files).
-- Static meshes (`.v3m`) open read-only; **Save As** writes a copy.
 - If a file open in a tab changes on disk, an unchanged tab reloads it; a tab with unsaved changes shows **Reload**
   and **Keep mine**. If the file is deleted or renamed, the tab keeps its contents and shows **Keep editing**.
 - Unsaved clips and meshes are covered by Cairn's crash recovery like any other tab (see
@@ -1762,7 +1868,7 @@ is on, the toolbar and the File types panel say how many entries are shown ("120
 | Column | Shows |
 |---|---|
 | **Name** | The entry name. |
-| **Type** | A plain description, such as "Targa image" or "Character mesh". PS2 types: **PS2 texture pack**, **PS2 static mesh**, **PS2 character mesh**, **PS2 sound effect**, **PS2 music**. In a Red Faction II packfile group: **RF2 texture pack**, **RF2 level**, **RF2 static mesh**, **RF2 character mesh**, **RF2 animation**, **RF2 effect**, **RF2 table**, **RF2 music**, **RF2 cutscene script**. |
+| **Type** | A plain description, such as "Targa image" or "Character mesh". PS2 types: **PS2 texture pack**, **PS2 static mesh**, **PS2 character mesh**, **PS2 sound effect**, **PS2 music**. In a Red Faction II packfile group: **RF2 texture pack**, **RF2 level**, **RF2 static mesh**, **RF2 character mesh**, **RF2 animation**, **RF2 effect**, **RF2 table**, **RF2 music**, **RF2 cutscene script**. Red Faction for N-Gage types: **X-Forge scene** (`.xff`), **X-Forge particle system** (`.pr3`), **X-Forge archive** (`.cfl`), **PCX image** (`.pcx`), **FastTracker 2 music** (`.xm`). |
 | **Size** | The size; the tooltip has the exact byte count. |
 | **State** | Empty for an entry as saved; **added**, **replaced** or **renamed** for a pending change. The tooltip says where new data comes from, or the old name. |
 | **Info** | One line read from the file's header, filled in shortly after the packfile opens. The tooltip shows the whole line; sorting by Info compares numbers by value. Pending entries are read from their source files. |
@@ -1784,6 +1890,12 @@ is on, the toolbar and the File types panel say how many entries are shown ("120
 | Text, font, editor group | `67 lines`; `69 glyphs, 49 px high`; `3 groups` |
 | PS2 texture pack (`.peg`) | `PEG v6: 28 textures (6 animated, 3 MPEG-2 compressed)` |
 | A file converted from a `.peg` | `64x64, from PS2 8-bit indexed, 32-bit palette, 3 mips (level 0 kept)`; a frame adds `frame 2 of 12`; a background `640x448, from PS2 MPEG-2 (6 tiles)` (adds `black below 25 transparent` when black was made transparent) |
+| PCX image (`.pcx`) | `64x64, 8-bit paletted, RLE compressed` (or `24-bit`; `uncompressed`) |
+| FastTracker 2 music (`.xm`) | `FastTracker 2 v1.04, 4 channels, 2:16`: format, channels, length |
+| X-Forge scene (`.xff`) | `level, 76 meshes, 2,251 triangles, 12 textures, 3,333 ms animation`: kind (level, character or model), meshes, triangles, textures, the longest animation track |
+| X-Forge particle system (`.pr3`) | `6 frames, 500 ms life, up to 3 particles` |
+| An entry of a `.cfl` archive that cannot be read | `corrupt` or `compression not supported` |
+| An entry of a `.cfl` archive the open did not check (CFL005) | `not checked` (it is not unpacked to fill the column) |
 
 Types Cairn does not read leave the cell empty. Data that cannot be read as its type shows a dim *unreadable* (the
 tooltip says why); an entry whose content is another type than its name says names it first (`DDS data: 512x512,
@@ -1793,8 +1905,8 @@ DXT1, 10 mipmaps` for a `.tga` that holds a DDS texture).
 
 | Type | Preview |
 |---|---|
-| `.tga`, `.dds`, `.png`, `.jpg`, `.vbm` | Image on a checkerboard: **Fit**, **100%**, wheel zoom, **Alpha**; mip level for `.dds`; play, pause and frame steps for an animated `.vbm`. |
-| `.wav`, `.ogg`, `.aif`, `.mp3`, `.vse`, `.vmu` | **Play**, **Stop**, position slider, time, clickable waveform (none for `.mp3`). Compressed sounds (Ogg Vorbis, ADPCM `.wav`, the stock `.aif` files, PS ADPCM) play too. |
+| `.tga`, `.dds`, `.png`, `.jpg`, `.vbm`, `.pcx` | Image on a checkerboard: **Fit**, **100%**, wheel zoom, **Alpha**; mip level for `.dds`; play, pause and frame steps for an animated `.vbm`. |
+| `.wav`, `.ogg`, `.aif`, `.mp3`, `.vse`, `.vmu`, `.xm` | **Play**, **Stop**, position slider, time, clickable waveform (none for `.mp3`). Compressed sounds (Ogg Vorbis, ADPCM `.wav`, the stock `.aif` files, PS ADPCM) play too; an `.xm` plays its render (see [XM music](#xm-music)). |
 | `.vf` | A summary line, the sample text and every character drawn with the font. |
 | `.tbl` | The table, read-only, highlighted and foldable. |
 | `.txt`, `.log`, `.gltf` and other text | Numbered lines, the detected encoding, **Wrap** (on by default), **Find** (**Ctrl+F**, **F3** / **Shift+F3**), **Copy** (**Ctrl+C**: the selected lines, or everything). |
@@ -1806,6 +1918,7 @@ DXT1, 10 mipmaps` for a `.tga` that holds a DDS texture).
 | `.rfl`, `.rfg` | The level or group file in 3D with its textures (from the packfile first), with the toolbar of a level tab (**Compiled**/**Brushes**, **Faces**, **Objects**, **Lighting**, **Fly**, **Frame**); object markers start hidden. |
 | `.rfm`, `.rfc` (Red Faction II) | The mesh with its textures from the group's `.peg` packs. |
 | `.rfa` (Red Faction II) | The clip playing on the Red Faction II character of the group that fits it best, converted on the fly with its textures (see [Red Faction II animation conversion](#red-faction-ii-animation-conversion)). |
+| `.xff` (Red Faction for N-Gage) | A model or character as it converts, with its textures from the archive (a character plays its walk loop, with a play bar), or a level in 3D as a `.rfl` previews. |
 | anything else | The first 4 KB in hex. |
 
 Mesh, clip, effect, animated texture, PEG, table, font, bitmap, sound (all but `.mp3`), level and group file previews
@@ -1833,6 +1946,8 @@ folders, **not checked**.
   opened on its own says what saving writes instead.
 - **Red Faction II packfile group**: names the group, its file count and whether it is packed or loose, and says it is
   read only. It stays while the tab is open.
+- **X-Forge CFL3 archive** (Red Faction for N-Gage): names the archive and its file count, says it is read only, and
+  how many files cannot be read. It stays while the tab is open.
 
 **Status bar.** Entries, the size when saved (exact bytes in the tooltip), pending changes, the problem count (click
 to open the problems) and, while saving or extracting, the progress (click to cancel).
@@ -1876,7 +1991,7 @@ saving waits until you add it again or remove the entry.
 
 | Code | Meaning |
 |---|---|
-| VPP009 | A type the game does not load (including PlayStation 2 types). |
+| VPP009 | A type the game does not load, such as `.xm` music; for PlayStation 2 and Red Faction for N-Gage types it says where they come from. |
 | VPP013 | An empty packfile. |
 | VPP014 | A name Windows cannot use as a file name, so it cannot be extracted as it is. |
 | VPP015 | A name without an extension. |
@@ -1924,10 +2039,11 @@ These are the game's rules; Cairn checks them so you find out before the game do
   folders may replace the game's own files.
 - **The `.rfa` dot rule**: the game finds an animation by cutting its name at the first dot and adding `.rfa`. A table
   that names `walk.mvf` loads `walk.rfa`, and an entry named `walk.v2.rfa` can never be loaded as an animation.
-- **Types**: textures may be `.tga`, `.vbm`, `.dds`, `.png`, `.jpg` or `.atx` (a `.dds` is found in place of a
-  requested `.tga` of the same name); sounds `.wav` or `.ogg`, and a sound is treated as Ogg Vorbis only when its name
-  ends in lower-case `.ogg`. `.aif`, `.mp3`, `.mvf`, `.rfg`, `.psd`, `.gltf`, `.txt` and `.log` appear in some
-  packfiles but the game never loads them, nor the PS2 version's `.peg`, `.rfm`, `.rfc`, `.vse` and `.vmu`.
+- **Types**: textures may be `.tga`, `.vbm`, `.dds`, `.png`, `.jpg`, `.pcx` or `.atx` (a `.dds` is found in place of
+  a requested `.tga` of the same name); sounds `.wav` or `.ogg`, and a sound is treated as Ogg Vorbis only when its
+  name ends in lower-case `.ogg`. `.aif`, `.mp3`, `.mvf`, `.rfg`, `.psd`, `.gltf`, `.txt` and `.log` appear in some
+  packfiles but the game never loads them, nor the PS2 version's `.peg`, `.rfm`, `.rfc`, `.vse` and `.vmu`, Red
+  Faction for N-Gage's `.xff`, `.pr3` and `.cfl`, or `.xm` music.
 
 ### DDS conversion options
 
@@ -2072,6 +2188,136 @@ packfile the game loads assets from, so its entries are not offered to other mod
 | ACP001 | Info | Two listed names differ only in case: on Windows they are one file, so extracting both into one folder writes it once. |
 | ACP002 | Info | An entry is empty (0 bytes). |
 | ACP003 | Warning | An entry is corrupt: its data does not match its CRC, so the game does not use it. |
+
+### Red Faction for N-Gage archives
+
+Walk-through: [Open the Red Faction for N-Gage archive](USAGE.md#open-the-red-faction-for-n-gage-archive).
+
+**The format.** Red Faction for N-Gage keeps every asset in one X-Forge CFL3 archive, `redfaction.cfl` (in the game's
+`system\apps\6r09` folder). All values are little-endian. A 12-byte header (signature `CFL3`, the directory's offset
+and its unpacked size), the data, and an 8-byte footer (the archive's size and `3CFL`). An archive may be appended to
+other data: the footer gives where it starts, and offsets count from there. Every block of data is a 32-bit length and
+that many bytes. The directory is a 32-bit compression value and a block; its records are each a file's unpacked size,
+offset and compression (32 bits each), its name's length (16 bits) and the name. A **stored** entry's block is the
+data itself; a **zlib** entry's block is its unpacked size (32 bits) and a zlib stream without its Adler-32 checksum
+(the CFL3 writer leaves the streams short), so Cairn inflates the raw data and checks the size, not the checksum. CFL3
+allows other compression values (plug-in compressors and ciphers); the stock archive uses only stored (its 80 `.txt`
+files) and zlib (the other 1,125). Names are not unique: the stock archive lists 9 names twice, 3 of them with
+different data.
+
+**Opening.** Cairn checks the header, the footer, the version (another one is refused as "an X-Forge CFL archive of
+version 'N'; Cairn reads CFL3") and that every offset, size and name lies inside the archive; a file that fails is
+refused with the reason. The file is read in one go, and every entry is unpacked once when the archive opens (a block
+of data several entries name, once), so entries that cannot be read are known at once: they stay listed, with the
+reason in the details, the preview and the Info column. What the open unpacks is capped at 64 times the file's size
+(at least 64 MiB, at most 1 GiB): an archive that lists more (a damaged one, or one made to exhaust memory) opens with
+the entries past the cap not checked (**CFL005**); each is unpacked and checked only when it is read. A name listed
+twice is listed twice; lookups by name (textures) use the first, while **Open in Cairn** and **Open with** open the
+row's own copy (the second as `name (2).ext`).
+
+**What works.** The list with its filter, type panel, sorting and Info column; previews and details; **Extract**
+(selected, all, here, by dragging, **Ctrl+C**; entries that cannot be read are skipped, and the status says how many;
+a name listed twice is extracted as `name (2).ext` beside the first); **Open in Cairn** (as work copies, which find
+their textures in the archive); **Convert to** on one entry and **Convert meshes and animations…**, **Convert sounds…**
+and **Convert levels…**, writing into a folder. An open archive is also a source for the Animations library and the
+preview pickers. Each entry's details add **Compression** (`stored`, `zlib`, or `compression N (not supported)`),
+**Packed size**, **Unpacked size** and **Offset**; **Game** says "Red Faction for N-Gage (read only in Cairn)". With
+nothing selected, the details pane shows the archive's facts: format, entries, stored, zlib, unsupported, corrupt and
+not checked (when any), packed and unpacked size, the directory, where the archive starts (when appended to other data), the names
+listed twice, its path and the count of each type.
+
+**What is off.** Everything that changes the archive: adding, removing, renaming, replacing, sorting entries, **Save**
+and **Save As**, dropping files on the list, **Update packfile** for work copies, **Convert images to DDS…**. A CFL
+archive inside another file cannot be opened: extract it first.
+
+**Problems** (the packfile rules for Red Faction, such as name lengths and the types the game loads, do not apply):
+
+| Code | Kind | Meaning |
+|---|---|---|
+| CFL001 | Warning | An entry uses a compression Cairn does not read (a CFL3 plug-in's compressor or cipher); it cannot be read. |
+| CFL002 | Warning | An entry is corrupt: its data does not unpack to its listed size; it cannot be read. |
+| CFL003 | Warning or Info | A name is listed twice. A warning when the copies differ (which copy the game reads is not known; Cairn reads the first, and extracting both into one folder keeps both), information when they are the same. |
+| CFL004 | Info | An entry is empty (0 bytes). |
+| CFL005 | Warning | Entries were not checked when the archive opened: checking every entry would unpack more than 64 times the file's size (at least 64 MiB, at most 1 GiB). Each is unpacked and checked only when it is read; the Info column shows `not checked`. |
+
+The N-Gage archive's images are not checked against Red Faction's texture rules: its HUD and menu images of any size
+get no "not a power of two" note.
+
+### N-Gage particle systems and scenes
+
+**Particle systems (`.pr3`).** Shown in the packfile list as **X-Forge particle system**, with an Info line and
+details: format and version, frames, emission rate (per second), lifetime (ms), particles (at most N alive at once),
+particle size at birth and death, start alpha, emitter offset, damping and gravity, each marked "likely" where the
+meaning is inferred; **Converts to**: nothing (too few fields are understood to make a Red Faction emitter); the frame
+textures in order, each "in this archive" or "not in this archive; missing" (a missing one is a warning); and, folded,
+every other field raw under **Unknown fields** by file offset (integers in decimal and hex; value groups as "kind K,
+a, b"). Read only, never converted. A damaged file shows the reason.
+
+The layout: a 268-byte block, little-endian, then the frames.
+
+| Offset | Field |
+|---|---|
+| 0x00 | `PS` and a big-endian 16-bit version, 3 (the game does not check it; Cairn reads version 3 only) |
+| 0x04 | 32-bit value, unknown |
+| 0x08 | 3 floats: emitter offset (likely) |
+| 0x14 | 3 value groups (each a 32-bit kind and two floats; meaning unknown) |
+| 0x38 | 3 floats: damping (likely) |
+| 0x44 | 3 floats: gravity (likely) |
+| 0x50 | 3 value groups, unknown |
+| 0x74 | Float: emission rate per second (likely) |
+| 0x78 | 32-bit: lifetime in ms (likely) |
+| 0x7C | Value group, unknown |
+| 0x88 | 32-bit: a particle count, unknown (the minimum or the burst) |
+| 0x8C | 32-bit: the most particles alive at once (the game allocates that many) |
+| 0x90 | Float, unknown (the game reads 0 as 1) |
+| 0x94, 0x98 | Floats, unknown |
+| 0x9C | 32-bit, unknown |
+| 0xA0 | Float: start alpha, 0 to 255 (likely) |
+| 0xA4 | Float, unknown |
+| 0xA8 | Value group, unknown |
+| 0xB4, 0xB8 | Floats: particle size at birth and at death (likely) |
+| 0xBC | Value group, unknown |
+| 0xC8 | Float, unknown |
+| 0xCC | 3 value groups, unknown |
+| 0xF0, 0xFC | 3 floats each, unknown |
+| 0x108 | 32-bit, unknown |
+
+The game turns every float into 16.16 fixed point. The frames are texture names, each followed by `|`; an empty name
+(`||`) ends the list, and the shipped files end with `|||`. A name not followed by `|` at the end of the file is not
+used by the game. Cairn reports values the game cannot use: a float outside ±32,767, a negative particle count, an empty
+or unterminated list, a name over 255 characters, more than 256 frames, control characters.
+
+**Scenes (`.xff`).** Shown as **X-Forge scene**, with the Info line and details: **Scene** (its kind, level,
+character or model, and why; chunks; nodes; node types; animation: tracks, the longest one's length, the time range,
+keys per second, looping; prefabs; raw chunks Cairn does not read; problems), **Geometry** (meshes, submeshes,
+vertices, triangles, materials, textures), **Textures** (each in this archive or missing; sprite textures included),
+**Markers** (by type number with its meaning where known, such as "3106 script trigger", "4202 enemy spawn (of type
+3202)" or "3116 enemy trigger volume (likely)", with the count and names; "(unknown)" otherwise), **Prefabs** (each
+placed scene, how many times, in the archive or missing) and **Particle systems** (the `.pr3` files its emitters run).
+Missing textures and placed scenes are warnings; in the stock archive only `enemy.xff` and `ammo_flmthrwr.xff` have
+any. A file opened loose lists the names without saying where they are. The format and the conversions are under
+[Red Faction for N-Gage model conversion](#red-faction-for-n-gage-model-conversion) and
+[Red Faction for N-Gage levels](#red-faction-for-n-gage-levels).
+
+### PCX images and 8-bit text
+
+**PCX images** (`.pcx`, ZSoft PCX versions 0 to 5) are read wherever Cairn reads a `.tga`: packfile previews and
+Info, the textures of meshes, levels and their exports, animated texture frames, and images imported into bitmaps and
+fonts. Cairn reads 8-bit images with the 256-colour palette at the end of the file (all the N-Gage textures), 24-bit
+images, and 1-, 2- and 4-bit images of up to 16 colours from the header's palette, run-length encoded or not.
+Images are opaque: no colour is made transparent. A PCX is recognised by its name only (its one-byte signature is
+not enough). Damaged files are refused with the reason: data cut short, a missing palette, impossible sizes, or a
+form not listed here. They convert like a `.tga`: **Convert to › DDS texture (.dds)**, **Convert images to DDS…** and
+**Extract as PNG…**. Cairn never writes PCX.
+
+Red Faction loads `.pcx` textures, and Alpine Faction finds a `.pcx` after a `.tga` of the same name, so in a
+packfile a `.pcx` is **Loaded by the game** and gets the texture checks a `.tga` gets (names longer than 31 characters,
+sizes that are not powers of two).
+
+**8-bit text.** Text previews, the details' first lines and the Info column's line count read text that is not
+valid UTF-8 as Windows-1252: Latin-1 with the characters at 0x80–0x9F (’ “ ” € …); the five bytes Windows-1252
+leaves undefined keep their Latin-1 meaning. The preview's header says "Windows-1252". UTF-8 (with or without a
+BOM) and UTF-16 with a BOM are read as before, and tables (`.tbl`) are not affected.
 
 ## Tables (TBL)
 
@@ -2398,6 +2644,9 @@ does. Mip levels are made with a box filter.
 | Header and layout | Every header field of a PS2 sound (sound time, key-off time, envelope, data size, pitch, flags, blocks). |
 | About this format | What is special about the format, for example how a `.vmu` stores its two channels. |
 
+For an `.xm` the **Sound** heading describes the render (FastTracker 2 module, XM module, 44,100 Hz, stereo, 16-bit)
+and a **Module** heading lists what the file says; see [XM music](#xm-music).
+
 **Sound menu and shortcuts.** **Play** / **Pause** (**Space**), **Stop**, go to start (**Home**), **Loop** (**L**),
 **Convert…** (**Ctrl+Shift+E**). The waveform zooms with the mouse wheel (**Shift**+wheel scrolls); the toolbar shows
 how many samples one pixel holds.
@@ -2435,6 +2684,43 @@ The PS2 version's `RF_PS2.VPP` holds about a thousand `.vse` files and two `.vmu
   converted name the packfile or folder already has, unless **Replace** is ticked; then Cairn lists them and asks
   first. A damaged sound is listed and the others go on; each kind of remark is reported once with the number of sounds
   it concerns.
+- An **`.xm`** converts from its render: the WAV is exactly what the tab plays, and the report says the output is a
+  recording of the module (its patterns and instruments are not kept) and, for a module with several songs, that only
+  the first was converted (SND031).
+
+### XM music
+
+Walk-through: [Play and convert XM music](USAGE.md#play-and-convert-xm-music).
+
+**What opens.** Any FastTracker 2 module (`.xm`, a file starting with `Extended Module: `), in the Sounds module,
+read-only; Red Faction for N-Gage's nine songs are XM files. Other module formats are not opened. Cairn never writes
+`.xm`: **Save As** writes a WAV, and the game does not load module music (VPP009 in a packfile).
+
+**How it plays.** Cairn renders the module with libopenmpt 0.8.9 (BSD-3-Clause; `cairn-openmpt.dll`, shipped beside
+the Ogg Vorbis encoder's `cairn-vorbis.dll` and built from the pinned source release by `native/openmpt/build.ps1`):
+the first song, once, at 44,100 Hz, 16-bit stereo, without dither, so every render is the same. The render stops at
+15 minutes (SND030). The waveform, **Play**, **Loop** (the whole render) and the packfile preview all use the render.
+
+**Module details** (the **Module** heading of the details pane):
+
+| Row | What it shows |
+|---|---|
+| Title, Artist, Tracker | As the file names them (Artist only when present). |
+| Format | The format and its version, such as `FastTracker 2 v1.04`. |
+| Module channels, Patterns | The module's channel and pattern counts. |
+| Orders | The song's order list length, and the order it restarts at when not 0. |
+| Instruments, Instrument samples | The counts. |
+| Songs | Only when the module holds more than one. |
+| Song length | As libopenmpt measures it (the render may run a fraction of a second longer, to the end of the last row). |
+| Frequencies | Linear or Amiga. |
+| Start speed | Ticks per row and BPM. |
+| Rendered by | The libopenmpt version, 44,100 Hz stereo. |
+
+In a packfile, an `.xm` entry is **FastTracker 2 music**, its Info column shows the format, channels and length, and
+its details list the title, tracker, format, channels, patterns, orders, instruments, samples and duration.
+
+If `cairn-openmpt.dll` is missing, an `.xm` is refused with "The XM player (cairn-openmpt.dll) is missing from this
+installation; reinstall Cairn to play .xm music."
 
 ### Sound settings
 
@@ -2467,6 +2753,8 @@ Replacing files of the same name is not a setting: tick **Replace** in the Conve
 | SND015 | The two channels of a `.vmu` end at different frames. |
 | SND016 | The looping flag and the sound time disagree (information). |
 | SND020, SND021 | Samples wider than 16 bits; loop points outside the sound. |
+| SND030 | An `.xm` plays for longer than 15 minutes (it may never end); the render stops there (warning). |
+| SND031 | An `.xm` holds several songs; only the first is played and converted (information). |
 
 ## Levels and groups (RFL, RFG)
 
@@ -2475,8 +2763,8 @@ a summary in the app.
 
 ### Level tabs and menu
 
-Levels (`.rfl`: Red Faction and its pre-release versions, Alpine Faction, Red Faction II) and group files (`.rfg`)
-open read-only: **Save** and **Save As** are off and nothing in the tab changes the file. A file without the level or
+Levels (`.rfl`: Red Faction and its pre-release versions, Alpine Faction, Red Faction II; and Red Faction for N-Gage's
+`.xff` levels) and group files (`.rfg`) open read-only: **Save** and **Save As** are off and nothing in the tab changes the file. A file without the level or
 group file signature is refused when it is opened; the rest is read after the tab opens. Levels up to 1 GB open.
 
 **Level menu** (with a level or group file in front): **Convert…** (**Ctrl+Shift+E**), **Frame all** (**F**), **Fly
@@ -2484,7 +2772,7 @@ camera** (**V**). **File › Import › Group file from glTF, OBJ or mesh…** c
 or `.v3c` on disk to a group file and opens it.
 
 **Toolbar** above the preview: **Compiled** and **Brushes** (levels only), **Faces**, **Objects**, **Lighting**,
-**Fly**, **Frame**, the counts (triangles drawn, textures, missing textures), **Convert…**.
+**View**, **Fly**, **Frame**, the counts (triangles drawn, textures, missing textures), **Convert…**.
 
 **Facts** (left pane, **Copy all**). A level: **Level** (name, author, save time, format version, which game loads
 it), its properties and statistics, **Alpine Faction** settings, **References** (every file it names: in this
@@ -2552,9 +2840,15 @@ A face in several classes is hidden when any of its classes is unticked. **Both 
 **Lighting**: **Full bright** (each texture at its own colours), **Level ambient light** (the level's ambient colour;
 full-bright faces stay bright), **Shaded** (a light from the camera's side). Lightmaps are not drawn.
 
+**View**: **Faces**, **Faces and edges** (each face's outline, each edge once, over the faces and hidden behind nearer
+ones; the triangles a face is split into are not outlined) or **Edges only** (the outlines alone, a wireframe), and
+**Statistics** in the lower right corner: **Faces**, **Triangles**, **Vertices** (distinct corner positions),
+**Edges**, **Rooms** (compiled geometry) or **Brushes**, **Movers**, **Textures** (with the missing ones) and
+**Objects**. The edges are placed again each time the camera moves (about 4 ms for L1S1's 14,000 edges).
+
 **Size limit.** Above the triangle limit (300,000 at first; **Settings › Levels & groups**) the preview says how many
 triangles the level has and waits for **Build the preview**. Hiding face classes or switching geometry changes the
-count. The face classes, markers, lighting and both sides are remembered for the next level.
+count. The face classes, markers, lighting, both sides, edges and statistics are remembered for the next level.
 
 ### Level convert window
 
@@ -2572,6 +2866,7 @@ selection. Only the sections that apply to the sources and the chosen format are
 | OBJ | **Write triangles instead of the faces' polygons**; **Write Cairn's comment lines** (face and brush flags Cairn reads back). |
 | **Static mesh** | **One submesh per brush, room or mover**, or **One submesh for the whole level**. |
 | **Red Faction II** | See [Red Faction II level options](#red-faction-ii-level-options). Shown when a source is a Red Faction II level. |
+| **Red Faction for N-Gage** | **Red Faction metres per N-Gage unit** (2.35), **Default scale**, **Copy the textures beside a static mesh or group file**. Shown when a source is an `.xff`. See [Red Faction for N-Gage levels](#red-faction-for-n-gage-levels). |
 | **Brushes** (meshes, glTF, OBJ) | **Solid when closed, else detail (recommended)**, **Always solid brushes**, **Always detail brushes**. Brushes Cairn wrote to glTF or OBJ keep their own flags. |
 | **Level of detail** (`.v3m`, `.v3c`, glTF, OBJ) | LOD 0 (the most detailed) to LOD 5; a submesh with fewer LODs uses its last one. A glTF or OBJ file Cairn wrote from a mesh holds each submesh once per LOD; only the chosen LOD becomes a brush. |
 | **Where** | **Into the packfile** (for a file opened from one: new entries, one undo step), **Next to the source** (never the game folder), **Into a folder**; **Replace** (off: a taken name gets a free one; on: Cairn asks before replacing). |
@@ -2654,6 +2949,145 @@ Alpine Faction geoable brushes, and Red Faction II-only brush flags are dropped.
 a few other sections are not converted; item and event class names are kept as they are; vertex colours are not
 written. The report lists each of these (LC090 to LC097).
 
+### Red Faction for N-Gage levels
+
+Walk-through: [Convert a Red Faction for N-Gage level](USAGE.md#convert-a-red-faction-for-n-gage-level). The `.xff`
+format is under [Red Faction for N-Gage model conversion](#red-faction-for-n-gage-model-conversion).
+
+**Opening.** A level `.xff` (Cairn tells it from a model by its content) opens read-only in a level tab, from the
+archive (**Open in Cairn**, which reads the files it places and its scripts from the same archive) or from disk (the
+same files from its folder). The status bar says "Red Faction for N-Gage level". The level is read at the scale last
+used in the Convert window; a conversion with another scale reads it again.
+
+**Facts.** **Level**: format, file size, single player or deathmatch (a level with respawn points), the scale.
+**Geometry**: triangles, rooms (areas, room volumes, portals), brushes (one per mesh), face classes. **Placed as
+geometry**: the doors, buttons, walls and props the level places. **Objects**: the player start, multiplayer respawn
+points, entities by class ("4 placed, 10 spawned by volumes"), items, clutter, triggers and UnHide events. **Not
+converted** (flagged), **Script triggers** (each with its script, and whether it is beside the level), **Textures**
+(where each was found), **Missing files** (placed files not beside the level) and reading problems.
+
+**Options** (the Convert window's **Red Faction for N-Gage** section; remembered with the other options, which a
+conversion made without the window uses too):
+
+| Option | Default | What it does |
+|---|---|---|
+| **Red Faction metres per N-Gage unit** | 2.35 | How big the level becomes, from 0.01 to 100 (the same range as the Meshes module's). 2.35 matches the N-Gage player's size to Red Faction's (measured from the game's sizes; the files do not say). **Default scale** puts it back. A number outside the range turns red and turns **Convert** off. |
+| **Copy the textures beside a static mesh or group file** | on | Writes the textures the level uses beside a `.v3m` or `.rfg`, each `.pcx` decoded and written as the `.tga` the output names. glTF and OBJ get PNG copies instead. |
+
+**Textures.** A 16-bit `.tga` whose header declares an alpha bit that no pixel sets (39 of the game's textures, among
+them `txtr_mtl_dark_grating01.tga` and `txtr_mtl_panel08_X.tga`) draws opaque in the N-Gage game. Cairn shows it
+opaque in the level's tab and preview, copies it beside a `.v3m` or `.rfg` with its header's alpha-bit count cleared
+(pixels unchanged), and writes an opaque PNG for glTF and OBJ, as the Meshes module does; the report (LC102) names
+these textures. A `.v3m` or `.rfg` names each `.pcx` texture as `.tga`, as Red Faction's editor and levels take
+`.tga`, and its copy is the `.pcx` decoded and written as a 24-bit `.tga` (one that cannot be decoded is reported,
+LC102, and not copied). Every other texture is copied as it is, and Red Faction levels' textures are never changed.
+
+**Geometry.** Each mesh is placed in Red Faction space (see the space rules in
+[Red Faction for N-Gage model conversion](#red-faction-for-n-gage-model-conversion)). One room per area of the level
+holds its meshes, its bounds grown by the area's `room` volumes; meshes outside every area are in no room. Portals
+come from the `portal:<area>` volumes, each joining its own area to the one it names.
+
+Brushes follow Red Faction's own levels: RED's world starts solid and its build cuts rooms out of it with air brushes,
+which RED stores with their faces pointing in. Each area's room is one air brush made of its own opaque faces (not
+the placed scenes'):
+
+- Corners within 1 cm are one corner, and a corner that lies on another face's edge is added to that face (on the
+  nearest edge, if it lies on two). Faces with no area, and faces given twice or back to back, are left out.
+- Faces join across their edges. Where more than two faces meet at an edge (a floor against a wall that goes on below
+  it, a fin on a wall), each face joins the one facing it across the air in front of it. The room is the joined piece
+  with the largest area; it may touch itself along an edge.
+- Each hole is closed 0.25 m out from the room: a flat hole by a tunnel, a hole that bends round a corner by a low
+  pyramid, and a hole that passes a corner twice as two holes. A doorway's reaches into the next room, so the two air
+  brushes overlap. A doorway is a hole inside one of the area's portal volumes, or one whose corners meet another
+  area's. Any other hole's is a recess, so glass, a grate or a placed door in the opening stays in front.
+- Each side takes the texture of the wall beside its edge. A side in that wall's plane (a tunnel running on along a
+  hallway, where it lies on the next room's wall) also carries on its texture coordinates and smoothing, so it looks
+  the same whichever face RED keeps; other sides are mapped flat. A doorway tunnel's far end, inside the next room,
+  is invisible (`mtl_invisible02.tga`); a recess's is textured like the wall.
+- The result must be closed (every edge used as often one way as the other), face inward and be more wall than hole.
+- An area whose largest piece faces outward has no walls of its own (only props, or see-through walls): it gets no
+  air brush, and its meshes are detail brushes in the rooms around it. An area whose walls do not close becomes an
+  invisible air box around its meshes (grown by its `room` volumes), 0.5 m larger on every side, and the report
+  warns that RED's build removes the walls of any room the box overlaps. 406 of the 407 areas of the 35 levels are
+  rooms; the other (level 05b's `room10`) has only props.
+
+The faces left over become one detail brush per mesh node, at the middle of its bounds, through the same checks as
+any model. These are props, decals, see-through and glowing parts, the placed doors and walls, and the meshes in no
+area (signs and posters at the scene's root). A detail brush that lies wholly outside every air brush is reported
+(LC100), because it would be in no room. The preview and the
+glTF, OBJ and `.v3m` conversions leave invisible faces out by default. Faces whose stored normals bend away from the face share their mesh's smoothing group.
+Parts without UVs have no texture.
+
+| N-Gage blend | Face |
+|---|---|
+| Source alpha, inverse source alpha | Alpha |
+| One, one (additive) | Full bright |
+| Zero, inverse source colour (darkening) | Alpha (it does not darken) |
+| Any other | Ordinary |
+
+**Lighting.** The baked vertex colours are dropped and no lights are placed: add lights and build the lighting in the
+editor. The report counts the flare sprites (`Light##`), which mark the lamps; the N-Gage lights' fields are not
+known and they are not converted.
+
+**Objects.** A table maps the scenes a level places to Red Faction classes:
+
+| N-Gage file | Red Faction | Kind |
+|---|---|---|
+| `enemy_ug.xff` | `guard1` | Entity |
+| `enemy_esg.xff` | `elite` | Entity |
+| `enemy_rtg.xff` | `riot_guard` | Entity |
+| `enemy_scmdr.xff` | `guard2` | Entity |
+| `enemy_smbot.xff` | `Spike` | Entity |
+| `enemy_mrchvy.xff` | `merc_heavy` | Entity |
+| `enemy_mtnt.xff` | `mutant1` | Entity |
+| `enemy_trrt.xff` | `Auto Turret` | Entity |
+| `weapon_sntrygn.xff` | `Stationary Turret` | Entity |
+| `enemy_scrtr.xff` | `Sea_Creature` | Entity |
+| `enemy_sub.xff`, `vehicle_sub.xff` | `sub` | Entity |
+| `enemy_mnr.xff`, `enemy_orn.xff` | `miner1` | Entity |
+| `enemy_mdc.xff` | `medic1` | Entity |
+| `enemy_hendrix.xff` | `comp_tech` | Entity |
+| `enemy_gryphon.xff` | `admin_male` | Entity |
+| `enemy_eos.xff` | `eos` | Entity |
+| `enemy_capek.xff` | `Capek` | Entity |
+| `enemy_masako.xff` | `masako` | Entity |
+| `enemy.xff` | `env_guard` | Entity |
+| `vehicle_atv.xff` | `Jeep01` | Entity |
+| `item_healthpack.xff`, `item_armor.xff`, `item_envrost.xff` | `Medical Kit` (25), `Suit Repair` (25), `Miner Envirosuit` | Item |
+| `ammo_pstl.xff`, `ammo_ssltrfl.xff`, `ammo_hvy.xff`, `ammo_snprrfl.xff` | `12mm_ammo` (32), `5.56mm_ammo` (42), `7.62mm_ammo` (99), `.50cal_ammo` (6) | Item |
+| `ammo_rcktlnchr.xff`, `ammo_rldrvr.xff`, `ammo_flmthrwr.xff`, `ammo_cntrlbtn.xff` | `rocket_launcher_ammo` (6), `railgun_bolts` (8), `Napalm` (100), `riot_stick_battery` (100) | Item |
+| `weapon_ultrpstl.xff`, `weapon_smg.xff`, `weapon_assltrfl.xff`, `weapon_shtgn.xff` | `Handgun` (16), `Machine Pistol` (32), `Assault Rifle` (42), `Shotgun` (8) | Item |
+| `weapon_snprrfl.xff`, `weapon_rcktlnchr.xff`, `weapon_hvymchngn.xff`, `weapon_rldrvr.xff` | `Sniper Rifle` (6), `rocket launcher` (6), `heavy machine gun` (99), `rail gun` (8) | Item |
+| `weapon_rtshld.xff`, `weapon_fsnrcktlnchr.xff`, `weapon_rmtchrg.xff`, `weapon_grnd.xff` | `riot shield`, `shoulder cannon`, `Remote Charge`, `grenades` (3) | Item |
+| `exploding_barrel.xff` | `Oil Drum` | Clutter |
+| `player.xff` | The player start | |
+
+Item counts are in brackets (1 where none is given). Some rows are the nearest class rather than a true match (for
+example `guard2` for the security commander, `miner1` for Orion, `sub` for the player's sub). Left out, and listed in
+the report: `enemy_lrbt.xff` (a yellow robot), `enemy_dopefish.xff` (the Dopefish), `enemy_trpd.xff` (a torpedo),
+`item_ammo.xff` (a generic ammunition box), `player_client.xff` and `player_server.xff` (multiplayer player models).
+Any other placed character or level is listed as unmapped. Every object keeps the N-Gage node's name as its script
+name.
+
+- **Enemies.** An enemy the level places (an `enemy_*.xff` or the sentry gun) is an entity there from the start. An
+  enemy spawn point (marker 42xx, spawning enemy type 32xx) is an entity of that type with **Start hidden** set. The
+  enemy-group volume (3116) named after spawn points becomes a box trigger linked to one **UnHide** event, which links
+  to every spawn point of that name, so they appear together when the player walks in. Placed enemies and spawn
+  points are never merged. A spawn point without a volume stays hidden (a warning); a volume without a spawn point is
+  left out.
+- **Triggers.** Script volumes (3106) and the level end (2025, 3112) become box triggers at their volume, named after
+  the volume. The report names the script each ran (`C<NN>_<name>.txt`, checked beside the level): Red
+  Faction cannot run them, so link the triggers to events yourself; link the level end to a **Load_Level** event.
+- **Respawn points.** Deathmatch spawns (3103) become multiplayer respawn points.
+- **Player start.** From `player.xff`, at its position and rotation. A group file cannot hold it: the report gives
+  the position.
+- **Doors, buttons, walls and props** placed as their own files hold no animation (the N-Gage game moves them in
+  code), so their meshes join the static geometry and the brushes.
+- **Not converted:** instant-death and damage volumes, mode-change volumes and two volume types of unknown meaning,
+  flare sprites, particle emitters, lights, and the left-out files above.
+
+The table is built into Cairn: one row per placed file, with its kind, class, enemy type and item count.
+
 ### Level conversion report codes
 
 Every conversion ends with a report: the files written, the counts, and each finding with its code, errors first.
@@ -2673,9 +3107,9 @@ Every conversion ends with a report: the files written, the counts, and each fin
 | LC020 | Scrolling textures (kept in extras or comments, or dropped). |
 | LC021 | Lightmap coordinates written or dropped; lightmap images are not written. |
 | LC022 | Face flags the format has no place for (kept in extras or comments, or dropped). |
-| LC023, LC024 | Full-bright faces; alpha and hole faces. |
+| LC023, LC024 | Full-bright faces; alpha and hole faces (for an N-Gage level, the material blends mapped to them). |
 | LC025 | Brush data (solid flags, life, state) kept in extras or comments, or dropped. |
-| LC026 | Red Faction II vertex colours not written. |
+| LC026 | Red Faction II vertex colours not written; Red Faction for N-Gage baked vertex lighting dropped. |
 | LC030, LC031 | Objects written; objects not written. |
 | LC032 | An orientation that is not a pure rotation (the vertices are moved instead). |
 | LC033 | Lights written as glTF lights. |
@@ -2710,6 +3144,9 @@ Every conversion ends with a report: the files written, the counts, and each fin
 | LC095 | Red Faction II brush flags (geoable, Red Faction II-only flags, invisible trigger brushes). |
 | LC096 | Red Faction II objects (clutter, jump pads, class names, sections not converted). |
 | LC097 | Red Faction II face flags and scroll periods. |
+| LC100 | A Red Faction for N-Gage level: its scale, rooms and brushes, portal boxes that are not portals, and placed files that were not found. |
+| LC101 | Red Faction for N-Gage objects: how they were mapped (classes, spawn points, triggers, the player start's position for a group file), doors and walls placed as geometry, and what has no counterpart. |
+| LC102 | Red Faction for N-Gage textures copied beside the output, not copied, or not found. |
 
 ### Levels and groups settings
 
@@ -2720,7 +3157,9 @@ Every conversion ends with a report: the files written, the counts, and each fin
 | **Ask before building a preview of more than this many triangles** | 300,000 at first. |
 | **Lighting** | How the preview lights faces at first: **Full bright**, **Level ambient light**, **Shaded**. |
 | **Draw both sides of each face** | Off at first. |
+| **Edges** | Whether the preview draws the faces' edges at first: **Faces**, **Faces and edges**, **Edges only**. |
+| **Show the statistics** | Off at first. |
 | **Where the files go** | **Into the packfile, as new entries (one undo step)**, **Next to the source file (or its packfile)**, **Into a folder** with **Browse…**. A level opened from a packfile, or a batch from a packfile's list, goes into the packfile; other levels fall back to the next choice. |
 
 The Convert window remembers its other choices (format, geometry, faces, objects, format options, Red Faction II
-options, and the brush kind and LOD for meshes).
+options, Red Faction for N-Gage options, and the brush kind and LOD for meshes).

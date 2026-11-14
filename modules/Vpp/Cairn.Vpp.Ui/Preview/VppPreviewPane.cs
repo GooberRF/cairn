@@ -64,9 +64,13 @@ public sealed class VppPreviewPane : AssetPreviewPane
         Item = primary;
     }
 
-    /// <summary>Why an entry of a Red Faction II group is not previewed (a file missing on disk), or null.</summary>
-    private static string? NotShown(VppItem item) =>
-        item.Source is MissingFileSource m ? $"{item.Name} is listed by the group but is not on disk ({m.FilePath})." : null;
+    /// <summary>Why an entry of a read-only archive is not previewed (a file missing on disk, a CFL entry that cannot be unpacked), or null.</summary>
+    private static string? NotShown(VppItem item) => item.Source switch
+    {
+        MissingFileSource m => $"{item.Name} is listed by the group but is not on disk ({m.FilePath}).",
+        XForge.CflEntrySource { Problem: { } problem } => $"{item.Name} cannot be read: {problem}.",
+        _ => null,
+    };
 
     private static byte[] ReadHead(VppItem item, int count)
     {

@@ -65,8 +65,8 @@ public sealed class LvlDocumentView : Grid, IDisposable
         }
         if (_doc.Source is not { } source) return;
         // the document's resolver: its folder, the rest of its packfile for a work copy, then the game data (and a Red
-        // Faction II level's .peg packs first)
-        var resolver = _module.ResolverFor(_doc, source);
+        // Faction II level's .peg packs first; an N-Gage level's 16-bit textures made opaque)
+        var resolver = _module.ViewResolverFor(_doc, source);
         var siblings = AssetSiblings.For(_module.ShellContext, _doc.FilePath);
         Func<string, Cairn.Formats.Rfl.AssetPresence>? presence;
         if (source.Level is { IsRf2: true })

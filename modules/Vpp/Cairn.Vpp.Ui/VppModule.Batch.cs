@@ -56,6 +56,12 @@ public sealed partial class VppModule : IArchiveEntryTarget
         ArgumentNullException.ThrowIfNull(converter);
         var items = SelectedFor(doc, converter);
         if (doc.IsBusy || items.Count == 0 || !doc.EnsureReadable(items)) return null;
+        items = await ClaimedAsync(converter, items);
+        if (items.Count == 0)
+        {
+            doc.ShowStatus($"None of the selected entries is for \"{converter.CommandText.Replace("_", "", StringComparison.Ordinal).TrimEnd('.')}\".");
+            return null;
+        }
         var request = new ArchiveBatchRequest(doc.DisplayName, doc.Folder, [.. items.Select(i => new ArchiveBatchEntry(i.Name, i.Size, () => i.Source.ReadAll()))])
         {
             Interactive = interactive,
@@ -69,6 +75,30 @@ public sealed partial class VppModule : IArchiveEntryTarget
         string? summary = await converter.ConvertAsync(request);
         if (summary is not null) doc.Notice = summary;
         return summary;
+    }
+
+    /// <summary>
+    /// The entries of <paramref name="items"/> that stay with <paramref name="converter"/> when another batch converter
+    /// takes the same name (.xff: the meshes or the levels module): such an entry is read and the content claims decide
+    /// (<see cref="ContentClaims.BatchKeeps"/>). Entries no other converter takes, or that cannot be read, stay.
+    /// </summary>
+    private async Task<List<VppItem>> ClaimedAsync(IArchiveBatchConverter converter, List<VppItem> items)
+    {
+        var rivals = BatchConverters.Where(c => !ReferenceEquals(c, converter)).ToList();
+        if (rivals.Count == 0) return items;
+        var kept = new List<VppItem>();
+        foreach (var item in items)
+        {
+            var others = rivals.Where(r => r.CanConvert(item.Name)).ToList();
+            byte[]? data = null;
+            if (others.Count > 0)
+            {
+                try { data = await Task.Run(item.Source.ReadAll); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+            }
+            if (data is null || ContentClaims.BatchKeeps(converter, others, item.Name, data)) kept.Add(item);
+        }
+        return kept;
     }
 
     /// <summary>Adds in-memory files to <paramref name="doc"/> as one undo step and selects them; null when refused.</summary>

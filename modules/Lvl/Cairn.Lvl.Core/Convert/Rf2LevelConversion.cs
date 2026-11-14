@@ -520,11 +520,13 @@ internal static class Rf2LevelConversion
 public sealed partial class LvlConversion
 {
     /// <summary>The same conversion with the RF2 preparation's entries leading the report and its side files written beside the output.</summary>
-    internal LvlConversion WithRf2(Rf2LevelConversion.Prepared prepared)
+    internal LvlConversion WithRf2(Rf2LevelConversion.Prepared prepared) => WithPreparation(prepared.Issues, prepared.SideFiles);
+
+    /// <summary>The same conversion with a preparation's entries leading the report and its side files written beside the output.</summary>
+    internal LvlConversion WithPreparation(ImmutableArray<LvlConvertIssue> issues, ImmutableArray<LvlSideFile> sides)
     {
-        var report = Report with { Issues = [.. prepared.Issues, .. Report.Issues] };
+        var report = Report with { Issues = [.. issues, .. Report.Issues] };
         if (Output is null || _write is null) return new LvlConversion(Target, report, Output, _write, _plan);
-        var sides = prepared.SideFiles;
         if (sides.IsEmpty) return new LvlConversion(Target, report, Output, _write, _plan);
         var write = _write;
         var plan = _plan;

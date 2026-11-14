@@ -252,7 +252,7 @@ public sealed class SndDocumentView : DockPanel
         var header = s.Details.Where(d => d.Label is not ("Sample rate")).ToList();
         if (header.Count > 0)
         {
-            Heading(s.Format.StartsWith("PS2", StringComparison.Ordinal) ? "Header and layout" : "File");
+            Heading(s.Format.StartsWith("PS2", StringComparison.Ordinal) ? "Header and layout" : s.Format == "FastTracker 2 module" ? "Module" : "File");
             foreach (var (label, value) in header) Row(label, value);
         }
         if (s.Quirks.Count > 0)

@@ -46,7 +46,6 @@ internal static class Rf2ClipSelfTests
             ctx.Check(doc!.IsReadOnly && !((IDocument)doc).CanSave && !ctx.Shell.Save(doc) && !ctx.Shell.SaveAs(doc), "read-only: Save and Save As are off");
             ctx.Check(doc.ConvertBannerText?.Contains("Red Faction II clip", StringComparison.Ordinal) == true && doc.ConvertCommand?.CanExecute(null) == true,
                 $"the banner offers Convert ({doc.ConvertBannerText})");
-            ctx.Check(!doc.ShowsReadOnlyBanner, "no plain read-only banner on top of it");
             ctx.Check(doc.Diagnostics.Any(d => d.Code == LegacyMeshSource.NoteCode && d.Message.Contains("without eases", StringComparison.Ordinal)),
                 "Problems lists what the conversion approximates");
             ctx.Check(doc.Diagnostics.All(d => d.Severity != DiagnosticSeverity.Error), "no errors: " + string.Join(" | ", doc.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.Message)));
@@ -215,9 +214,9 @@ internal static class Rf2ClipSelfTests
             if (!ctx.Check(doc.IsRedFactionII && !doc.IsDirty, "the tab now holds the Red Faction II clip, clean")) return;
             ctx.Check(raised.Contains("Inspector." + nameof(ClipInspectorViewModel.Versions)) && doc.Inspector.Versions.Contains(RfaClip.Rf2Version),
                 $"Versions is raised and lists 9 ({string.Join(",", doc.Inspector.Versions)})");
-            foreach (string name in new[] { nameof(DocumentViewModel.IsReadOnly), nameof(DocumentViewModel.ShowsReadOnlyBanner), nameof(DocumentViewModel.ConvertBannerText), nameof(DocumentViewModel.ConvertCommand) })
+            foreach (string name in new[] { nameof(DocumentViewModel.IsReadOnly), nameof(DocumentViewModel.ConvertBannerText), nameof(DocumentViewModel.ConvertCommand) })
                 ctx.Check(raised.Contains(name), $"{name} is raised");
-            ctx.Check(doc.IsReadOnly && !doc.ShowsReadOnlyBanner && doc.ConvertBannerText is not null && doc.ConvertCommand?.CanExecute(null) == true && convertCanExecute > 0,
+            ctx.Check(doc.IsReadOnly && doc.ConvertBannerText is not null && doc.ConvertCommand?.CanExecute(null) == true && convertCanExecute > 0,
                 "read-only with the convert banner, and its Convert can run (CanExecuteChanged raised)");
             ctx.Check(!((IDocument)doc).CanSave, "Save is off");
             await WaitForMesh(ctx, doc, m => m == "guard.rfc");

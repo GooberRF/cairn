@@ -92,6 +92,19 @@ public static partial class LvlConverter
             var prepared = Rf2LevelConversion.Prepare(rf2, options, cancellationToken);
             return ConvertPrepared(input with { Level = prepared.Level }, prepared.Options, outputFileName, cancellationToken).WithRf2(prepared);
         }
+        // A Red Faction for N-Gage level is read again at the chosen scale; its reading notes lead the report and its
+        // textures are copied beside a static mesh or group file.
+        if (input.Level is { IsXff: true } xff)
+        {
+            if (!Cairn.Formats.XForge.XffSpace.IsValidScale(options.Xff.Scale))
+            {
+                var refused = new LvlReportBuilder();
+                refused.Error(LvlConvertCodes.XffLevel, Reading.XffLevelReader.ScaleProblem, LvlIssueKind.Dropped);
+                return new LvlConversion(options.Target, refused.Build(), null, null, null);
+            }
+            var prepared = XffLevelConversion.Prepare(xff, options, cancellationToken);
+            return ConvertPrepared(input with { Level = prepared.Level }, prepared.Options, outputFileName, cancellationToken).WithPreparation(prepared.Issues, prepared.SideFiles);
+        }
         return ConvertPrepared(input, options, outputFileName, cancellationToken);
     }
 

@@ -135,6 +135,11 @@ public sealed class VppInfoCache(Dispatcher dispatcher) : IDisposable
     private VppInfoLine Compute(VppItem item, SharedArchives archives)
     {
         if (item.Source is MissingFileSource missing) return new VppInfoLine("not on disk", IsUnreadable: true, missing.FilePath);
+        if (item.Source is XForge.CflEntrySource { Problem: { } problem } cfl)
+            return new VppInfoLine(cfl.Entry.IsSupported ? "corrupt" : "compression not supported", IsUnreadable: true, problem);
+        // the open stopped checking: the archive lists more data than it can hold, so it is not unpacked in the background
+        if (item.Source is XForge.CflEntrySource { NotChecked: true })
+            return new VppInfoLine("not checked", Detail: "The archive lists more data than Cairn unpacks to check it (see Problems); this entry is unpacked only when it is opened.");
         Func<Stream> open = item.Source is ArchiveSource archive ? () => archives.Open(archive) : item.Source.Open;
         return VppInfo.WithOrigin(VppInfo.Summarize(item.Name, open, item.Size, Zone), item.Source);
     }

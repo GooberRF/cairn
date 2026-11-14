@@ -39,7 +39,8 @@ public sealed class VppBrowsingTests : IDisposable
     [InlineData("shot.jpeg", true)]
     [InlineData("levels.rfl", false)]
     [InlineData("weapons.tbl", false)]
-    [InlineData("old.pcx", false)]
+    [InlineData("old.pcx", true)]
+    [InlineData("old.vaf", false)]
     [InlineData("", false)]
     [InlineData(null, false)]
     public void ImageEntriesAreTheReadableExtensions(string? name, bool expected) =>

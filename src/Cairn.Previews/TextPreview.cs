@@ -72,8 +72,9 @@ public sealed class TextData
             }
             catch (DecoderFallbackException)
             {
-                text = Encoding.Latin1.GetString(bytes);
-                name = "Latin-1 (Windows-1252)";
+                // Not UTF-8, so 8-bit text: Windows-1252, which is Latin-1 plus the characters at 0x80-0x9F.
+                text = Cairn.Formats.Text.Windows1252.GetString(bytes);
+                name = Cairn.Formats.Text.Windows1252.DisplayName;
             }
         }
         ct.ThrowIfCancellationRequested();

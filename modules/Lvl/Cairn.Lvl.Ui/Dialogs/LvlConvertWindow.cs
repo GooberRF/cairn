@@ -260,6 +260,7 @@ public sealed partial class LvlConvertWindow : Window
         BuildRf2Options(_rf2Section, ref rf2Built);
         // the full width: its two columns of numbers need the room
         if (anyRf2 && rf2Built) panel.Children.Add(_rf2Section);
+        if (AnyXff) panel.Children.Add(BuildXffOptions());
 
         Label(footer, "Where");
         footer.Children.Add(_intoPackfile);
@@ -410,7 +411,7 @@ public sealed partial class LvlConvertWindow : Window
         var choice = Current();
         _convert.IsEnabled = choice is not null && !HasInvalidNumbers;
         if (choice is null) { _plan.Text = "Choose a folder."; return; }
-        if (HasInvalidNumbers) { _plan.Text = "Correct the numbers marked in red (each must be a number above 0)."; return; }
+        if (HasInvalidNumbers) { _plan.Text = $"Correct the numbers marked in red ({string.Join("; ", _invalidNumbers.Values.Distinct())})."; return; }
         string ext = LvlConvertOptions.ExtensionOf(target);
         var outputs = _names.Select(n => Path.GetFileNameWithoutExtension(n) + ext).ToList();
         string where = choice.Place == LvlOutputPlace.IntoPackfile ? "into " + _packfile : "to " + choice.Folder;

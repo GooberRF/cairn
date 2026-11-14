@@ -101,7 +101,7 @@ public static class VppRf2SelfTests
             ctx.Check(doc.Commands.Rename("level01.peg", "other.peg") is not null, "renaming is refused");
             ctx.Check(doc.Current.Count == count && doc.Current.Find("level01.peg") is not null && !doc.IsDirty && !doc.CanUndo, "the group is unchanged");
             ctx.Check(!ctx.Shell.Save(doc), "File > Save does nothing");
-            string workCopy = await doc.Work.PrepareAsync(doc.Current.Find("level01.peg")!);
+            string workCopy = await doc.Work.PrepareAsync(doc.Current.Find("level01.peg")!, doc.Current);
             ctx.Check(module.ArchiveEntryOf(workCopy) is { EntryName: "level01.peg" } && module.ArchiveOf(workCopy) is null,
                 "a work copy knows its entry, but other modules are not offered to add files to the group");
 

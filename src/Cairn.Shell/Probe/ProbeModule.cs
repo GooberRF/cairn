@@ -15,7 +15,7 @@ namespace Cairn.Shell.Probe;
 /// Diagnostics-only module (enabled by <c>--probe-module</c>): a plain-text document kind that
 /// exercises the whole module contract so the shell self-tests can run without any real module.
 /// </summary>
-public sealed class ProbeModule : ModuleBase, IAssetConverter
+public sealed class ProbeModule : ModuleBase, IAssetConverter, IAssetPreviewProvider, IArchiveBatchConverter
 {
     // ---- Convert to… (shell.convert-to): a probe document converts to plain text, or "shouted" (lossy) ----
 
@@ -26,7 +26,30 @@ public sealed class ProbeModule : ModuleBase, IAssetConverter
         : [];
 
     public bool CanConvert(string sourceName, string targetExtension) =>
-        IsProbeName(sourceName) && targetExtension is ".txt" or ".shout";
+        (IsProbeName(sourceName) && targetExtension is ".txt" or ".shout") || ProbeClaims.CanConvert('A', sourceName, targetExtension);
+
+    // ---- content claims (shell.content-claims): ".cairnclaim" files are A's or the second module's B's by content ----
+
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName, ReadOnlySpan<byte> head) =>
+        ProbeClaims.IsClaimName(sourceName) ? ProbeClaims.TargetsFor('A', head) : TargetsFor(sourceName);
+
+    public int HeadLengthFor(string sourceName) => ProbeClaims.HeadLengthFor(sourceName);
+
+    public bool CanPreview(string fileName) => ProbeClaims.IsClaimName(fileName);
+
+    public FrameworkElement? CreatePreview(byte[] bytes, string fileName) => ProbeClaims.CreatePreview(Id, bytes);
+
+    int IAssetPreviewProvider.Claim(string fileName, ReadOnlySpan<byte> data) => ProbeClaims.Claim('A', data);
+
+    public string CommandText => "Convert claim probes _A...";
+
+    public string CommandToolTip => "Records the .cairnclaim entries of A (self-tests)";
+
+    bool IArchiveBatchConverter.CanConvert(string entryName) => ProbeClaims.IsClaimName(entryName);
+
+    Task<string?> IArchiveBatchConverter.ConvertAsync(ArchiveBatchRequest request) => ProbeClaims.RecordBatch(Id, request);
+
+    int IArchiveBatchConverter.Claim(string entryName, ReadOnlySpan<byte> data) => ProbeClaims.Claim('A', data);
 
     /// <summary>The last request converted (self-tests).</summary>
     internal static AssetConversionRequest? LastRequest { get; set; }
@@ -43,12 +66,13 @@ public sealed class ProbeModule : ModuleBase, IAssetConverter
     }
 
     private readonly ProbeKind _kind = new();
+    private readonly ProbeKind _claimKind = new("probe.claim", "Claim probe A", ProbeClaims.Extension, canCreateNew: false, claimPrefix: 'A');
     private readonly List<MenuContribution> _menus = [];
     private readonly List<ShortcutInfo> _shortcuts = [];
 
     public override string Id => "probe";
     public override string DisplayName => "Probe";
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [_kind];
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [_kind, _claimKind];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     public override IReadOnlyList<ShortcutInfo> Shortcuts => _shortcuts;
     public override IReadOnlyList<PanelContribution> Panels { get; } =
@@ -86,21 +110,49 @@ public sealed class ProbeModule : ModuleBase, IAssetConverter
     {
         base.Initialize(shell);
         _kind.Shell = shell;
+        _claimKind.Shell = shell;
     }
 }
 
 /// <summary>
 /// Second diagnostics module (also enabled by <c>--probe-module</c>): a kind "probe2" whose shortcut uses the same
-/// gesture as the probe module's, so the self-tests can check that the active document picks the module.
+/// gesture as the probe module's, so the self-tests can check that the active document picks the module. It also
+/// takes <c>.cairnclaim</c> files whose content is B's, against the probe module's A (shell.content-claims).
 /// </summary>
-public sealed class ProbeTwoModule : ModuleBase
+public sealed class ProbeTwoModule : ModuleBase, IAssetConverter, IAssetPreviewProvider, IArchiveBatchConverter
 {
     private readonly ProbeKind _kind = new("probe2", "Second probe document", ".cairnprobe2", canCreateNew: false);
+    private readonly ProbeKind _claimKind = new("probe2.claim", "Claim probe B", ProbeClaims.Extension, canCreateNew: false, claimPrefix: 'B');
     private readonly List<ShortcutInfo> _shortcuts = [];
 
     public override string Id => "probe2";
     public override string DisplayName => "Probe Two";
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [_kind];
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [_kind, _claimKind];
+
+    public bool CanConvert(string sourceName, string targetExtension) => ProbeClaims.CanConvert('B', sourceName, targetExtension);
+
+    public Task<string?> ConvertAsync(AssetConversionRequest request) => Task.FromResult<string?>(null);
+
+    public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName, ReadOnlySpan<byte> head) =>
+        ProbeClaims.IsClaimName(sourceName) ? ProbeClaims.TargetsFor('B', head) : [];
+
+    public int HeadLengthFor(string sourceName) => ProbeClaims.HeadLengthFor(sourceName);
+
+    public bool CanPreview(string fileName) => ProbeClaims.IsClaimName(fileName);
+
+    public FrameworkElement? CreatePreview(byte[] bytes, string fileName) => ProbeClaims.CreatePreview(Id, bytes);
+
+    int IAssetPreviewProvider.Claim(string fileName, ReadOnlySpan<byte> data) => ProbeClaims.Claim('B', data);
+
+    public string CommandText => "Convert claim probes _B...";
+
+    public string CommandToolTip => "Records the .cairnclaim entries of B (self-tests)";
+
+    bool IArchiveBatchConverter.CanConvert(string entryName) => ProbeClaims.IsClaimName(entryName);
+
+    Task<string?> IArchiveBatchConverter.ConvertAsync(ArchiveBatchRequest request) => ProbeClaims.RecordBatch(Id, request);
+
+    int IArchiveBatchConverter.Claim(string entryName, ReadOnlySpan<byte> data) => ProbeClaims.Claim('B', data);
     public override IReadOnlyList<ShortcutInfo> Shortcuts => _shortcuts;
     public ProbeKind Kind => _kind;
 
@@ -118,11 +170,61 @@ public sealed class ProbeTwoModule : ModuleBase
     {
         base.Initialize(shell);
         _kind.Shell = shell;
+        _claimKind.Shell = shell;
     }
 }
 
-public sealed class ProbeKind(string id = "probe", string displayName = "Probe document", string extension = ".cairnprobe", bool canCreateNew = true) : IDocumentKind
+/// <summary>
+/// The content claims of the probe modules (shell.content-claims): a <c>.cairnclaim</c> file is A's when it starts
+/// "A:" and B's when it starts "B:" (kinds, previews, batches), and Convert to lists A's or B's target only when the
+/// whole file reaches the converter (its text ends "#A" or "#B", past the default 16-byte head).
+/// </summary>
+public static class ProbeClaims
 {
+    public const string Extension = ".cairnclaim";
+
+    public static bool IsClaimName(string name) => name.EndsWith(Extension, StringComparison.OrdinalIgnoreCase);
+
+    public static int Claim(char prefix, ReadOnlySpan<byte> data) =>
+        data.Length >= 2 && data[0] == prefix && data[1] == ':' ? ContentClaims.Recognised : ContentClaims.NotMine;
+
+    public static string TargetExtension(char prefix) => ".claim" + char.ToLowerInvariant(prefix);
+
+    public static IReadOnlyList<ConversionTarget> TargetsFor(char prefix, ReadOnlySpan<byte> head) =>
+        head.Length >= 2 && head[^2] == '#' && head[^1] == prefix
+            ? [new(TargetExtension(prefix), $"Claim {prefix} text ({TargetExtension(prefix)})", "Write the text (self-tests)", false)]
+            : [];
+
+    public static bool CanConvert(char prefix, string sourceName, string targetExtension) =>
+        IsClaimName(sourceName) && targetExtension == TargetExtension(prefix);
+
+    public static int HeadLengthFor(string sourceName) => IsClaimName(sourceName) ? ContentClaims.WholeFile : ContentClaims.DefaultHeadLength;
+
+    /// <summary>The module whose preview was created last.</summary>
+    internal static string? LastPreviewBy { get; set; }
+
+    public static FrameworkElement CreatePreview(string moduleId, byte[] bytes)
+    {
+        LastPreviewBy = moduleId;
+        return new TextBlock { Text = moduleId + ": " + Encoding.UTF8.GetString(bytes), Margin = new Thickness(8) };
+    }
+
+    /// <summary>The module and entry names of the last batch run.</summary>
+    internal static (string ModuleId, IReadOnlyList<string> Entries)? LastBatch { get; set; }
+
+    public static Task<string?> RecordBatch(string moduleId, ArchiveBatchRequest request)
+    {
+        LastBatch = (moduleId, [.. request.Entries.Select(e => e.Name)]);
+        return Task.FromResult<string?>($"{moduleId}: {request.Entries.Count} entries");
+    }
+}
+
+public sealed class ProbeKind(string id = "probe", string displayName = "Probe document", string extension = ".cairnprobe", bool canCreateNew = true,
+    char? claimPrefix = null) : IDocumentKind
+{
+    /// <summary>For a kind that shares its extension: the first characters ("A:") of the files that are its own.</summary>
+    public char? ClaimPrefix => claimPrefix;
+    public int Claim(string name, ReadOnlySpan<byte> data) => claimPrefix is { } c ? ProbeClaims.Claim(c, data) : ContentClaims.ByName;
     public IShellContext Shell { get; set; } = null!;
     public string Id => id;
     public string DisplayName => displayName;
@@ -150,6 +252,9 @@ public sealed class ProbeDocument(IShellContext shell, IDocumentKind kind, strin
     public string FileName => Kind.Extensions.Any(e => DisplayName.EndsWith(e, StringComparison.OrdinalIgnoreCase)) ? DisplayName : DisplayName + Kind.Extensions[0];
 
     public byte[] CurrentBytes() => Serialize();
+
+    /// <summary>A claim probe gives its whole text, so the converters can tell whose it is (<see cref="IAssetConverter.HeadLengthFor"/>).</summary>
+    public ReadOnlyMemory<byte> ContentHead => Kind is ProbeKind { ClaimPrefix: not null } ? Serialize() : ReadOnlyMemory<byte>.Empty;
 
     public override IReadOnlyList<StatusItem> StatusItems => [new($"{Current.Length} chars", "Length of the probe text")];
 

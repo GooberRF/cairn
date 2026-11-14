@@ -1,10 +1,12 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Numerics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Cairn.Rfa.Formats.V3d;
 using Cairn.Rfa.Ui.ViewModels;
 using Cairn.Assets;
 using Cairn.Ui.Services;
@@ -168,6 +170,15 @@ public partial class ViewportControl : UserControl
     /// <summary>The frame-time figures of the measured update path.</summary>
     public int VertexCount => _renderer.VertexCount;
 
+    /// <summary>The renderer (self-tests: the edges and face models drawn).</summary>
+    internal MeshRenderer Renderer => _renderer;
+
+    /// <summary>The scene shown, or null.</summary>
+    internal SceneViewModel? Scene => _scene;
+
+    /// <summary>The statistics shown (empty while the panel is off).</summary>
+    internal IReadOnlyList<(string Label, string Value)> StatisticsRows => StatsPanel.Visibility == Visibility.Visible ? StatsPanel.Rows : [];
+
     private void Attach(IViewportHost? host)
     {
         if (_scene is not null)
@@ -313,12 +324,16 @@ public partial class ViewportControl : UserControl
         }
         long start = Stopwatch.GetTimestamp();
         bool measured = _poseDirty && !_meshDirty;
+        // the edges face the camera: remade when it, the pose or the mesh changes
+        bool edgesMoved = false;
         if (_meshDirty)
         {
             _meshDirty = false;
             _poseDirty = false;
+            edgesMoved = true;
             _renderer.Build(scene, this);
             Stats.Vertices = _renderer.VertexCount;
+            UpdateStatistics(scene);
             if (!scene.Camera.HasBeenFramed && scene.Mesh is not null)
             {
                 FrameAll(scene);
@@ -336,17 +351,25 @@ public partial class ViewportControl : UserControl
             _renderer.UpdatePose(scene);
             Stats.SkinAllocatedBytes += GC.GetAllocatedBytesForCurrentThread() - before;
             _overlayDirty = true;
+            edgesMoved = true;
         }
+        var size = new Size(Math.Max(1, View.ActualWidth), Math.Max(1, View.ActualHeight));
         if (_cameraDirty)
         {
             _cameraDirty = false;
-            var size = new Size(Math.Max(1, View.ActualWidth), Math.Max(1, View.ActualHeight));
+            edgesMoved = true;
             Camera.ViewMatrix = scene.Camera.ViewMatrix;
             Camera.ProjectionMatrix = scene.Camera.ProjectionMatrix(size.Width / size.Height);
             _renderer.UpdateLighting(scene.Camera, scene.Display.FullBright);
             GridLayer.ShowGrid = scene.Display.ShowGrid;
             GridLayer.InvalidateVisual();
             _overlayDirty = true;
+        }
+        if (edgesMoved && _renderer.Edges.EdgeCount > 0)
+        {
+            var colour = scene.Display.MeshMode != MeshDisplayMode.Wireframe ? WireframeLines.OverFacesColor
+                : WireframeLines.ContrastWith(Root.Background is SolidColorBrush b ? b.Color : Colors.Black);
+            _renderer.UpdateEdges(scene.Camera, size, colour);
         }
         if (_overlayDirty)
         {
@@ -366,6 +389,48 @@ public partial class ViewportControl : UserControl
             _lastFrameTicks = now;
             Stats.Add(updateMs, intervalMs);
         }
+    }
+
+    /// <summary>Shows the counts of what is drawn (the LOD shown) while View > Statistics is on.</summary>
+    private void UpdateStatistics(SceneViewModel scene)
+    {
+        bool shown = scene.Display.ShowStatistics && (scene.Mesh is not null || scene.Skeleton.Count > 0);
+        StatsPanel.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        if (shown) StatsPanel.Show(StatisticsOf(scene));
+    }
+
+    /// <summary>The counts of a scene's mesh at the LOD shown (each submesh at that LOD or its last), or its skeleton's bones.</summary>
+    internal static IReadOnlyList<(string Label, string Value)> StatisticsOf(SceneViewModel scene)
+    {
+        static string N(long n) => n.ToString("N0", CultureInfo.CurrentCulture);
+        if (scene.Mesh is not { } mesh) return [("Bones", N(scene.Skeleton.Count))];
+        long vertices = 0, triangles = 0, doubleSided = 0;
+        int submeshes = 0;
+        var textures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var sub in mesh.Submeshes)
+        {
+            submeshes++;
+            if (sub.Lods.Length == 0) continue;
+            var lod = sub.Lods[Math.Clamp(scene.Lod, 0, sub.Lods.Length - 1)];
+            foreach (var batch in lod.Batches)
+            {
+                vertices += batch.VertexCount;
+                triangles += batch.TriangleCount;
+                doubleSided += batch.Triangles.Count(t => (t.Flags & V3dTriangle.DoubleSided) != 0);
+                if (batch.TextureIndex >= 0 && batch.TextureIndex < lod.Textures.Length && lod.Textures[batch.TextureIndex].FileName.Length > 0)
+                    textures.Add(lod.Textures[batch.TextureIndex].FileName);
+            }
+        }
+        var rows = new List<(string, string)>();
+        if (scene.LodCount > 1) rows.Add(("Level of detail", string.Format(CultureInfo.CurrentCulture, "LOD {0} of {1}", Math.Min(scene.Lod, scene.LodCount - 1), scene.LodCount)));
+        rows.Add(("Submeshes", N(submeshes)));
+        rows.Add(("Vertices", N(vertices)));
+        rows.Add(("Triangles", N(triangles) + (doubleSided > 0 ? string.Format(CultureInfo.CurrentCulture, " ({0} double-sided)", N(doubleSided)) : "")));
+        rows.Add(("Textures", N(textures.Count)));
+        rows.Add(("Bones", N(mesh.Bones.Length)));
+        rows.Add(("Collision spheres", N(mesh.CollisionSpheres.Count())));
+        rows.Add(("Prop points", N(scene.PropPoints.Count)));
+        return rows;
     }
 
     private void UpdateBackground()
@@ -506,7 +571,11 @@ public partial class ViewportControl : UserControl
         }
         menu.Items.Add(Radio("_Textured", display.MeshMode == MeshDisplayMode.Textured, () => display.MeshMode = MeshDisplayMode.Textured, "Draw the mesh with its textures"));
         menu.Items.Add(Radio("_Flat", display.MeshMode == MeshDisplayMode.Flat, () => display.MeshMode = MeshDisplayMode.Flat, "Draw the mesh in one neutral colour"));
+        menu.Items.Add(Radio("_Wireframe", display.MeshMode == MeshDisplayMode.Wireframe, () => display.MeshMode = MeshDisplayMode.Wireframe, "Draw only the edges of the mesh's triangles"));
         menu.Items.Add(Radio("_Hidden", display.MeshMode == MeshDisplayMode.Off, () => display.MeshMode = MeshDisplayMode.Off, "Do not draw the mesh (skeleton only)"));
+        var edges = Radio("_Edges on the mesh", display.ShowEdges, () => display.ShowEdges = !display.ShowEdges, "Draw the triangles' edges over the textured or flat mesh");
+        edges.IsEnabled = display.MeshMode is MeshDisplayMode.Textured or MeshDisplayMode.Flat;
+        menu.Items.Add(edges);
         menu.Items.Add(new Separator());
         menu.Items.Add(Radio("Full _bright", display.FullBright, () => display.FullBright = !display.FullBright, "Unlit: the textures' own colours, without the headlight's shading"));
         var background = new MenuItem { Header = "B_ackground" };
@@ -517,6 +586,8 @@ public partial class ViewportControl : UserControl
         }
         menu.Items.Add(background);
         menu.Items.Add(GhostMenuItem(display));
+        menu.Items.Add(Radio("Stat_istics", display.ShowStatistics, () => display.ShowStatistics = !display.ShowStatistics,
+            "Show the counts of the LOD shown (vertices, triangles, textures, bones, spheres, prop points) in a corner"));
         menu.Items.Add(new Separator());
         var front = new MenuItem { Header = "F_ront view", InputGestureText = "1", ToolTip = "Look at the front of the model (from +Z)" };
         front.Click += (_, _) => _scene.Camera.SetView(0, 0);

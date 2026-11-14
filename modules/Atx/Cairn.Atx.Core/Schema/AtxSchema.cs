@@ -124,11 +124,11 @@ public static class AtxSchema
 
     /// <summary>
     /// Extensions ATX Workbench can decode itself, so it can show a thumbnail and check the size
-    /// and format. The engine resolves more than these (.pcx, .vaf, .m2v); those are accepted by
+    /// and format. The engine resolves more than these (.vaf, .m2v); those are accepted by
     /// ATX028 but cannot be previewed or compared against frame 0.
     /// </summary>
     public static IReadOnlyList<string> ReadableExtensions { get; } =
-        [".dds", ".png", ".jpg", ".jpeg", ".vbm", ".tga"];
+        [".dds", ".png", ".jpg", ".jpeg", ".vbm", ".tga", ".pcx"];
 
     /// <summary>Accepted <c>format</c> tokens (case-insensitive), in schema order.</summary>
     public static IReadOnlyList<AtxFormatToken> FormatTokens { get; } =

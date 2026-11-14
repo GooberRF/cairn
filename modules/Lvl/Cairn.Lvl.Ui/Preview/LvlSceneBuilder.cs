@@ -56,8 +56,16 @@ internal sealed class LvlPreviewScene
     public required Vector3 Max { get; init; }
     public required int Triangles { get; init; }
     public required int Faces { get; init; }
+    /// <summary>The distinct corner positions drawn.</summary>
+    public required int Vertices { get; init; }
     /// <summary>Brushes, rooms and movers drawn.</summary>
     public required int Parts { get; init; }
+    /// <summary>The brushes, rooms and movers with a face drawn.</summary>
+    public required int Brushes { get; init; }
+    public required int Rooms { get; init; }
+    public required int Movers { get; init; }
+    /// <summary>The faces' edges (each once, however many faces share it), as pairs of end points.</summary>
+    public required Vector3[] EdgePoints { get; init; }
     /// <summary>The distinct texture names drawn.</summary>
     public required IReadOnlyList<string> Textures { get; init; }
     /// <summary>Three corners (nine floats) per triangle, in batch order.</summary>
@@ -138,12 +146,16 @@ internal static class LvlSceneBuilder
         // The sky room sits far outside the playable space: frame without it unless it is all there is.
         var skyMin = new Vector3(float.MaxValue);
         var skyMax = new Vector3(float.MinValue);
-        int faces = 0, skyFaces = 0;
+        int faces = 0, skyFaces = 0, brushes = 0, rooms = 0, movers = 0;
+        var vertices = new HashSet<Vector3>();
+        var edges = new HashSet<(Vector3, Vector3)>();
+        var edgePoints = new List<Vector3>();
         var skyArea = source.Level is { } level ? LvlSource.SkyArea(level.StaticGeometry) : [];
         foreach (var part in scene.Parts)
         {
             ct.ThrowIfCancellationRequested();
             bool sky = part.Kind == LvlPartKind.Room && part.RoomIndex >= 0 && part.RoomIndex < skyArea.Length && skyArea[part.RoomIndex];
+            int partFaces = faces;
             foreach (var polygon in part.Polygons)
             {
                 var pc = polygon.Corners;
@@ -168,8 +180,19 @@ internal static class LvlSceneBuilder
                     triangleTargets.Add(target);
                 }
                 if (sky) skyFaces++;
+                // the face's outline (not the fan's diagonals), each edge once
+                for (int k = 0; k < pc.Length; k++)
+                {
+                    Vector3 a = pc[k].Position, b = pc[(k + 1) % pc.Length].Position;
+                    if (a != b && edges.Add(Less(a, b) ? (a, b) : (b, a)))
+                    {
+                        edgePoints.Add(a);
+                        edgePoints.Add(b);
+                    }
+                }
                 foreach (var c in pc)
                 {
+                    vertices.Add(c.Position);
                     if (sky)
                     {
                         skyMin = Vector3.Min(skyMin, c.Position);
@@ -181,6 +204,12 @@ internal static class LvlSceneBuilder
                         max = Vector3.Max(max, c.Position);
                     }
                 }
+            }
+            if (faces > partFaces)
+            {
+                if (part.Kind == LvlPartKind.Room) rooms++;
+                else if (part.Kind == LvlPartKind.Mover) movers++;
+                else brushes++;
             }
         }
         if (faces == 0) min = max = Vector3.Zero;
@@ -200,7 +229,12 @@ internal static class LvlSceneBuilder
             Max = max,
             Triangles = triangleTargets.Count,
             Faces = faces,
+            Vertices = vertices.Count,
             Parts = scene.Parts.Count,
+            Brushes = brushes,
+            Rooms = rooms,
+            Movers = movers,
+            EdgePoints = [.. edgePoints],
             Textures = [.. order.Select(b => b.Texture).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)],
             TriangleCorners = [.. corners],
             TriangleTargets = [.. triangleTargets],
@@ -214,6 +248,8 @@ internal static class LvlSceneBuilder
         : (classes & RfFaceClass.Alpha) != 0 ? LvlBatchKind.Alpha
         : (classes & RfFaceClass.FullBright) != 0 ? LvlBatchKind.FullBright
         : LvlBatchKind.Opaque;
+
+    private static bool Less(Vector3 a, Vector3 b) => a.X != b.X ? a.X < b.X : a.Y != b.Y ? a.Y < b.Y : a.Z < b.Z;
 
     private static void AddCorner(List<float> list, Vector3 p)
     {

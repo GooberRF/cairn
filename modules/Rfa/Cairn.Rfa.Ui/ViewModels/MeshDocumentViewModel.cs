@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Cairn.Rfa.Ui.Services;
 using Cairn.Assets;
+using Cairn.Rfa.Animation;
 using Cairn.Rfa.Editing;
 using Cairn.Rfa.Formats.Rfa;
 using Cairn.Rfa.Formats.V3d;
@@ -32,7 +33,7 @@ public sealed record PreviewClipOption(LibraryClip? Clip, string Label, string N
 }
 
 /// <summary>
-/// A tab holding a .v3c (editable in phase 6) or a .v3m (read-only): the mesh's history, the viewport
+/// A tab holding a .v3c or a .v3m (edited alike; a .v3m has no bones): the mesh's history, the viewport
 /// scene, the preview clip picker (compatible clips, the tables' clips for this mesh on top), the
 /// structure tree, and linting.
 /// </summary>
@@ -90,8 +91,8 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
 
     public override string Extension => _isStatic ? ".v3m" : ".v3c";
 
-    /// <summary>Static meshes open read-only, and so do the formats Cairn only reads and converts.</summary>
-    public override bool IsReadOnly => _isStatic || _legacy is not null;
+    /// <summary>The formats Cairn only reads and converts open read-only.</summary>
+    public override bool IsReadOnly => _legacy is not null;
 
     // ── Exporter and PS2 meshes (.v3d, .vcm, .rfm, .rfc) ─────────────────────
 
@@ -114,12 +115,12 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         _legacy is { } legacy && LegacyMeshTextures.ResolverFor(legacy, DisplayName, FilePath, AssetSiblings.For(Shell.Host, FilePath), Shell.Assets.ResolverFor(Folder)) is { } layered
             ? layered : base.Resolver;
 
-    public override bool ShowsReadOnlyBanner => IsReadOnly && _legacy is null;
-
     public override string? ConvertBannerText => _legacy switch
     {
         null => null,
         { Mesh: null } l => $"{l.FormatTitle} could not be read: {l.Error} Problems lists the details.",
+        { Mesh.Xff: { } xff } l => $"{l.FormatTitle}: {xff.Facts.Counts}. Read-only in Cairn: convert to {Extension}"
+            + (xff.ClipName is { } clip ? $" and {clip}" : "") + " to use it in the PC game.",
         { } l => $"{l.FormatTitle} is read-only in Cairn. Convert to {Extension} to use it in the PC game.",
     };
 
@@ -133,7 +134,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         base.MarkSaved(path);
         if (wasLegacy)
         {
-            RaiseAll(nameof(IsReadOnly), nameof(ShowsReadOnlyBanner), nameof(ConvertBannerText), nameof(ConvertCommand), nameof(IsLegacy), nameof(Legacy), nameof(TabToolTip));
+            RaiseAll(nameof(IsReadOnly), nameof(ConvertBannerText), nameof(ConvertCommand), nameof(IsLegacy), nameof(Legacy), nameof(TabToolTip));
             Relint();
             Shell.OnDocumentStatusChanged(this);
         }
@@ -234,6 +235,7 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
         // A legacy file changed on disk: read it again (a file that no longer reads keeps the tab as it was).
         var (mesh, compiled) = Formats.Legacy.LegacyMeshSupport.ReadCompiled(bytes, name);
         _legacy = _legacy with { Bytes = bytes, Mesh = mesh, Error = null };
+        _ownClip = null;
         return compiled;
     }
 
@@ -378,22 +380,94 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
 
     // ── Preview clip ─────────────────────────────────────────────────────────
 
+    /// <summary>An N-Gage character's own loop (the clip its conversion writes), as a picker entry; null for any other mesh.</summary>
+    private LibraryClip? OwnClip
+    {
+        get
+        {
+            if (_ownClip is not null || _legacy?.Mesh?.Xff is not { Clip: { } clip, ClipName: { } name }) return _ownClip;
+            byte[] bytes = RfaWriter.Write(clip);
+            string label = "converted from " + DisplayName;
+            var location = new AssetResolver(new AssetResolverOptions())
+                .WithOverlay(label, n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase), _ => new MemoryStream(bytes, writable: false)).Resolve(name);
+            return _ownClip = location is null ? null : new LibraryClip(name, location, RfaProbe.Probe(bytes, name), null, null);
+        }
+    }
+
+    private LibraryClip? _ownClip;
+
+    /// <summary>
+    /// The clip a converted N-Gage character's conversion writes beside it (<c>&lt;name&gt;_walk.rfa</c>,
+    /// <see cref="Formats.Legacy.XffMeshConverter.ClipName"/>), found as the tab finds its textures, when it has this mesh's
+    /// bone count; null otherwise (and for the formats Cairn converts).
+    /// </summary>
+    private LibraryClip? ClipBeside
+    {
+        get
+        {
+            if (_legacy is not null || !HasSkeleton) return null;
+            if (_besideLooked && string.Equals(_besidePath, FilePath, StringComparison.OrdinalIgnoreCase)) return _besideClip;
+            _besideLooked = true;
+            _besidePath = FilePath;
+            _besideClip = null;
+            string name = Formats.Legacy.XffMeshConverter.ClipName(DisplayName);
+            try
+            {
+                if (Resolver.Resolve(name) is { } location && location.ReadAllBytes() is { } bytes
+                    && RfaProbe.Probe(bytes, name) is { BoneCount: var count } facts && count == Scene.Skeleton.Count)
+                    _besideClip = new LibraryClip(name, location, facts, null, null);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or AssetFormatException)
+            {
+                // an unreadable clip is not offered
+            }
+            return _besideClip;
+        }
+    }
+
+    private LibraryClip? _besideClip;
+    private bool _besideLooked;
+    private string? _besidePath;
+
+    /// <summary>
+    /// True when a stock clip can be right for this mesh: the tables give it clips, or a mesh of the library or an open
+    /// packfile other than this one has its bone list (<see cref="SkeletonMatcher.SameBoneList"/>). Clips match bones by
+    /// index only, so on any other skeleton (a converted N-Gage character's) a clip that merely has as many bones scatters
+    /// the parts.
+    /// </summary>
+    private bool HasKnownSkeleton()
+    {
+        var library = Shell.Assets.Snapshot;
+        if (library.FindMesh(DisplayName) is { } self && Shell.Assets.Usage.ClipListsForMesh(self.Name).Any()) return true;
+        var names = Current.Bones.Select(b => b.Name.Text).ToArray();
+        var parents = Current.Bones.Select(b => b.ParentIndex).ToArray();
+        bool Known(IEnumerable<SkeletonFamily> families) => families.Any(f =>
+            f.Members.Any(m => !string.Equals(m, DisplayName, StringComparison.OrdinalIgnoreCase)) && SkeletonMatcher.SameBoneList(f.BoneNames, f.BoneParents, names, parents));
+        return Known(library.Families) || Shell.Packfiles.Libraries.Any(p => Known(p.Families));
+    }
+
     private void RebuildPickerOptions()
     {
         var options = new List<PreviewClipOption> { new(null, "Bind pose", "no clip") };
-        if (HasSkeleton)
+        // an N-Gage character plays its own loop only: no other clip has its skeleton
+        if (OwnClip is { } loop) options.Add(new PreviewClipOption(loop, loop.Name, $"{Frames(loop)} · this file's animation") { Group = "This file" });
+        else if (HasSkeleton)
         {
+            // a converted N-Gage character's loop, beside it, first
+            var beside = ClipBeside;
+            if (beside is not null) options.Add(new PreviewClipOption(beside, beside.Name, $"{Frames(beside)} · beside this file") { Group = "Beside this file" });
+            bool NotBeside(LibraryClip clip) => beside is null || !string.Equals(clip.Name, beside.Name, StringComparison.OrdinalIgnoreCase);
             var library = Shell.Assets.Snapshot;
             var usage = Shell.Assets.Usage;
             int bones = Scene.Skeleton.Count;
             bool rf2 = IsRedFactionIIMesh;
             // the open packfiles first (the mesh's own, then the others): clips of its game with its bone count
             var own = Shell.Packfiles.OwnOf(FilePath);
-            bool grouped = false;
+            bool grouped = beside is not null;
             foreach (var source in Shell.Packfiles.InPickerOrder(FilePath))
             {
                 string group = ReferenceEquals(source, own) ? PickerGroups.Own(source) : PickerGroups.Other(source);
-                foreach (var (clip, note) in PackfileClips(source, bones, rf2))
+                foreach (var (clip, note) in PackfileClips(source, bones, rf2).Where(c => NotBeside(c.Clip)))
                 {
                     options.Add(new PreviewClipOption(clip, clip.Name, note) { Group = group, Source = source });
                     grouped = true;
@@ -406,12 +480,12 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
             {
                 foreach (var clip in library.PreviewClipCandidates(self.Name, usage))
                 {
-                    if (PackfileLibrary.IsRedFactionII(clip) == rf2 && seen.Add(clip)) options.Add(new PreviewClipOption(clip, clip.Name, NoteFor(clip, usage)) { Group = libraryGroup });
+                    if (PackfileLibrary.IsRedFactionII(clip) == rf2 && NotBeside(clip) && seen.Add(clip)) options.Add(new PreviewClipOption(clip, clip.Name, NoteFor(clip, usage)) { Group = libraryGroup });
                 }
             }
             foreach (var clip in library.CompatibleClips(bones))
             {
-                if (PackfileLibrary.IsRedFactionII(clip) == rf2 && seen.Add(clip)) options.Add(new PreviewClipOption(clip, clip.Name, NoteFor(clip, usage)) { Group = libraryGroup });
+                if (PackfileLibrary.IsRedFactionII(clip) == rf2 && NotBeside(clip) && seen.Add(clip)) options.Add(new PreviewClipOption(clip, clip.Name, NoteFor(clip, usage)) { Group = libraryGroup });
             }
         }
         _syncingPicker = true;
@@ -521,13 +595,29 @@ public sealed class MeshDocumentViewModel : DocumentViewModel<V3dFile>
     {
         // a Red Faction II skeleton is not a Red Faction one: a clip that merely has as many bones would twist it, so
         // its tab starts in the bind pose (the picker still lists the clips)
+        if (OwnClip is { } own)
+        {
+            LoadPreviewClip(own);
+            return;
+        }
         if (!HasSkeleton || _legacy?.Mesh?.IsRedFactionII == true) return;
+        // a converted N-Gage character plays the loop its conversion wrote beside it
+        if (ClipBeside is { } beside)
+        {
+            LoadPreviewClip(beside);
+            return;
+        }
+        // on a skeleton no other mesh has, only the clips that came with the mesh (its own packfile's) can be right: one
+        // from elsewhere that merely has as many bones scatters its parts, so without them it starts in the bind pose
+        bool known = HasKnownSkeleton();
+        var ownPackfile = known ? null : Shell.Packfiles.OwnOf(FilePath);
+        var clips = PreviewClipOptions.Where(o => known || (ownPackfile is not null && ReferenceEquals(o.Source, ownPackfile)))
+            .Select(o => o.Clip).OfType<LibraryClip>().ToList();
         var library = Shell.Assets.Snapshot;
         LibraryClip? pick = null;
-        if (library.FindMesh(DisplayName) is { } self && self.BoneCount == Scene.Skeleton.Count)
+        if (known && library.FindMesh(DisplayName) is { } self && self.BoneCount == Scene.Skeleton.Count)
             pick = library.DefaultPreviewClip(self.Name, Shell.Assets.Usage);
-        pick ??= PreviewClipOptions.Select(o => o.Clip).OfType<LibraryClip>().FirstOrDefault(c => c.BaseName.Contains("stand", StringComparison.OrdinalIgnoreCase))
-            ?? PreviewClipOptions.Select(o => o.Clip).OfType<LibraryClip>().FirstOrDefault();
+        pick ??= clips.FirstOrDefault(c => c.BaseName.Contains("stand", StringComparison.OrdinalIgnoreCase)) ?? clips.FirstOrDefault();
         if (pick is not null) LoadPreviewClip(pick);
     }
 

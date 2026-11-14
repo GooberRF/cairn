@@ -26,6 +26,9 @@
          official Xiph.Org releases by native/vorbis/build.ps1. Copied next to every program that references this
          project; the single-file publish bundles it (IncludeNativeLibrariesForSelfExtract). -->
     <None Include="..\..\native\vorbis\win-x64\cairn-vorbis.dll" Link="cairn-vorbis.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    <!-- FastTracker 2 (.xm) playback (Audio/XmModule): libopenmpt 0.8.9, BSD-3-Clause, built from the official source
+         release with no optional codecs by native/openmpt/build.ps1. Copied and bundled as the Vorbis DLL is. -->
+    <None Include="..\..\native\openmpt\win-x64\cairn-openmpt.dll" Link="cairn-openmpt.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>

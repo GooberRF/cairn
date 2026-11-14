@@ -106,7 +106,7 @@ public static partial class VppFacts
 
     static VppFacts()
     {
-        foreach (string ext in new[] { ".tga", ".dds", ".vbm", ".png", ".jpg", ".jpeg" }) Describers[ext] = DescribeImage;
+        foreach (string ext in new[] { ".tga", ".dds", ".vbm", ".png", ".jpg", ".jpeg", ".pcx" }) Describers[ext] = DescribeImage;
         Describers[".psd"] = DescribePsd;
         Describers[".wav"] = DescribeAudio;
         Describers[".ogg"] = DescribeAudio;
@@ -116,6 +116,7 @@ public static partial class VppFacts
         Describers[".mp3"] = DescribeAudio;
         Describers[".vse"] = DescribePs2Sound;
         Describers[".vmu"] = DescribePs2Sound;
+        Describers[".xm"] = DescribeXm;
         Describers[".v3m"] = DescribeMesh;
         Describers[".v3c"] = DescribeMesh;
         Describers[".v3d"] = DescribeMesh;
@@ -132,6 +133,8 @@ public static partial class VppFacts
         Describers[".rfg"] = DescribeGroup;
         Describers[".rfl"] = DescribeLevel;
         Describers[".peg"] = DescribeTexturePack;
+        Describers[".pr3"] = DescribeParticleSystem;
+        Describers[".xff"] = DescribeScene;
     }
 
     /// <summary>Installs (or replaces) the describer for an extension such as ".rfl".</summary>
@@ -156,6 +159,13 @@ public static partial class VppFacts
             return new VppFactSheetBuilder().Add("Type", type.DisplayName).Add("Size", FormatSize(item.Size) + " (as listed)")
                 .Add("Contents", "Not on disk").Build();
         }
+        if (item.Source is XForge.CflEntrySource { Problem: { } problem })
+        {
+            // an entry of a CFL archive that cannot be unpacked: nothing to read (the archive's problems say why)
+            var type = VppFileTypes.Describe(item.Name);
+            return new VppFactSheetBuilder().Add("Type", type.DisplayName).Add("Size", FormatSize(item.Size) + " (as listed)")
+                .Add("Error", $"The data cannot be read: {problem}.").Warn($"The data cannot be read: {problem}.").Build();
+        }
         var sheet = Describe(item.Name, item.Source.Open, item.Size, context ?? VppFactsContext.None);
         // an entry a PEG conversion made says where it came from
         if (item.Source is MemorySource memory && Ps2.PegConverter.NoteFor(memory.Bytes) is { } note)
@@ -178,6 +188,7 @@ public static partial class VppFacts
         if (input.Context.Package?.Rf2 is not null) sheet.Add("Game", "Red Faction II (read only in Cairn)");
         // what a cache pack holds is the game's own data, never an asset it loads from a packfile
         else if (input.Context.Package?.Cache is not null) sheet.Add("Game", "Alpine Faction cache data (read only in Cairn)");
+        else if (input.Context.Package?.Cfl is not null) sheet.Add("Game", "Red Faction for N-Gage (read only in Cairn)");
         else sheet.Add("Game", !type.GameLoads ? "Not loaded by the game"
             : type.AlpineSince is { } since ? $"Loaded by the game (Alpine Faction {since} or later)" : "Loaded by the game");
         // nothing to read (Red Faction II ships 0-byte .peg placeholders): no type error for a file without content

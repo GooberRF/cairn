@@ -25,7 +25,7 @@ namespace Cairn.Rfa.Ui.Diagnostics.SelfTests;
 /// collision sphere moves (attached and unattached, in the bind pose and in a clip's pose: the model-space
 /// centre ends where it was dragged) and radius drags, prop point moves and turns with every LOD's copy kept
 /// equal, picking spheres and prop points in the viewport (and cycling through overlapping things), the mouse
-/// path of the arrows and the radius grip, the shared tool and space, and no gizmo on a read-only .v3m. Uses
+/// path of the arrows and the radius grip, the shared tool and space, and a sphere on a static mesh's model. Uses
 /// the repository's sample figure, the stock ult2_guard.v3c and a .v3m when the research corpus is present;
 /// opens and closes its own tabs and leaves nothing changed.
 /// </summary>
@@ -76,11 +76,11 @@ internal static class MeshGizmoSelfTests
             if (LocalPaths.Corpus is { } corpus && Directory.EnumerateFiles(corpus, "*.v3m").FirstOrDefault() is { } v3m
                 && await Open(ctx, v3m, opened) is { } staticDoc)
             {
-                ReadOnlyChecks(ctx, staticDoc);
+                StaticChecks(ctx, staticDoc);
             }
             else
             {
-                ctx.Log("selftest meshgizmo: no .v3m in the research corpus; the read-only check is skipped");
+                ctx.Log("selftest meshgizmo: no .v3m in the research corpus; the static mesh check is skipped");
             }
         }
         finally
@@ -770,21 +770,26 @@ internal static class MeshGizmoSelfTests
         doc.Selection.Clear();
     }
 
-    // ── Read-only ────────────────────────────────────────────────────────────
+    // ── Static mesh ──────────────────────────────────────────────────────────
 
-    private static void ReadOnlyChecks(SelfTestContext ctx, MeshDocumentViewModel doc)
+    private static void StaticChecks(SelfTestContext ctx, MeshDocumentViewModel doc)
     {
         var ctl = MeshEditController.For(doc);
         var before = doc.Current;
+        int undoBase = doc.History.UndoLabels.Count;
+        doc.Apply("Test: add a sphere", m => MeshEdit.AddCollisionSphere(m, "probe", -1, Vector3.Zero, 0.2f));
+        int i = doc.Current.CollisionSpheres.Count() - 1;
+        doc.Structure.Reveal(new MeshNodeRef(MeshNodeKind.CollisionSphere, -1, -1, i));
         ctl.Tool = PoseTool.Move;
-        string? hint = ctl.Hint;
-        bool none = doc.IsReadOnly && ctl.Gizmo == PoseGizmo.None && ctl.BadgeVisible && hint?.Contains("read-only", StringComparison.Ordinal) == true
-            && !ctl.BeginDrag(PoseDragKind.Move, GizmoHandle.X) && !ctl.BeginRadiusDrag();
-        ctl.Tool = PoseTool.Rotate;
-        none &= ctl.Gizmo == PoseGizmo.None && !ctl.BeginDrag(PoseDragKind.Rotate, GizmoHandle.X);
+        bool shown = !doc.IsReadOnly && ctl.Target == MeshGizmoTarget.Sphere && ctl.Gizmo == PoseGizmo.Move && ctl.HasRadiusHandle;
+        string mode = ctl.ModeText;
+        bool began = ctl.BeginDrag(PoseDragKind.Move, GizmoHandle.X);
+        if (began) ctl.CancelDrag();
         ctl.Tool = PoseTool.Select;
-        ctx.Check(none && ReferenceEquals(doc.Current, before) && !doc.CanUndo,
-            $"meshgizmo: a read-only {doc.DisplayName} shows no gizmo, and the badge says why ('{hint}')");
+        while (doc.History.UndoLabels.Count > undoBase && doc.CanUndo) doc.Undo();
+        doc.Selection.Clear();
+        ctx.Check(shown && began && ReferenceEquals(doc.Current, before),
+            $"meshgizmo: on a static mesh ({doc.DisplayName}) a sphere on the model shows the move gizmo and radius handle, and a drag begins ('{mode}')");
     }
 
     // ── Screenshots ──────────────────────────────────────────────────────────

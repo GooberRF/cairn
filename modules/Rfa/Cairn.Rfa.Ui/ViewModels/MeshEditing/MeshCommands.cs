@@ -13,8 +13,9 @@ namespace Cairn.Rfa.Ui.ViewModels.MeshEditing;
 /// The Mesh menu's editing commands for the active mesh document (exposed on <see cref="RfaWorkspace.MeshTools"/>):
 /// add / duplicate / remove collision spheres and prop points, rename the selected node (F2), move a
 /// bone up or down and reorder the bones (with the warning that clips address bones by index and the
-/// offer to conform the open clips previewing the mesh). Enabled only for an editable (.v3c) mesh
-/// document. The Structure tab's editor buttons are these same commands.
+/// offer to conform the open clips previewing the mesh). Enabled only for an editable (.v3c or .v3m) mesh
+/// document; the bone commands need bones, which a .v3m has none of. The Structure tab's editor buttons are
+/// these same commands.
 /// </summary>
 public sealed class MeshCommands
 {

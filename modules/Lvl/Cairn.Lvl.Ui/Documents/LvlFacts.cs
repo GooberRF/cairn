@@ -77,7 +77,8 @@ internal static class LvlFacts
     {
         var rows = new List<AssetDetailRow>();
         var warnings = new List<string>();
-        if (source.Level is { } level) LevelRows(source, level, presence, rows, warnings, ct);
+        if (source.Level is { Xff: { } xff } ngage) XffRows(source, ngage, xff, presence, rows, warnings, ct);
+        else if (source.Level is { } level) LevelRows(source, level, presence, rows, warnings, ct);
         else if (source.GroupFile is { } file) GroupRows(source, file, presence, rows, warnings, ct);
         return new AssetDetails(source.Name, rows, warnings);
     }
@@ -149,6 +150,79 @@ internal static class LvlFacts
         if (missing.Count > 0)
             warnings.Add((missing.Count == 1 ? "1 file the level refers to is" : $"{missing.Count:N0} files the level refers to are")
                 + " not beside it or in the game data: " + string.Join(", ", missing.Take(10)) + (missing.Count > 10 ? ", ..." : "."));
+    }
+
+    /// <summary>A Red Faction for N-Gage level: the scene, its rooms, what it places and what was not converted.</summary>
+    private static void XffRows(LvlSource source, RfLevel level, XffLevelData xff, Func<string, AssetPresence>? presence, List<AssetDetailRow> rows, List<string> warnings, CancellationToken ct)
+    {
+        const string s = "Level";
+        rows.Add(new AssetDetailRow(s, "Format", "Red Faction for N-Gage level (X-Forge scene), read only"));
+        rows.Add(new AssetDetailRow(s, "File size", PreviewUi.Size(source.Bytes.LongLength)));
+        rows.Add(new AssetDetailRow(s, "Game", level.Objects.RespawnPoints.Length > 0 ? "Multiplayer (deathmatch)" : "Single player"));
+        rows.Add(new AssetDetailRow(s, "Scale", xff.Scale.ToString("0.###", CultureInfo.CurrentCulture) + " Red Faction metres per N-Gage unit (the Convert window's choice)"));
+
+        const string geo = "Geometry";
+        rows.Add(new AssetDetailRow(geo, "Triangles", N(xff.Triangles)));
+        rows.Add(new AssetDetailRow(geo, "Rooms", $"{N(xff.Areas.Length)} areas, {N(xff.RoomBoxes)} room volumes, {N(xff.Portals)} portals"));
+        rows.Add(new AssetDetailRow(geo, "Brushes (air rooms, detail the rest)", BrushSummary(level.Brushes)));
+        var classCounts = new Dictionary<RfFaceClass, int>();
+        foreach (var face in level.StaticGeometry.Faces)
+        {
+            var c = RfFaceClasses.OfCompiled(face);
+            foreach (var k in RfFaceClasses.All) if ((c & k) != 0) classCounts[k] = classCounts.GetValueOrDefault(k) + 1;
+        }
+        foreach (var k in RfFaceClasses.All)
+            if (classCounts.TryGetValue(k, out int n)) rows.Add(new AssetDetailRow(geo, RfFaceClasses.DisplayName(k) + " faces", N(n)));
+        foreach (string placed in xff.PlacedGeometry) rows.Add(new AssetDetailRow("Placed as geometry", placed, "static (no animation in its file)"));
+        ct.ThrowIfCancellationRequested();
+
+        const string objects = "Objects";
+        if (level.PlayerStart is not null) rows.Add(new AssetDetailRow(objects, "Player start", "1"));
+        if (level.Objects.RespawnPoints.Length > 0) rows.Add(new AssetDetailRow(objects, "Multiplayer respawn points", N(level.Objects.RespawnPoints.Length)));
+        foreach (var g in level.Objects.Entities.GroupBy(e => e.ClassName, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            int placedCount = g.Count(e => !e.StartHidden), spawned = g.Count(e => e.StartHidden);
+            rows.Add(new AssetDetailRow(objects, "Entity " + g.Key, spawned == 0 ? N(placedCount) : $"{N(placedCount)} placed, {N(spawned)} spawned by volumes"));
+        }
+        foreach (var g in level.Objects.Items.Cast<RfPlacedObject>().Concat(level.Objects.Clutter).GroupBy(o => (o is RfItem ? "Item " : "Clutter ") + o.ClassName, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal))
+            rows.Add(new AssetDetailRow(objects, g.Key, N(g.Count())));
+        if (level.Objects.Triggers.Length > 0) rows.Add(new AssetDetailRow(objects, "Triggers", N(level.Objects.Triggers.Length)));
+        if (level.Objects.Events.Length > 0) rows.Add(new AssetDetailRow(objects, "UnHide events", N(level.Objects.Events.Length)));
+        foreach (var u in xff.Unmapped)
+            rows.Add(new AssetDetailRow("Not converted", $"{u.What} x{N(u.Count)}", u.Reason + (u.Names.IsEmpty ? "" : " (" + string.Join(", ", u.Names) + ")"), Flagged: true));
+        foreach (var script in xff.Scripts)
+            rows.Add(new AssetDetailRow("Script triggers", script.TriggerName, script.ScriptFile.Length == 0 ? "no script name" : script.ScriptFile + script.Found switch
+            {
+                true => " (beside the level)",
+                false => " (missing)",
+                _ => "",
+            }, script.Found == false));
+        ct.ThrowIfCancellationRequested();
+
+        const string refs = "Textures";
+        var missing = new List<string>();
+        foreach (var t in xff.Textures.Order(StringComparer.OrdinalIgnoreCase))
+        {
+            var where = presence?.Invoke(t) ?? AssetPresence.Unknown;
+            if (where == AssetPresence.Missing) missing.Add(t);
+            rows.Add(new AssetDetailRow(refs, t, where switch
+            {
+                AssetPresence.SamePackfile => "beside the level",
+                AssetPresence.GameData => "in the game data",
+                AssetPresence.Missing => "missing",
+                _ => "not checked",
+            }, where == AssetPresence.Missing));
+        }
+        foreach (string file in xff.MissingFiles) rows.Add(new AssetDetailRow("Missing files", file, "placed by the level, not beside it: its geometry is missing", Flagged: true));
+        if (xff.MissingFiles.Length > 0)
+            warnings.Add($"{N(xff.MissingFiles.Length)} files the level places are not beside it (open it from its .cfl): " + string.Join(", ", xff.MissingFiles.Take(10)));
+        if (missing.Count > 0)
+            warnings.Add((missing.Count == 1 ? "1 texture is" : $"{missing.Count:N0} textures are") + " not beside the level: " + string.Join(", ", missing.Take(10)) + (missing.Count > 10 ? ", ..." : "."));
+        foreach (var problem in level.Problems)
+        {
+            rows.Add(new AssetDetailRow("Reading", "Problem", problem, Flagged: true));
+            warnings.Add(problem);
+        }
     }
 
     private static void GroupRows(LvlSource source, RfGroupFile file, Func<string, AssetPresence>? presence, List<AssetDetailRow> rows, List<string> warnings, CancellationToken ct)

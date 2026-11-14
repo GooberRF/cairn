@@ -124,16 +124,16 @@ public sealed class MeshStructureViewModel : ObservableObject
     /// <summary>The document the tree belongs to.</summary>
     public MeshDocumentViewModel Document => _document;
 
-    /// <summary>True for a document that opens read-only (a .v3m): the editors show disabled.</summary>
+    /// <summary>True for a document that opens read-only (a mesh format Cairn only reads and converts): the editors show disabled.</summary>
     public bool IsReadOnly => _document.IsReadOnly;
 
-    /// <summary>Why nothing can be edited: a .v3m, or a mesh format Cairn only reads and converts.</summary>
+    /// <summary>Why nothing can be edited: a mesh format Cairn only reads and converts.</summary>
     public string ReadOnlyText => ReadOnlyReason(_document);
 
     /// <summary>The read-only line of the structure pane and the editors.</summary>
     internal static string ReadOnlyReason(MeshDocumentViewModel document) => document.Legacy is { } legacy
         ? $"{legacy.FormatTitle} files are read-only; convert to edit."
-        : "Static meshes open read-only.";
+        : "This mesh is read-only.";
 
     public IReadOnlyList<FactRow> SelectedFacts => _selected is null ? [] : [.. _selected.Facts];
 

@@ -151,7 +151,8 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
         var ext = Path.GetExtension(full).ToLowerInvariant();
         try
         {
-            if (Kinds.FirstOrDefault(k => k.Extensions.Contains(ext)) is { } kind)
+            // several kinds for one extension (.xff): the content decides, read only then
+            if (ContentClaims.KindFor(Kinds, full, () => ContentClaims.ReadFile(full)) is { } kind)
             {
                 AddDocument(kind.Open(full));
             }
@@ -194,11 +195,13 @@ public sealed class ShellViewModel : ObservableObject, IShellContext
     public bool OpenLocation(AssetLocation location)
     {
         if (location.ArchivePath is null && location.FilePath is { } file) return OpenFile(file);
-        var ext = Path.GetExtension(location.ResolvedName).ToLowerInvariant();
-        if (Kinds.FirstOrDefault(k => k.Extensions.Contains(ext)) is not { } kind) return false;
+        var candidates = ContentClaims.KindsFor(Kinds, location.ResolvedName);
+        if (candidates.Count == 0) return false;
         try
         {
-            AddDocument(kind.OpenEntry(location, location.ReadAllBytes(), $"{location.ResolvedName} in {Path.GetFileName(location.ArchivePath)}"));
+            var bytes = location.ReadAllBytes();
+            var kind = ContentClaims.KindFor(candidates, location.ResolvedName, bytes)!;
+            AddDocument(kind.OpenEntry(location, bytes, $"{location.ResolvedName} in {Path.GetFileName(location.ArchivePath)}"));
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or Cairn.Formats.AssetFormatException)

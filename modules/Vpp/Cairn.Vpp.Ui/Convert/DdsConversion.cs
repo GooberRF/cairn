@@ -91,7 +91,7 @@ public sealed record DdsApplyReport(VppPackage Package, int Converted, IReadOnly
 public static class DdsConversion
 {
     /// <summary>Extensions the converter reads.</summary>
-    public static readonly string[] Extensions = [".tga", ".png", ".jpg", ".jpeg"];
+    public static readonly string[] Extensions = [".tga", ".png", ".jpg", ".jpeg", ".pcx"];
 
     /// <summary>True when <paramref name="name"/> is an image the converter takes.</summary>
     public static bool IsConvertible(string name) =>

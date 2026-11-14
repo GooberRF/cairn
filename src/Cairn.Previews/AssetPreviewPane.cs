@@ -23,8 +23,8 @@ public class AssetPreviewPane : UserControl, IDisposable
     private const long MaxTextBytes = 32L << 20;
     private const string EmptyMessage = "Select a file to preview it.";
 
-    private static readonly HashSet<string> ImageTypes = new(StringComparer.OrdinalIgnoreCase) { ".tga", ".dds", ".png", ".jpg", ".jpeg", ".vbm" };
-    private static readonly HashSet<string> AudioTypes = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".ogg", ".aif", ".aiff", ".aifc", ".mp3", ".vse", ".vmu" };
+    private static readonly HashSet<string> ImageTypes = new(StringComparer.OrdinalIgnoreCase) { ".tga", ".dds", ".png", ".jpg", ".jpeg", ".vbm", ".pcx" };
+    private static readonly HashSet<string> AudioTypes = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".ogg", ".aif", ".aiff", ".aifc", ".mp3", ".vse", ".vmu", ".xm" };
     private static readonly HashSet<string> TextTypes = new(StringComparer.OrdinalIgnoreCase) { ".tbl", ".txt", ".log", ".ini", ".gltf", ".cfg", ".xml", ".json", ".htm", ".html" };
 
     private readonly IShellContext? _shell;
@@ -171,10 +171,10 @@ public class AssetPreviewPane : UserControl, IDisposable
             return;
         }
         // text types too: a module that previews them (tables) shows them better, with "Open in Cairn"; without one they stay plain text
-        var provider = ImageTypes.Contains(ext) || AudioTypes.Contains(ext) ? null : FindProvider(source.Name);
+        var providers = ImageTypes.Contains(ext) || AudioTypes.Contains(ext) ? [] : FindProviders(source.Name);
         ShowElement(AssetPreviewKind.Loading, PreviewUi.Message("Loading " + source.FileName + "..."));
         var cts = _cts = new CancellationTokenSource();
-        Pending = LoadAsync(source, ext, provider, generation, cts.Token);
+        Pending = LoadAsync(source, ext, providers, generation, cts.Token);
     }
 
     /// <summary>Cancels the previous load and starts a new generation.</summary>
@@ -188,28 +188,25 @@ public class AssetPreviewPane : UserControl, IDisposable
         return ++_generation;
     }
 
-    private (IModule Module, IAssetPreviewProvider Provider)? FindProvider(string name)
-    {
-        if (_shell is null) return null;
-        foreach (var module in _shell.Modules)
-        {
-            if (module is not IAssetPreviewProvider provider) continue;
-            try
-            {
-                if (provider.CanPreview(name)) return (module, provider);
-            }
-            catch (Exception ex) when (ex is not OutOfMemoryException) { /* a broken provider is skipped */ }
-        }
-        return null;
-    }
+    private (IModule Module, IAssetPreviewProvider Provider)? FindProvider(string name) => FindProviders(name) is { Count: > 0 } found ? found[0] : null;
 
-    private async Task LoadAsync(AssetPreviewSource source, string ext, (IModule Module, IAssetPreviewProvider Provider)? provider, int generation, CancellationToken ct)
+    /// <summary>The providers that take <paramref name="name"/>, in module order (the content chooses among several once read).</summary>
+    private IReadOnlyList<(IModule Module, IAssetPreviewProvider Provider)> FindProviders(string name) =>
+        _shell is null ? [] : ContentClaims.PreviewProvidersFor(_shell.Modules, name);
+
+    private async Task LoadAsync(AssetPreviewSource source, string ext, IReadOnlyList<(IModule Module, IAssetPreviewProvider Provider)> providers, int generation, CancellationToken ct)
     {
         Prepared prepared;
+        (IModule Module, IAssetPreviewProvider Provider)? provider = null;
         try
         {
             using (BusyTracker.Begin(BusyLabel))
-                prepared = await Task.Run(() => PrepareAsync(source, ext, provider is not null, ct), ct);
+                prepared = await Task.Run(async () =>
+                {
+                    var p = await PrepareAsync(source, ext, providers.Count > 0, ct).ConfigureAwait(false);
+                    provider = ContentClaims.PreviewProviderFor(providers, source.FileName, p.All);
+                    return p;
+                }, ct);
         }
         catch (OperationCanceledException)
         {
@@ -387,7 +384,8 @@ public class AssetPreviewPane : UserControl, IDisposable
         }
         if (_shell is null) return;
         if (source.Location is { } location && (location.FilePath is not null || location.ArchivePath is not null) && _shell.OpenLocation(location)) return;
-        if (FindKind(source.Name) is not { } kind) return;
+        // several kinds for the extension (.xff): the bytes decide
+        if (ContentClaims.KindFor(_shell.Modules.SelectMany(m => m.DocumentKinds), source.Name, bytes) is not { } kind) return;
         try
         {
             var document = kind.OpenBytes(bytes, source.FileName, source.Origin ?? source.FileName);

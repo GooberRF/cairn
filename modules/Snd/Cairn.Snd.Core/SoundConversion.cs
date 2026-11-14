@@ -204,7 +204,9 @@ public static class SoundConversion
             notes.Add($"The PS2 header's envelope, key-off time and flags have no {kind} equivalent and are not kept.");
         else if (sound.Format.StartsWith("PS2 music", StringComparison.Ordinal))
             notes.Add($"The PS2 header's block time and loop start block have no {kind} equivalent and are not kept.");
-        foreach (var p in sound.Problems.Where(p => p.Severity != SoundSeverity.Info || p.Code is "SND012" or "SND020"))
+        else if (sound.Format == "FastTracker 2 module")
+            notes.Add($"The module is rendered at {sound.SampleRate.ToString("N0", inv)} Hz stereo, the song once with no repeats: the {kind} is a recording of it, and its patterns and instruments are not kept.");
+        foreach (var p in sound.Problems.Where(p => p.Severity != SoundSeverity.Info || p.Code is "SND012" or "SND020" or "SND031"))
             notes.Add($"Source {p.Code}: {p.Message}");
         return notes;
     }

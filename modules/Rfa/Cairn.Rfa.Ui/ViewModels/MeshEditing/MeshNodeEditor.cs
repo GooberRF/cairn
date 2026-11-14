@@ -13,7 +13,7 @@ namespace Cairn.Rfa.Ui.ViewModels.MeshEditing;
 /// <see cref="ArgumentException"/> from <c>MeshEdit</c>) becomes <see cref="Error"/>, shown under the
 /// editor, and the status-bar message. An editor survives the tree rebuild that follows each edit (the
 /// structure keeps it while the same node stays selected, and calls <see cref="Refresh"/>), so a number
-/// box keeps its focus through a spinner run. A read-only document (.v3m) shows the same editor disabled.
+/// box keeps its focus through a spinner run. A read-only document (a format Cairn only reads and converts) shows the same editor disabled.
 /// </summary>
 public abstract class MeshNodeEditor : ObservableObject
 {
@@ -34,7 +34,7 @@ public abstract class MeshNodeEditor : ObservableObject
     /// <summary>The Mesh menu commands (the editor's Add / Remove / Move buttons are the same commands).</summary>
     public MeshCommands Tools => Document.Shell.MeshTools;
 
-    /// <summary>True for a document that may not be edited (a .v3m): every control is shown disabled.</summary>
+    /// <summary>True for a document that may not be edited (a format Cairn only reads and converts): every control is shown disabled.</summary>
     public bool IsReadOnly => Document.IsReadOnly;
 
     public bool IsEditable => !Document.IsReadOnly;

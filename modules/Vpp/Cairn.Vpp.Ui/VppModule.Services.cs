@@ -42,7 +42,7 @@ public sealed partial class VppModule : IAssetFactsProvider, IAssetSiblingsProvi
 
     /// <inheritdoc/>
     public bool CanOpenArchive(string archivePath) =>
-        Kind.Extensions.Concat(Rf2Kind.Extensions).Concat(CacheKind.Extensions).Contains(Path.GetExtension(archivePath), StringComparer.OrdinalIgnoreCase);
+        Kind.Extensions.Concat(Rf2Kind.Extensions).Concat(CacheKind.Extensions).Concat(CflKind.Extensions).Contains(Path.GetExtension(archivePath), StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc/>
     public bool OpenArchiveEntry(string archivePath, string entryName)

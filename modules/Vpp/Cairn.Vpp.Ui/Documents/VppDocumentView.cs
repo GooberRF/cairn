@@ -16,10 +16,11 @@ namespace Cairn.Vpp.Ui.Documents;
 public sealed class VppDocumentView : Grid
 {
     private readonly VppDocument _doc;
-    private readonly Border _diskBar, _missingBar, _ps2Bar, _rf2Bar, _cacheBar, _noticeBar, _workBar, _operationBar;
+    private readonly Border _diskBar, _missingBar, _ps2Bar, _rf2Bar, _cacheBar, _cflBar, _noticeBar, _workBar, _operationBar;
     private readonly TextBlock _ps2Text = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _rf2Text = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _cacheText = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _cflText = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     // toolbar buttons (and their separator) that change the packfile: hidden for a read-only package
     private readonly List<FrameworkElement> _editTools = [];
     private readonly Button? _updateWorkButton;
@@ -64,6 +65,9 @@ public sealed class VppDocumentView : Grid
         // an Alpine Faction cache pack: what it is and that it is read only (stays while the tab is open)
         _cacheBar = Bar(false, _cacheText);
         AutomationProperties.SetName(_cacheBar, "Cache pack banner");
+        // an X-Forge CFL archive (Red Faction for N-Gage): what it is and that it is read only (stays while the tab is open)
+        _cflBar = Bar(false, _cflText);
+        AutomationProperties.SetName(_cflBar, "CFL archive banner");
         _noticeBar = Bar(false, _noticeText, ("Dismiss", "Hide this message", () => doc.Notice = null));
         _workBar = Bar(false, _workText,
             ("Update packfile", "Replace the entries with the edited work copies (one undoable change)", () => doc.Commands.UpdateFromWorkCopies()),
@@ -79,7 +83,7 @@ public sealed class VppDocumentView : Grid
         opPanel.Children.Add(_progress);
         opPanel.Children.Add(_operationText);
         _operationBar = Bar(false, opPanel);
-        foreach (var b in new[] { _diskBar, _missingBar, _ps2Bar, _rf2Bar, _cacheBar, _noticeBar, _workBar, _operationBar }) bars.Children.Add(b);
+        foreach (var b in new[] { _diskBar, _missingBar, _ps2Bar, _rf2Bar, _cacheBar, _cflBar, _noticeBar, _workBar, _operationBar }) bars.Children.Add(b);
         Children.Add(bars);
 
         var body = new Grid();
@@ -146,6 +150,9 @@ public sealed class VppDocumentView : Grid
 
     /// <summary>The Alpine Faction cache pack banner's text while it is shown, else null (self-tests).</summary>
     public string? CacheBannerText => _cacheBar.Visibility == Visibility.Visible ? _cacheText.Text : null;
+
+    /// <summary>The X-Forge CFL archive banner's text while it is shown, else null (self-tests).</summary>
+    public string? CflBannerText => _cflBar.Visibility == Visibility.Visible ? _cflText.Text : null;
     /// <summary>The toolbar's buttons that change the packfile, when shown (self-tests: none for a read-only group).</summary>
     public IReadOnlyList<string> VisibleEditTools => [.. _editTools.OfType<Button>().Where(b => b.Visibility == Visibility.Visible).Select(b => b.Content as string ?? string.Empty)];
     /// <summary>The PlayStation 2 banner's buttons (self-tests: only Dismiss, conversion is per selected .peg entry).</summary>
@@ -263,6 +270,8 @@ public sealed class VppDocumentView : Grid
         _rf2Bar.Visibility = Show(_doc.Rf2 is not null);
         _cacheText.Text = _doc.Current.Cache?.Banner ?? string.Empty;
         _cacheBar.Visibility = Show(_doc.Current.Cache is not null);
+        _cflText.Text = _doc.Current.Cfl?.Banner ?? string.Empty;
+        _cflBar.Visibility = Show(_doc.Current.Cfl is not null);
         foreach (var tool in _editTools) tool.Visibility = Show(!_doc.IsReadOnly);
         if (_updateWorkButton is not null) _updateWorkButton.Visibility = Show(!_doc.IsReadOnly);
         _noticeText.Text = _doc.Notice ?? string.Empty;
@@ -271,7 +280,7 @@ public sealed class VppDocumentView : Grid
         _workText.Text = changes.Count == 0 ? string.Empty
             : (changes.Count == 1 ? "A work copy was changed outside the packfile: " : $"{changes.Count} work copies were changed outside the packfile: ")
               + string.Join(", ", changes.Take(6).Select(c => c.EntryName)) + (changes.Count > 6 ? ", ..." : string.Empty)
-              + (_doc.IsReadOnly ? $". The {(_doc.Current.Cache is not null ? "cache pack" : "group")} is read only: save the tab elsewhere (File > Save As) to keep the changes." : string.Empty);
+              + (_doc.IsReadOnly ? $". The {(_doc.Current.Cache is not null ? "cache pack" : _doc.Current.Cfl is not null ? "archive" : "group")} is read only: save the tab elsewhere (File > Save As) to keep the changes." : string.Empty);
         _workBar.Visibility = Show(changes.Count > 0);
 
         if (!ReferenceEquals(_watchedOperation, _doc.Operation))

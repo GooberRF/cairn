@@ -97,6 +97,24 @@ internal static class LvlSelfTests
             scene.SetSceneSettings(scene.SceneSettings.With(RfFaceClass.Sky, show: true).With(RfFaceClass.Portal, show: true).With(RfFaceClass.Invisible, show: true));
             await scene.Building;
             ctx.Check(scene.Scene?.Triangles == 12, $"showing every class draws the whole room ({scene.Scene?.Triangles} triangles)");
+
+            // edges and statistics: the box's 12 edges once each (not the triangles' diagonals), over the faces or alone
+            scene.ShowStatistics = true;
+            scene.Edges = LvlEdges.OverFaces;
+            await ctx.SettleAsync();
+            string Stat(string label) => scene.StatisticsRows.FirstOrDefault(r => r.Label == label).Value ?? "";
+            ctx.Check(Stat("Faces") == "6" && Stat("Triangles") == "12" && Stat("Vertices") == "8" && Stat("Edges") == "12" && Stat("Rooms") == "1",
+                "statistics: " + string.Join(", ", scene.StatisticsRows.Select(r => $"{r.Label} {r.Value}")));
+            ctx.Check(scene.EdgeLines.EdgeCount == 12 && scene.FacesShown, $"faces and edges: the room's 12 edges over its faces ({scene.EdgeLines.EdgeCount})");
+            bool facing = Enumerable.Range(0, 12).All(i => scene.EdgeLines.Quad(i) is { } q
+                && scene.Surface.Project(q[0], out var s0, out _) && scene.Surface.Project(q[1], out var s1, out _) && Math.Abs((s0 - s1).Length - 1) < 0.05);
+            ctx.Check(facing, "the edges are 1 pixel wide on screen, facing the camera");
+            scene.Edges = LvlEdges.Only;
+            await ctx.SettleAsync();
+            ctx.Check(!scene.FacesShown && scene.EdgeLines.EdgeCount == 12, "edges only: the faces are not drawn");
+            scene.Edges = LvlEdges.Off;
+            scene.ShowStatistics = false;
+            ctx.Check(scene.FacesShown && scene.StatisticsRows.Count == 0, "faces only again, and the statistics hide");
             scene.SetSceneSettings(scene.SceneSettings.With(RfFaceClass.Normal, show: false));
             await scene.Building;
             ctx.Check(scene.Scene?.Triangles == 10, $"hiding ordinary faces leaves the classed ones ({scene.Scene?.Triangles} triangles)");
@@ -196,6 +214,19 @@ internal static class LvlSelfTests
         }
         else ctx.Check(false, "a floor face projects into the view");
         scene.MarkerKinds = LvlMarkerKinds.Default;
+
+        // edges: remade each frame the camera moves, so how long that takes on a whole level
+        scene.Edges = LvlEdges.Only;
+        await ctx.SettleAsync();
+        var times = Enumerable.Range(0, 5).Select(_ =>
+        {
+            var t = Stopwatch.StartNew();
+            scene.EdgeLines.Update(scene.Surface.Camera, scene.Surface.RenderSize);
+            return t.Elapsed.TotalMilliseconds;
+        }).Order().ToList();
+        ctx.Check(scene.EdgeLines.EdgeCount == built.EdgePoints.Length / 2 && scene.EdgeLines.EdgeCount > built.Faces, $"{stock.Name}: {scene.EdgeLines.EdgeCount:N0} edges of {built.Faces:N0} faces");
+        ctx.Log($"timing: placing {scene.EdgeLines.EdgeCount:N0} edges for the camera: median {times[2]:0.0} ms, best {times[0]:0.0} ms");
+        scene.Edges = LvlEdges.Off;
 
         int all = built.Triangles;
         scene.SetSceneSettings(scene.SceneSettings.With(RfFaceClass.Normal, show: false));

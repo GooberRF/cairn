@@ -35,7 +35,9 @@ public sealed class LvlPreview : Grid, IDisposable
         _view = new LvlSceneView(textures, settings, remember: false) { MarkerKinds = LvlMarkerKinds.None };
         _view.ShowMessage("Reading " + fileName + "…");
         Children.Add(_view);
-        Loading = LoadAsync(bytes, fileName, resolver, _cts.Token);
+        // an N-Gage level reads the doors and walls it places from the files beside it
+        var xff = LvlSource.IsXffName(fileName) ? new Reading.XffLevelReadOptions { Scale = settings?.XffScale ?? Cairn.Formats.XForge.XffSpace.RfScale, ReadFile = LvlModule.FilesBeside(siblings, resolver) } : null;
+        Loading = LoadAsync(bytes, fileName, resolver, xff, _cts.Token);
     }
 
     /// <summary>The previewed file's name.</summary>
@@ -47,14 +49,14 @@ public sealed class LvlPreview : Grid, IDisposable
     /// <summary>Completes when the file is read and its preview built (or the failure shown), or the preview was disposed first.</summary>
     public Task Loading { get; }
 
-    private async Task LoadAsync(byte[] bytes, string fileName, AssetResolver? resolver, CancellationToken ct)
+    private async Task LoadAsync(byte[] bytes, string fileName, AssetResolver? resolver, Reading.XffLevelReadOptions? xff, CancellationToken ct)
     {
         LvlSource source;
         using (BusyTracker.Begin("level preview read"))
         {
             try
             {
-                source = await Task.Run(() => LvlSource.Read(bytes, fileName), ct);
+                source = await Task.Run(() => LvlSource.Read(bytes, fileName, xff), ct);
             }
             catch (OperationCanceledException) { return; }
             catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -64,8 +66,8 @@ public sealed class LvlPreview : Grid, IDisposable
             }
         }
         if (_disposed) return;
-        // a Red Faction II level's textures are in the .peg packs beside it
-        var textures = source.Level?.IsRf2 == true ? LvlTexturePacks.ResolverFor(source, null, _siblings, resolver) : _siblings.Layer(resolver);
+        // a Red Faction II level's textures are in the .peg packs beside it; an N-Gage level's 16-bit ones are made opaque
+        var textures = source.Level?.IsRf2 == true ? LvlTexturePacks.ResolverFor(source, null, _siblings, resolver) : LvlXffTextures.ResolverFor(source, _siblings, resolver);
         _view.Show(source, textures);
         await _view.Building;
     }

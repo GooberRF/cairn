@@ -16,7 +16,8 @@ public sealed partial class LvlConvertWindow
     private readonly RadioButton _rf2Keep = new() { GroupName = "lvlRf2Textures", Content = "Keep the Red Faction II names and textures", Margin = new Thickness(0, 2, 0, 0) };
     private readonly Expander _rf2More = new() { Margin = new Thickness(0, 8, 0, 0), IsExpanded = false };
     private readonly List<Action> _rf2Loaders = [];
-    private readonly HashSet<TextBox> _invalidNumbers = [];
+    /// <summary>The number boxes that hold something unusable, each with the rule it breaks ("each must be a number above 0").</summary>
+    private readonly Dictionary<TextBox, string> _invalidNumbers = [];
     private bool _rf2Loading;
 
     /// <summary>True while a number box holds something that is not a usable number (Convert is off).</summary>
@@ -129,8 +130,14 @@ public sealed partial class LvlConvertWindow
         return box;
     }
 
-    /// <summary>A labelled number box; <paramref name="optional"/> allows it to be empty (null). Anything else unusable marks it red.</summary>
-    private DockPanel Number(string text, string tip, Func<float?> get, Action<float?> set, bool optional = false)
+    /// <summary>The rule of a number box without its own range.</summary>
+    private const string AboveZero = "each must be a number above 0";
+
+    /// <summary>
+    /// A labelled number box; <paramref name="optional"/> allows it to be empty (null). A number above 0 is usable, or one
+    /// <paramref name="accepts"/> takes when given (its <paramref name="rule"/> then says which). Anything else marks it red.
+    /// </summary>
+    private DockPanel Number(string text, string tip, Func<float?> get, Action<float?> set, bool optional = false, Func<float, bool>? accepts = null, string rule = AboveZero)
     {
         var label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, ToolTip = tip, TextTrimming = TextTrimming.CharacterEllipsis };
         label.SetResourceReference(TextBlock.ForegroundProperty, "App.Text");
@@ -141,7 +148,7 @@ public sealed partial class LvlConvertWindow
             if (bad)
             {
                 box.SetResourceReference(Control.BorderBrushProperty, "Severity.Error");
-                _invalidNumbers.Add(box);
+                _invalidNumbers[box] = rule;
             }
             else
             {
@@ -155,7 +162,7 @@ public sealed partial class LvlConvertWindow
             string s = box.Text.Trim();
             if (s.Length == 0 && optional) { Mark(false); set(null); return; }
             bool ok = (float.TryParse(s, NumberStyles.Float, CultureInfo.CurrentCulture, out float v) || float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out v))
-                && float.IsFinite(v) && v > 0 && v < 1e6f;
+                && (accepts?.Invoke(v) ?? (float.IsFinite(v) && v > 0 && v < 1e6f));
             Mark(!ok);
             if (ok) set(v);
             else Update();

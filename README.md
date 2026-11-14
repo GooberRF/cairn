@@ -41,6 +41,11 @@ for menus, settings, problem codes and format limits.
 | `.rfa` Red Faction II animation | ✓ | | | | Plays on its Red Faction II character; convert to a Red Faction `.rfa` or glTF |
 | `.rfe` Red Faction II effect | ✓ | | | | Animated preview with its `.peg` textures; convert to a Red Faction `.vfx` |
 | `.peg` Red Faction II texture pack | ✓ | | | | Textures for its levels and meshes; convert to `.tga` |
+| `.cfl` Red Faction for N-Gage archive | ✓ | | | | Preview, extract and convert the files inside |
+| `.xff` Red Faction for N-Gage model, character or level | ✓ | | | | Models to `.v3m`, characters to `.v3c` + `.rfa`, levels to `.rfg`; all to glTF and OBJ, levels also to `.v3m` |
+| `.pr3` Red Faction for N-Gage particle system | ✓ | | | | Facts only |
+| `.pcx` image | ✓ | | | | Convert to DDS |
+| `.xm` FastTracker 2 music | ✓ | | | | Any XM file; convert to WAV or Ogg Vorbis |
 
 ## Modules
 
@@ -53,24 +58,25 @@ for menus, settings, problem codes and format limits.
   creation from templates, primitives, meshes, other effects or glTF.
 - **Packfiles (VPP)**: instant opening of any packfile, previews of everything inside, add/replace/rename/remove
   with undo, safe saving, checks against the game's limits, a one-line Info column, PS2 content conversion, and
-  read-only Red Faction II packfile groups.
+  read-only Red Faction II packfile groups, Alpine Faction cache packs and the Red Faction for N-Gage archive.
 - **Tables (TBL)**: an editor that knows every stock and Alpine Faction table, with live checks, completion, hover
   docs, go to definition, find usages, previews of referenced files and compare with stock.
 - **Fonts (VF)**: every glyph and sample text drawn as the game draws it, editing of glyphs, metrics and kerning,
   and PNG image sheet export/import.
 - **Volition bitmaps (VBM)**: animated preview, a frame strip with drag, drop and paste, editing with undo, frame
   export, and conversion to ATX.
-- **Sounds**: waveform and playback for PC and PS2 sounds, and conversion to WAV or Ogg Vorbis.
-- **Levels & groups (RFL, RFG)**: read-only levels (Red Faction, Alpine Faction and Red Faction II) and editor group
-  files with their facts and a 3D preview, and conversion to glTF, OBJ, static meshes and group files for Alpine
-  Faction's level editor; meshes, glTF and OBJ files convert to group files too.
+- **Sounds**: waveform and playback for PC and PS2 sounds and XM music, and conversion to WAV or Ogg Vorbis.
+- **Levels & groups (RFL, RFG)**: read-only levels (Red Faction, Alpine Faction, Red Faction II and Red Faction for
+  N-Gage) and editor group files with their facts and a 3D preview, and conversion to glTF, OBJ, static meshes and
+  group files for Alpine Faction's level editor; meshes, glTF and OBJ files convert to group files too.
 
 **File › Convert to…** lists every conversion Cairn offers for the file in front. Every module has live problem checks
 against what the engine actually does, most with one-click fixes. Cairn also offers per-extension file associations,
 light and dark themes, and crash recovery.
 
 Red Faction II levels, meshes, animations, effects and packfile groups (`.toc_group`) are read only: Cairn previews, extracts
-and converts them, and never writes them.
+and converts them, and never writes them. The same goes for Red Faction for N-Gage's archive (`.cfl`) and its scenes
+(`.xff`) and particle systems (`.pr3`).
 
 ## Requirements
 
@@ -96,6 +102,7 @@ dotnet test
 | `src/` | Shared libraries and the `Cairn.Shell` application |
 | `modules/` | One folder per module: core library, UI and tests |
 | `native/vorbis/` | Prebuilt Ogg Vorbis encoder DLL; `build.ps1` rebuilds it from Xiph.Org's source |
+| `native/openmpt/` | Prebuilt XM music player DLL (libopenmpt); `build.ps1` rebuilds it from the OpenMPT project's source |
 | `tools/`, `samples/` | Icon and sample generators, and the generated samples |
 
 Tests that need the game's files pass without them.
@@ -105,7 +112,8 @@ Tests that need the game's files pass without them.
 MIT; see [LICENSE](LICENSE). By Chris "Goober" Parsons. See the [changelog](docs/CHANGELOG.md) for release notes.
 
 Uses [AvalonEdit](https://github.com/icsharpcode/AvalonEdit), [Tomlyn](https://github.com/xoofx/Tomlyn),
-[NVorbis](https://github.com/NVorbis/NVorbis), [BCnEncoder.NET](https://github.com/Nominom/BCnEncoder.NET) and
-Xiph.Org's [libvorbis and libogg](https://xiph.org/vorbis/); see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[NVorbis](https://github.com/NVorbis/NVorbis), [BCnEncoder.NET](https://github.com/Nominom/BCnEncoder.NET),
+Xiph.Org's [libvorbis and libogg](https://xiph.org/vorbis/) and the OpenMPT project's
+[libopenmpt](https://lib.openmpt.org/libopenmpt/); see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 Thanks to [rafalh](https://github.com/rafalh/rf-reversed), [wardd64](https://github.com/wardd64/UnityFaction) and
 [natarii](https://github.com/natarii) for format research.

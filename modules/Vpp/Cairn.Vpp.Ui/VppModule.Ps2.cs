@@ -281,7 +281,7 @@ public sealed partial class VppModule : IAssetPreviewProvider
 /// <summary>Which entries "Extract as PNG" writes, and the images it writes for each.</summary>
 internal static class PngExport
 {
-    private static readonly HashSet<string> Exportable = new(StringComparer.OrdinalIgnoreCase) { ".tga", ".dds", ".png", ".jpg", ".jpeg", ".vbm", ".peg" };
+    private static readonly HashSet<string> Exportable = new(StringComparer.OrdinalIgnoreCase) { ".tga", ".dds", ".png", ".jpg", ".jpeg", ".vbm", ".peg", ".pcx" };
 
     /// <summary>True for an image or a PEG texture pack.</summary>
     public static bool CanExport(string name) => Exportable.Contains(Path.GetExtension(name));

@@ -13,6 +13,7 @@ reproduced in full below.
 | [Microsoft.Bcl.Numerics](https://github.com/dotnet/runtime) | 10.0.3 | MIT | yes (dependency of BCnEncoder.NET) |
 | [libvorbis](https://xiph.org/vorbis/) | 1.3.7 | BSD-3-Clause | yes (in `cairn-vorbis.dll`) |
 | [libogg](https://xiph.org/ogg/) | 1.3.5 | BSD-3-Clause | yes (in `cairn-vorbis.dll`) |
+| [libopenmpt](https://lib.openmpt.org/libopenmpt/) | 0.8.9 | BSD-3-Clause | yes (in `cairn-openmpt.dll`) |
 | [.NET runtime and WPF](https://github.com/dotnet/runtime) | 9.0 | MIT | in the self-contained build only (see below) |
 | [xUnit.net](https://github.com/xunit/xunit) | 2.9.3 | Apache-2.0 | no (tests only) |
 | [xunit.runner.visualstudio](https://github.com/xunit/visualstudio.xunit) | 3.1.5 | Apache-2.0 | no (tests only) |
@@ -174,6 +175,42 @@ libogg is under the same licence text with the notice `Copyright (c) 2002, Xiph.
 
 ---
 
+## libopenmpt — BSD 3-Clause License
+
+Cairn plays and converts FastTracker 2 (`.xm`) music with `cairn-openmpt.dll`, which is libopenmpt 0.8.9 built
+unmodified, with none of its optional codecs, from the OpenMPT project's source release
+(https://lib.openmpt.org/files/libopenmpt/src/libopenmpt-0.8.9+release.makefile.tar.gz):
+
+```
+Copyright (c) 2004-2026, OpenMPT Project Developers and Contributors
+Copyright (c) 1997-2003, Olivier Lapicque
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the OpenMPT project nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+---
+
 ## .NET runtime and WPF — MIT License
 
 ```
@@ -208,7 +245,7 @@ Cairn is built in two flavours, and only one of them redistributes the runtime:
   `dotnet build` do not include the runtime at all; they use the .NET 9 Desktop Runtime already
   installed on the machine, and redistribute no part of it.
 
-AvalonEdit, Tomlyn, NVorbis, BCnEncoder.NET (with its two dependencies), libvorbis and libogg ship with both
+AvalonEdit, Tomlyn, NVorbis, BCnEncoder.NET (with its two dependencies), libvorbis, libogg and libopenmpt ship with both
 flavours.
 
 ---

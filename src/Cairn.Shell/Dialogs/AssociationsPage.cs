@@ -94,6 +94,7 @@ public sealed class AssociationsModel : ObservableObject
     {
         ".gltf", ".glb", ".obj", ".fbx", ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".dds", ".wav", ".ogg", ".mp3", ".txt",
         ".aif", ".aiff", ".aifc",
+        ".xm", // FastTracker 2 music: usually a module player's
         ".cache", // Alpine Faction's cache packs, but many programs keep .cache files
     };
 

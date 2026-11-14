@@ -4,7 +4,9 @@
 
 Red Faction II characters now convert whole: every one becomes a single submesh, with a texture atlas when it uses too many
 textures, and Cairn reports and repairs a `.v3c` with several submeshes. Alpine Faction's cache packs (`.cache`) open
-read-only in a packfile tab, and every tab stays within reach however many are open.
+read-only in a packfile tab, and every tab stays within reach however many are open. Red Faction for N-Gage's archive
+(`.cfl`) opens read-only, and its models, characters and levels (`.xff`) convert to Red Faction formats; any
+FastTracker 2 module (`.xm`) plays and converts to WAV or Ogg Vorbis.
 
 **Suite**
 
@@ -19,6 +21,15 @@ read-only in a packfile tab, and every tab stays within reach however many are o
   each asking once about every unsaved file it closes.
 - Added **Ctrl+PageDown** and **Ctrl+PageUp** for the next and previous tab, beside **Ctrl+Tab** and
   **Ctrl+Shift+Tab**.
+- Added **PCX images** (`.pcx`, read only): they preview wherever a `.tga` does (packfile previews, the textures of
+  meshes and levels, animated texture frames), and convert with **Convert to › DDS texture (.dds)**, **Convert
+  images to DDS…** and **Extract as PNG…**. The
+  8-bit paletted form with its palette at the end (the N-Gage textures), 24-bit, and 1-, 2- and 4-bit images of up to
+  16 colours are read, compressed or not. They are drawn opaque (no colour is made transparent). Red Faction and
+  Alpine Faction load `.pcx` textures, so packfiles do not warn about them.
+- Changed **text previews** (`.txt` and other text in previews and details): text that is not UTF-8 is read as
+  Windows-1252, so accented letters and the characters at 0x80–0x9F (’ “ ” € …) show correctly. The preview's
+  header says "Windows-1252". UTF-8 and UTF-16 text, and tables, read as before.
 
 **Packfiles**
 
@@ -31,9 +42,38 @@ read-only in a packfile tab, and every tab stays within reach however many are o
   the game does not use); **ACP001** (names that differ only in case) and **ACP002** (empty entries) are information
   only. `.cache` is offered under Tools › Settings… › File associations, but **Select all** leaves it, as
   other programs use the extension too.
+- Added **Red Faction for N-Gage's archive** (X-Forge `.cfl`, such as `redfaction.cfl`; File › Open): opens read-only
+  in a packfile tab to list, preview, extract, open (**Open in Cairn**) and convert its files. Files opened from it
+  find their textures in the same archive. The details show each entry's compression (stored or zlib), packed and
+  unpacked size and offset, and with nothing selected, the archive's facts. A file that is not a CFL3 archive, or is
+  damaged, is refused with the reason. **CFL001** (a compression Cairn does not read) and **CFL002** (an entry whose
+  data does not unpack to its listed size) are warnings, and such entries cannot be previewed, opened, converted or
+  extracted; **CFL003** flags a name listed twice (a warning when the copies differ, since which one the game reads
+  is not known; lookups by name use the first, and **Open in Cairn** opens each row's own copy); **CFL004** (an empty
+  entry) is information only. Opening the stock archive reads it in one go (well under a second, also the first time
+  after a restart). An archive that lists far more data than its size can hold (damaged, or made to exhaust memory)
+  opens without unpacking it all: **CFL005** warns that entries were not checked, and each is unpacked only when read.
+  The archive's entries get none of the Red Faction packfile checks.
+- Added **facts for N-Gage files** (details pane and Info column): particle systems (`.pr3`: frames, emission rate,
+  lifetime, particle count and size, with "likely" on meanings that are inferred and every other field shown raw
+  under **Unknown fields**; they convert to nothing) and scenes (`.xff`: whether it is a level, character or model,
+  chunks, nodes, animation, geometry, textures, markers, the scenes it places and the particle systems it runs).
+  Textures, frames and placed scenes are checked against the archive, and missing ones are warnings.
+- Added **N-Gage types** to the packfile checks: `.xff`, `.pr3` and `.cfl` in a Red Faction packfile get **VPP009**,
+  which says they are from Red Faction for N-Gage. `.pcx` textures are loaded by the game and get the same checks as
+  `.tga` (name length, sizes that are not powers of two).
 
 **Meshes and animations**
 
+- Added **Wireframe**, **Edges on the mesh** and **Statistics** to the viewport's display menu (the eye button) and
+  **Tools › Settings… › Animations and meshes**. Wireframe draws only the triangles' edges; Edges on the mesh draws
+  them over the textured or flat mesh, hidden behind nearer faces. Statistics shows the counts of the LOD shown in a
+  corner: submeshes, vertices, triangles (and how many are double-sided), textures, bones, collision spheres and prop
+  points.
+- Changed **static meshes** (`.v3m`): they no longer open read-only, and are edited as character meshes are, in the
+  **Structure** tab, the **Mesh** menu and with the viewport's gizmos: submesh names, materials and textures, levels
+  of detail, collision spheres and prop points (which belong to the whole model, as a static mesh has no bones), with
+  the quick fixes that change them. **Save** writes the `.v3m`.
 - Fixed **Red Faction II characters converting with most of the mesh missing in game**. A character with more than 7
   textures was split into several submeshes, but the game keeps only the last submesh of a `.v3c`; this hit most
   first-person weapons, the mech suit, the Shrike and the Repta Plus. Characters now always convert to one submesh, and
@@ -45,6 +85,64 @@ read-only in a packfile tab, and every tab stays within reach however many are o
   repaired this way, or converted again.
 - Added **MI028** (glTF and OBJ import): a character with more than one submesh.
 - **V3C009** no longer suggests splitting a character into submeshes.
+- Added **Red Faction for N-Gage models and characters** (`.xff`; File › Open, Open in Cairn, packfile preview,
+  Convert to, **Convert meshes and animations…**): they open read-only with their textures (`.pcx` and `.tga` from
+  the same archive or folder), and a character plays its own walk loop. A model converts to `.v3m`, a character to
+  `.v3c` with a looping `<name>_walk.rfa`, and both to glTF and OBJ. The Convert window's **Red Faction for N-Gage**
+  section sets the scale (2.35 Red Faction metres per N-Gage unit by default, 0.01 to 100; measured from the game's
+  sizes, not documented) and whether the textures the meshes name are written beside them; both are remembered, and a
+  conversion without the window uses them too. A converted mesh names each `.pcx` texture as `.tga` (Red Faction's
+  tools take `.tga`), and the copy beside it is written as that `.tga`. Each character has only one
+  animation, a walk loop the game speeds up or slows down, so that is the only clip. The baked vertex lighting is
+  dropped, untextured parts get solid colours from `<name>_colours.tga`, the bosses' nano shield (`g_nanoshield`, a
+  sphere drawn only while the shield is up) is left out, and every approximation is in the report.
+  Levels open in the Levels module instead: Cairn tells them apart by their content.
+- A `.v3c` tab plays the `<name>_walk.rfa` beside it first (under **Beside this file** in **Preview clip**), as a
+  converted N-Gage character's conversion writes it. A `.v3c` whose skeleton no stock mesh has, and that the tables
+  give no clips, plays only a clip of its own packfile, else starts in the bind pose, instead of playing a stock clip
+  that merely has as many bones (which scattered its parts); the picker still lists those clips.
+
+**Levels and groups**
+
+- Added a **View** menu to the 3D preview: **Faces**, **Faces and edges** (each face's outline over the faces, hidden
+  behind nearer faces) or **Edges only** (a wireframe), and **Statistics**, the counts in a corner (faces, triangles,
+  vertices, edges, rooms or brushes, movers, textures and objects). Both are remembered, and are also on
+  **Tools › Settings… › Levels & groups**.
+- Added **Red Faction for N-Gage levels** (`.xff`; Open in Cairn on the archive's `level_*.xff`, File › Open, packfile
+  preview, Convert to, **Convert levels…**): they open read-only with a 3D preview, textured from the same archive or
+  folder, with their objects as markers, and facts (rooms, brushes, the doors and walls placed as geometry, objects
+  by class, script triggers, textures, missing files). They convert to glTF, OBJ, `.v3m` and `.rfg`. The Convert
+  window's **Red Faction for N-Gage** section sets the scale (2.35 Red Faction metres per N-Gage unit by default, 0.01
+  to 100 as for meshes) and whether the textures are copied beside a `.v3m` or `.rfg` (on by default). A `.v3m` or
+  `.rfg` names each `.pcx` texture as `.tga`, as Red Faction's editor and levels take `.tga`, and the copy is written
+  as that `.tga`. A `.rfg` is built as Red Faction's own levels are. Each area's walls, floors and ceilings become
+  one air brush, joined into a closed room. Its doorways become short tunnels into the next room, so rooms overlap,
+  and its other holes become short recesses. A tunnel's sides carry on the walls beside them (texture and alignment),
+  so a hallway that crosses from one area to the next keeps its walls; only a doorway tunnel's far end is invisible. Props, decals and placed doors and walls are detail brushes.
+  Every area with walls of its own closes into a room (406 of the 407 in the game). Report codes **LC100** to
+  **LC102**.
+- The 16-bit `.tga` textures of the N-Gage levels that declare an alpha bit no pixel sets (the metal grating of level
+  10b, the wall panels of level 03c and others) are opaque, as in the N-Gage game and as in the Meshes module: in the
+  tab and preview, the copies beside a `.v3m` or `.rfg` (written with "no alpha" in their header) and the glTF and
+  OBJ PNGs.
+- The **objects** follow a table of N-Gage files to Red Faction classes: enemies, items, ammunition, weapons, the
+  exploding barrel (`Oil Drum`), the ATV and the sub; the player start; multiplayer respawn points. An enemy spawn
+  point becomes an entity hidden at the start, and its enemy-group volume a trigger linked to an **UnHide** event, so
+  the enemy appears when the player walks in, as in the N-Gage game. Script volumes and the level end become triggers
+  (link them to events yourself; Red Faction cannot run the N-Gage scripts). Doors, buttons and walls are static
+  geometry, because their files hold no animation. The levels are lit by baked vertex colours, which Red Faction has
+  no place for: they are dropped, so add lights and build the lighting in the editor. What has no counterpart (some
+  enemies, damage volumes, flare sprites, particle emitters, lights) is listed in the report, not guessed.
+
+**Sounds**
+
+- Added **FastTracker 2 music** (`.xm`, any XM file, such as the N-Gage songs): opens read-only with its waveform,
+  playback and facts (title, tracker, format, channels, patterns, orders, instruments, length), previews and plays in
+  packfiles with an Info column line, and converts to WAV or Ogg Vorbis (**Sound › Convert…**, **Convert to**,
+  **Convert sounds…**). Cairn plays the first song once, rendered at 44,100 Hz stereo by libopenmpt 0.8.9
+  (BSD-3-Clause, in `cairn-openmpt.dll`); the converted file is a recording, not a module. **SND030** warns that a
+  song was cut at 15 minutes; **SND031** notes a module with several songs, of which only the first plays and
+  converts. Cairn never writes `.xm`, and the game does not load it (VPP009 in a packfile).
 
 ## 1.1.1
 

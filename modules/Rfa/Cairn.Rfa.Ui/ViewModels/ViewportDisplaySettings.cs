@@ -12,6 +12,8 @@ public enum MeshDisplayMode
     Flat,
     /// <summary>Not drawn (skeleton and overlays only).</summary>
     Off,
+    /// <summary>Its triangles' edges only.</summary>
+    Wireframe,
 }
 
 
@@ -38,6 +40,8 @@ public sealed class ViewportDisplaySettings : ObservableObject
     private ViewportBackground _background = ViewportBackground.Theme;
     private bool _autoKey = true;
     private bool _ghostSavedClip;
+    private bool _showEdges;
+    private bool _showStatistics;
 
     /// <summary>Raised after any toggle changes.</summary>
     public event EventHandler? Changed;
@@ -73,11 +77,19 @@ public sealed class ViewportDisplaySettings : ObservableObject
     /// <summary>Draws the clip as last saved as a dimmed ghost skeleton while it has unsaved changes.</summary>
     public bool GhostSavedClip { get => _ghostSavedClip; set => SetAndNotify(ref _ghostSavedClip, value); }
 
+    /// <summary>Draws the triangles' edges over a textured or flat mesh.</summary>
+    public bool ShowEdges { get => _showEdges; set => SetAndNotify(ref _showEdges, value); }
+
+    /// <summary>Shows the counts (vertices, triangles, bones…) in a corner of the viewport.</summary>
+    public bool ShowStatistics { get => _showStatistics; set => SetAndNotify(ref _showStatistics, value); }
+
     public bool IsMeshTextured { get => _meshMode == MeshDisplayMode.Textured; set { if (value) MeshMode = MeshDisplayMode.Textured; } }
 
     public bool IsMeshFlat { get => _meshMode == MeshDisplayMode.Flat; set { if (value) MeshMode = MeshDisplayMode.Flat; } }
 
     public bool IsMeshOff { get => _meshMode == MeshDisplayMode.Off; set { if (value) MeshMode = MeshDisplayMode.Off; } }
+
+    public bool IsMeshWireframe { get => _meshMode == MeshDisplayMode.Wireframe; set { if (value) MeshMode = MeshDisplayMode.Wireframe; } }
 
     /// <summary>The background choices in the order the menus list them.</summary>
     public static IReadOnlyList<(ViewportBackground Value, string Label)> BackgroundChoices { get; } =
@@ -93,7 +105,7 @@ public sealed class ViewportDisplaySettings : ObservableObject
     private void SetAndNotify<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
     {
         if (!Set(ref field, value, name)) return;
-        if (name == nameof(MeshMode)) RaiseAll(nameof(IsMeshTextured), nameof(IsMeshFlat), nameof(IsMeshOff));
+        if (name == nameof(MeshMode)) RaiseAll(nameof(IsMeshTextured), nameof(IsMeshFlat), nameof(IsMeshOff), nameof(IsMeshWireframe));
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -114,6 +126,8 @@ public sealed class ViewportDisplaySettings : ObservableObject
         Background = other.Background;
         AutoKey = other.AutoKey;
         GhostSavedClip = other.GhostSavedClip;
+        ShowEdges = other.ShowEdges;
+        ShowStatistics = other.ShowStatistics;
     }
 
     /// <summary>Reads the persisted values (defaults for anything missing).</summary>
@@ -135,6 +149,8 @@ public sealed class ViewportDisplaySettings : ObservableObject
         Background = Enum.IsDefined(dto.Background) ? dto.Background : ViewportBackground.Theme;
         AutoKey = dto.AutoKey;
         GhostSavedClip = dto.GhostSavedClip;
+        ShowEdges = dto.ShowEdges;
+        ShowStatistics = dto.ShowStatistics;
     }
 
     /// <summary>Writes the values into <paramref name="settings"/> (the caller saves the file).</summary>
@@ -146,7 +162,7 @@ public sealed class ViewportDisplaySettings : ObservableObject
             MeshMode = MeshMode, FullBright = FullBright, ShowSkeleton = ShowSkeleton, ShowBoneNames = ShowBoneNames,
             ShowGrid = ShowGrid, ShowSpheres = ShowSpheres, ShowProps = ShowProps, BindPose = BindPose,
             ShowRootPath = ShowRootPath, Perspective = Perspective, Background = Background,
-            AutoKey = AutoKey, GhostSavedClip = GhostSavedClip,
+            AutoKey = AutoKey, GhostSavedClip = GhostSavedClip, ShowEdges = ShowEdges, ShowStatistics = ShowStatistics,
         });
     }
 
@@ -165,5 +181,7 @@ public sealed class ViewportDisplaySettings : ObservableObject
         public ViewportBackground Background { get; set; } = ViewportBackground.Theme;
         public bool AutoKey { get; set; } = true;
         public bool GhostSavedClip { get; set; }
+        public bool ShowEdges { get; set; }
+        public bool ShowStatistics { get; set; }
     }
 }

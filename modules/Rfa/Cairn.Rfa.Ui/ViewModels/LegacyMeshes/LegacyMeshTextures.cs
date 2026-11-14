@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Cairn.Formats.XForge;
 using Cairn.Rfa.Formats.Legacy;
 
 namespace Cairn.Rfa.Ui.ViewModels;
@@ -14,11 +15,12 @@ internal static class LegacyMeshTextures
 
     /// <summary>
     /// The resolver of a legacy mesh tab: for a Red Faction II mesh its <c>.peg</c> textures (and the rest of its
-    /// packfile, for a work copy) first, then <paramref name="under"/>; null for any other mesh (the tab's usual
-    /// resolver applies).
+    /// packfile, for a work copy) first, then <paramref name="under"/>; for an N-Gage scene its textures as its conversion
+    /// writes them (<see cref="XffLayer"/>); null for any other mesh (the tab's usual resolver applies).
     /// </summary>
     public static AssetResolver? ResolverFor(LegacyMeshSource source, string meshName, string? filePath, IAssetSiblings? siblings, AssetResolver under)
     {
+        if (source.Mesh?.Xff is { } xff) return XffLayer(xff, siblings, under);
         if (source.Mesh is not { IsRedFactionII: true } mesh) return null;
         var packs = s_byTab.GetValue(source, _ => PacksFor(meshName, mesh, filePath, siblings));
         return Combine(packs, siblings, under);
@@ -58,6 +60,42 @@ internal static class LegacyMeshTextures
         if (filePath is not null)
             return PegTextureSet.ForFolder(Label(meshName, Path.GetDirectoryName(filePath) ?? ""), filePath, LegacyMeshSupport.TexturePackSuffixes(character));
         return new PegTextureSet(meshName, []);
+    }
+
+    /// <summary>
+    /// The resolver of a packfile preview of an N-Gage scene: the files its conversion makes (the colours of untextured
+    /// parts), then the siblings, then <paramref name="under"/>.
+    /// </summary>
+    public static AssetResolver? PreviewResolver(LegacyMesh mesh, IAssetSiblings? siblings, AssetResolver? under) =>
+        mesh.Xff is { } xff ? XffLayer(xff, siblings, under ?? new AssetResolver(new AssetResolverOptions())) : siblings.Layer(under);
+
+    /// <summary>
+    /// One in-memory layer (a resolver keeps a single one) with an N-Gage scene's textures as its conversion writes them:
+    /// the generated colours, each texture it names under the name the mesh stores (a shortened one included), read from
+    /// the siblings or <paramref name="under"/>, a .pcx as the .tga the mesh names and a 16-bit .tga made opaque where its
+    /// alpha bit is never set (<see cref="XffTextureFix.ForPc"/>); then the other siblings.
+    /// </summary>
+    private static AssetResolver XffLayer(XffMeshParts xff, IAssetSiblings? siblings, AssetResolver under)
+    {
+        byte[]? Generated(string name) => xff.GeneratedTextures.FirstOrDefault(g => string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase)).Bytes;
+        string? Source(string name) => xff.Textures.FirstOrDefault(t => string.Equals(t.StoredName, name, StringComparison.OrdinalIgnoreCase))?.SourceName;
+        byte[]? Named(string name)
+        {
+            if (Source(name) is not { } source) return null;
+            byte[]? bytes = siblings?.Read(source);
+            if (bytes is null && under.Resolve(source) is { } found)
+            {
+                try { bytes = found.ReadAllBytes(); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { bytes = null; }
+            }
+            if (bytes is null) return null;
+            try { return XffTextureFix.ForPc(bytes, source); }
+            catch (ImageDecodeException) { return null; }
+        }
+        return under.WithOverlay(siblings?.Label ?? "the N-Gage scene's textures",
+            name => Generated(name) is not null || siblings?.Contains(name) == true
+                || (Source(name) is { } source && (siblings?.Contains(source) == true || under.Resolve(source) is not null)),
+            name => (Generated(name) ?? Named(name) ?? siblings?.Read(name)) is { } bytes ? new MemoryStream(bytes, writable: false) : null);
     }
 
     private static string Label(string meshName, string where) => $"the .peg packs beside {Path.GetFileName(meshName)}" + (where.Length > 0 ? $" ({where})" : "");

@@ -35,12 +35,32 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
     /// <summary>Clips (.rfa).</summary>
     public static RfaDocumentKind ClipKind { get; } = new("rfa.clip", "Animation clip", [".rfa"], "Animation clips (*.rfa)|*.rfa", "Red Faction animation");
 
-    /// <summary>Meshes (.v3c; .v3m opens read-only).</summary>
+    /// <summary>Meshes (.v3c and .v3m).</summary>
     public static RfaDocumentKind MeshKind { get; } = new("rfa.mesh", "Mesh", [".v3c", ".v3m"], "Meshes (*.v3c;*.v3m)|*.v3c;*.v3m", "Red Faction mesh");
 
     /// <summary>The meshes Cairn reads and converts but never saves: exporter (.v3d, .vcm) and PS2 (.rfm, .rfc).</summary>
     public static RfaDocumentKind LegacyMeshKind { get; } = new("rfa.legacymesh", "Exporter or PS2 mesh", [".v3d", ".vcm", ".rfm", ".rfc"],
         "Exporter and PS2 meshes (*.v3d;*.vcm;*.rfm;*.rfc)|*.v3d;*.vcm;*.rfm;*.rfc", "Red Faction exporter or PS2 mesh");
+
+    /// <summary>
+    /// Red Faction for N-Gage scenes (.xff) that are models or characters, read-only like the other legacy meshes. The
+    /// Levels module opens the levels: both kinds claim the files by content (<see cref="ClaimXff"/>).
+    /// </summary>
+    public static RfaDocumentKind XffKind { get; } = new("rfa.xff", "N-Gage model or character", [".xff"],
+        "Red Faction for N-Gage scenes (*.xff)|*.xff", "Red Faction for N-Gage scene", ClaimXff);
+
+    /// <summary>
+    /// How strongly the module takes a file by its content: an N-Gage model or character is recognised, an N-Gage level
+    /// (or anything that is not a scene) is not the module's; every other name keeps the choice by name.
+    /// </summary>
+    internal static int ClaimXff(string name, ReadOnlySpan<byte> data) =>
+        !Formats.Legacy.LegacyMeshSupport.IsXffName(name) ? ContentClaims.ByName
+        : Cairn.Formats.XForge.XffClassifier.TryClassify(data, name) is Cairn.Formats.XForge.XffKind.Model or Cairn.Formats.XForge.XffKind.Character ? ContentClaims.Recognised
+        : ContentClaims.NotMine;
+
+    /// <inheritdoc cref="IAssetPreviewProvider.Claim"/>
+    /// <remarks>The packfile preview and the "Convert meshes and animations..." batch both ask: an .xff level is the Levels module's.</remarks>
+    public int Claim(string name, ReadOnlySpan<byte> data) => ClaimXff(name, data);
 
     /// <summary>
     /// What an open legacy static mesh tab reports to the shell: Save As writes the converted .v3m (the legacy formats
@@ -80,7 +100,7 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
     /// <inheritdoc/>
     public override string DisplayName => "Animations and meshes";
 
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [ClipKind, MeshKind, LegacyMeshKind];
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [ClipKind, MeshKind, LegacyMeshKind, XffKind];
     public override IReadOnlyList<IFileImporter> Importers { get; } = [new GltfImporter(), new ObjImporter()];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     public override IReadOnlyList<ModuleShortcut> Shortcuts => _shortcuts;
@@ -157,7 +177,7 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
     public string CommandText => "Convert _meshes and animations...";
 
     /// <inheritdoc/>
-    public string CommandToolTip => "Convert the selected exporter, PS2 and Red Faction II meshes (.v3d, .vcm, .rfm, .rfc) to .v3m/.v3c and the Red Faction II animations (.rfa) to Red Faction clips: into the packfile as new entries (one undo step) or into a folder";
+    public string CommandToolTip => "Convert the selected exporter, PS2, Red Faction II and N-Gage meshes (.v3d, .vcm, .rfm, .rfc, .xff) to .v3m/.v3c and the Red Faction II animations (.rfa) to Red Faction clips: into the packfile as new entries (one undo step) or into a folder";
 
     /// <inheritdoc/>
     /// <remarks>Any .rfa by its name: which are Red Faction II clips (the only ones to convert) shows when they are read.</remarks>
@@ -196,7 +216,7 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         // a Red Faction II clip to a Red Faction one (the content decides in the end)
         if (string.Equals(targetExtension, ".rfa", StringComparison.OrdinalIgnoreCase)) return IsClipName(sourceName);
         // OBJ: a mesh or a glTF to .obj; an .obj to a mesh or glTF.
-        if (IsObjExtension(targetExtension)) return IsMeshName(sourceName) || RfaWorkspace.IsGltf(sourceName);
+        if (IsObjExtension(targetExtension)) return IsMeshName(sourceName) || RfaWorkspace.IsGltf(sourceName) || Formats.Legacy.LegacyMeshSupport.IsXffName(sourceName);
         if (ViewModels.ObjTools.ObjCommands.IsObj(sourceName)) return IsGltfExtension(targetExtension) || IsMeshExtension(targetExtension);
         bool legacy = Formats.Legacy.LegacyMeshSupport.IsLegacyName(sourceName);
         if (IsGltfExtension(targetExtension)) return legacy || IsRfaName(sourceName);
@@ -219,6 +239,8 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         }
         if (RfaWorkspace.IsGltf(sourceName))
             return [new(".obj", "Wavefront OBJ (.obj + .mtl)", "Build the glTF's mesh (the glTF mesh import with its pre-flight report), then write it as OBJ with a .mtl and PNG textures; a skeleton, weights and animations are not kept", true)];
+        // an N-Gage scene's targets depend on what it holds (a model, a character or a level): see the overload with the bytes
+        if (Formats.Legacy.LegacyMeshSupport.IsXffName(sourceName)) return [];
         bool legacy = Formats.Legacy.LegacyMeshSupport.IsLegacyName(sourceName);
         if (!legacy && !IsRfaName(sourceName)) return [];
         bool clip = sourceName.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase);
@@ -246,6 +268,7 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
     /// </remarks>
     public IReadOnlyList<ConversionTarget> TargetsFor(string sourceName, ReadOnlySpan<byte> head)
     {
+        if (Formats.Legacy.LegacyMeshSupport.IsXffName(sourceName)) return XffTargets(sourceName, head);
         var targets = TargetsFor(sourceName);
         if (!IsClipName(sourceName) || !Formats.Legacy.Rf2AnimationConverter.IsRedFactionII(head)) return targets;
         return
@@ -255,11 +278,37 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         ];
     }
 
+    /// <inheritdoc/>
+    /// <remarks>An .xff is a model, a character or a level by its content, so the whole file is asked for.</remarks>
+    public int HeadLengthFor(string sourceName) =>
+        Formats.Legacy.LegacyMeshSupport.IsXffName(sourceName) ? ContentClaims.WholeFile : ContentClaims.DefaultHeadLength;
+
+    /// <summary>
+    /// An N-Gage scene's targets: a model to .v3m, a character to .v3c with its clip, both to glTF and OBJ; none for a level
+    /// (the Levels module's) or for bytes that are not a scene.
+    /// </summary>
+    private static IReadOnlyList<ConversionTarget> XffTargets(string sourceName, ReadOnlySpan<byte> head)
+    {
+        var kind = Cairn.Formats.XForge.XffClassifier.TryClassify(head, sourceName);
+        if (kind is not (Cairn.Formats.XForge.XffKind.Model or Cairn.Formats.XForge.XffKind.Character)) return [];
+        bool character = kind == Cairn.Formats.XForge.XffKind.Character;
+        string clip = Formats.Legacy.XffMeshConverter.ClipName(sourceName);
+        return
+        [
+            character
+                ? new(".v3c", "Character mesh (.v3c) and clip (.rfa)", $"Convert to the character mesh and its animation as one looping clip ({clip}) the PC game loads, with its textures and a report of what was approximated: into its packfile, next to it or into a folder", true)
+                : new(".v3m", "Static mesh (.v3m)", "Convert to the static mesh the PC game loads, with its textures and a report of what was approximated: into its packfile, next to it or into a folder", true),
+            new(".gltf", "glTF (.gltf + .bin)", "Export the converted mesh as glTF with its textures as PNG files (the export window)", true),
+            new(".glb", "glTF binary (.glb)", "Export the converted mesh as one .glb file with the textures inside (the export window)", true),
+            new(".obj", "Wavefront OBJ (.obj + .mtl)", "Export the converted mesh in its bind pose as OBJ with a .mtl and PNG textures (the export window)", true),
+        ];
+    }
+
     /// <summary>
     /// A tab through its own tools (the glTF export window, the legacy Convert window); a packfile entry's legacy mesh or
     /// Red Faction II clip through the "Convert meshes and animations..." path with that one entry, and an entry's glTF by
     /// opening it in a tab first (the
-    /// export works on a tab: its preview mesh, its textures). Without a dialog the defaults go to
+    /// export works on a tab: its preview mesh, its textures). Without a dialog the remembered options go to
     /// <see cref="AssetConversionRequest.OutputFolder"/>. Anything to or from OBJ goes through
     /// <see cref="ViewModels.ObjTools.ObjCommands.ConvertAsync"/>. Returns the first path or entry name written.
     /// </summary>
@@ -272,9 +321,16 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
             return await Obj.ConvertAsync(request, MeshKind).ConfigureAwait(true);
         if (!IsGltfExtension(request.TargetExtension))
         {
+            // without the window: the remembered options (scale, texture copies, Red Faction II texture names), as the
+            // Levels module and this module's batch do
+            var defaults = ws.Legacy.Defaults;
             LegacyConvertChoice? choice = request.Interactive ? null
-                : new LegacyConvertChoice(request.AddToArchive is not null && request.OutputFolder is null ? LegacyConvertTarget.IntoPackfile : LegacyConvertTarget.Folder,
-                    request.OutputFolder ?? ws.DefaultOutputFolder(ws.Legacy.Defaults.Folder), Replace: false);
+                : defaults with
+                {
+                    Target = request.AddToArchive is not null && request.OutputFolder is null ? LegacyConvertTarget.IntoPackfile : LegacyConvertTarget.Folder,
+                    Folder = request.OutputFolder ?? ws.DefaultOutputFolder(defaults.Folder),
+                    Replace = false,
+                };
             if (request.Document is MeshDocumentViewModel { IsLegacy: true } tab)
                 return (await ws.Legacy.ConvertDocumentAsync(tab, choice).ConfigureAwait(true))?.FirstOrDefault();
             // a Red Faction II clip's tab converts what it shows; an entry goes through the batch below
@@ -283,6 +339,14 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
             var bytes = request.Bytes;
             string? archive = request.ArchivePath;
             var read = request.ReadSibling;
+            var names = request.ArchiveEntryNames;
+            // a loose N-Gage scene copies its textures from its own folder
+            if (read is null && archive is null && Formats.Legacy.LegacyMeshSupport.IsXffName(request.FileName) && request.FilePath is { } loose
+                && Path.GetDirectoryName(Path.GetFullPath(loose)) is { } folder && Directory.Exists(folder))
+            {
+                names = [.. Directory.EnumerateFiles(folder).Select(p => Path.GetFileName(p))];
+                read = n => File.Exists(Path.Combine(folder, n)) ? File.ReadAllBytes(Path.Combine(folder, n)) : null;
+            }
             var batch = new ArchiveBatchRequest(archive is null ? request.FileName : Path.GetFileName(archive), archive is null ? null : Path.GetDirectoryName(archive),
                 [new ArchiveBatchEntry(request.FileName, bytes.LongLength, () => bytes)])
             {
@@ -290,7 +354,7 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
                 Options = choice,
                 AddFiles = request.AddToArchive is { } add ? (label, files, replace) => add(label, files, replace) ?? [] : null,
                 // the exporter twin of a PS2 mesh is read from the rest of the packfile when it can be
-                AllEntries = read is null ? [] : [.. request.ArchiveEntryNames.Select(n => new ArchiveBatchEntry(n, 0, () => read(n) ?? throw new IOException($"{n} could not be read.")))],
+                AllEntries = read is null ? [] : [.. names.Select(n => new ArchiveBatchEntry(n, 0, () => read(n) ?? throw new IOException($"{n} could not be read.")))],
             };
             if (await ws.Legacy.ConvertBatchAsync(batch).ConfigureAwait(true) is null) return null;
             if (ws.Legacy.LastBatch is { Converted.Count: 0, Clips.Count: 0, Failed: [var why, ..] }) Shell.Dialogs.ShowError($"Could not convert {request.FileName}", why);
@@ -421,6 +485,9 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
                 case "textured": display.MeshMode = MeshDisplayMode.Textured; break;
                 case "flat": display.MeshMode = MeshDisplayMode.Flat; break;
                 case "hidden": display.MeshMode = MeshDisplayMode.Off; break;
+                case "wireframe": display.MeshMode = MeshDisplayMode.Wireframe; break;
+                case "edges": display.ShowEdges = true; break;
+                case "stats": display.ShowStatistics = true; break;
                 case "fullbright": display.FullBright = true; break;
                 case "ortho": display.Perspective = false; break;
                 case "persp": display.Perspective = true; break;
@@ -551,8 +618,14 @@ public sealed class RfaModule : ModuleBase, IAssetPreviewProvider, IArchiveBatch
         public void Commit() => _working?.ApplyModuleSettings();
     }
 
-    public sealed class RfaDocumentKind(string id, string displayName, IReadOnlyList<string> extensions, string filter, string association) : IDocumentKind
+    /// <summary>How strongly a kind takes a file by its content (<see cref="IDocumentKind.Claim"/>).</summary>
+    public delegate int ContentClaim(string name, ReadOnlySpan<byte> data);
+
+    public sealed class RfaDocumentKind(string id, string displayName, IReadOnlyList<string> extensions, string filter, string association, ContentClaim? claim = null) : IDocumentKind
     {
+        /// <inheritdoc/>
+        public int Claim(string name, ReadOnlySpan<byte> data) => claim?.Invoke(name, data) ?? ContentClaims.ByName;
+
         public string Id => id;
         public string DisplayName => displayName;
         public IReadOnlyList<string> Extensions => extensions;

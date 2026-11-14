@@ -23,6 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The Red Faction for N-Gage object table (XffObjectTable); the author confirms its rows. -->
+    <EmbeddedResource Include="Convert\Resources\xff-objects.json" LogicalName="Cairn.Lvl.xff-objects.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Cairn.Lvl.Tests" />
     <InternalsVisibleTo Include="Cairn.Lvl.Ui" />
   </ItemGroup>

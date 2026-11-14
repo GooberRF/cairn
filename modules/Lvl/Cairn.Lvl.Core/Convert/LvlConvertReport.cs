@@ -170,6 +170,12 @@ public static class LvlConvertCodes
     public const string Rf2Faces = "LC097";
     /// <summary>The output is too large for the format.</summary>
     public const string TooLarge = "LC080";
+    /// <summary>A Red Faction for N-Gage level: its scale, rooms, placed geometry and the files beside it.</summary>
+    public const string XffLevel = "LC100";
+    /// <summary>Red Faction for N-Gage objects: how they were mapped, and what has no counterpart.</summary>
+    public const string XffObjects = "LC101";
+    /// <summary>Red Faction for N-Gage textures copied beside the output, or missing.</summary>
+    public const string XffTextures = "LC102";
 }
 
 /// <summary>Collects issues and counters while a converter runs.</summary>

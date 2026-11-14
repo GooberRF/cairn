@@ -6,13 +6,13 @@ namespace Cairn.Formats.Audio;
 /// <summary>
 /// Decodes any sound Cairn opens to 16-bit PCM with its facts: PlayStation 2 <c>.vse</c>/<c>.vmu</c>
 /// (<see cref="Ps2Sound"/>), WAVE (PCM, Microsoft and IMA ADPCM), Ogg Vorbis and AIFF/AIFF-C (through
-/// <see cref="AudioDecoding"/>). Loop points come from a WAVE's <c>smpl</c> chunk and an Ogg's LOOPSTART/LOOPLENGTH
-/// (or LOOPEND) comments.
+/// <see cref="AudioDecoding"/>) and FastTracker 2 modules (<c>.xm</c>, rendered by <see cref="XmModule"/>). Loop points come
+/// from a WAVE's <c>smpl</c> chunk and an Ogg's LOOPSTART/LOOPLENGTH (or LOOPEND) comments.
 /// </summary>
 public static class SoundDecoder
 {
     /// <summary>The extensions the sounds module opens.</summary>
-    public static IReadOnlyList<string> Extensions { get; } = [".vse", ".vmu", ".wav", ".ogg", ".aif", ".aiff", ".aifc"];
+    public static IReadOnlyList<string> Extensions { get; } = [".vse", ".vmu", ".wav", ".ogg", ".aif", ".aiff", ".aifc", ".xm"];
 
     /// <summary>True when <see cref="Decode"/> takes files named like <paramref name="name"/>.</summary>
     public static bool CanDecode(string name) => Extensions.Contains(Path.GetExtension(name ?? string.Empty).ToLowerInvariant());
@@ -42,6 +42,7 @@ public static class SoundDecoder
         bool riff = b.Length >= 12 && b[..4].SequenceEqual("RIFF"u8) && b.Slice(8, 4).SequenceEqual("WAVE"u8);
         bool ogg = b.Length >= 4 && b[..4].SequenceEqual("OggS"u8);
         bool aiff = b.Length >= 12 && b[..4].SequenceEqual("FORM"u8);
+        if (XmModule.IsXm(b) || (!riff && !ogg && !aiff && IsXmName(name))) return DecodeXm(bytes, name);
         if (!riff && !ogg && !aiff && Ps2Sound.IsPs2SoundName(name)) return Ps2Sound.Decode(bytes, name);
         if (bytes.Length == 0) throw new AssetFormatException($"'{name}' is empty.");
 
@@ -106,6 +107,62 @@ public static class SoundDecoder
             Problems = problems,
         };
     }
+
+    private static bool IsXmName(string name) => name.EndsWith(".xm", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A FastTracker 2 module, rendered by <see cref="XmModule"/> (the first song once, 44,100 Hz stereo): the facts are
+    /// the module's, the samples are the render.
+    /// </summary>
+    private static DecodedSound DecodeXm(byte[] bytes, string name)
+    {
+        var render = XmModule.Render(bytes, name);
+        var m = render.Info;
+        var inv = CultureInfo.InvariantCulture;
+        var details = new List<(string, string)>();
+        if (m.Title.Length > 0) details.Add(("Title", m.Title));
+        if (m.Artist is { } artist) details.Add(("Artist", artist));
+        if (m.Tracker.Length > 0) details.Add(("Tracker", m.Tracker));
+        string version = string.Create(inv, $"{m.Version >> 8}.{m.Version & 0xFF:X2}");
+        details.Add(("Format", m.Format.Contains(version, StringComparison.Ordinal) ? m.Format : $"{m.Format}, version {version}"));
+        details.Add(("Module channels", m.Channels.ToString("N0", inv)));
+        details.Add(("Patterns", m.Patterns.ToString("N0", inv)));
+        details.Add(("Orders", m.Orders.ToString("N0", inv) + (m.RestartPosition > 0 ? $" (restarts at order {m.RestartPosition.ToString("N0", inv)})" : "")));
+        details.Add(("Instruments", m.Instruments.ToString("N0", inv)));
+        details.Add(("Instrument samples", m.Samples.ToString("N0", inv)));
+        if (m.Subsongs > 1) details.Add(("Songs", m.Subsongs.ToString("N0", inv)));
+        details.Add(("Song length", FormatLength(m.Duration)));
+        details.Add(("Frequencies", m.LinearFrequencies ? "linear" : "Amiga"));
+        details.Add(("Start speed", string.Create(inv, $"{m.Speed} ticks per row, {m.Tempo} BPM")));
+        details.Add(("Rendered by", (XmModule.Version ?? "libopenmpt") + string.Create(inv, $", {XmModule.SampleRate:N0} Hz stereo")));
+        var problems = new List<SoundProblem>();
+        if (render.Truncated)
+            problems.Add(new("SND030", SoundSeverity.Warning,
+                $"The song plays for longer than {FormatLength(XmModule.MaxDuration)} (it may never end); the render stops there."));
+        if (m.Subsongs > 1)
+            problems.Add(new("SND031", SoundSeverity.Info, $"The module holds {m.Subsongs.ToString("N0", inv)} songs; only the first is played and converted."));
+        return new DecodedSound
+        {
+            Name = name,
+            Format = "FastTracker 2 module",
+            Codec = "XM module",
+            SampleRate = XmModule.SampleRate,
+            Channels = 2,
+            BitDepth = "rendered to 16-bit",
+            Samples = render.Samples,
+            FileSize = bytes.LongLength,
+            Details = details,
+            Quirks =
+            [
+                "A module is a score with its instruments, not a recording: Cairn plays and converts what libopenmpt renders " +
+                "(44,100 Hz stereo, the song once with no repeats).",
+                ".xm files are read only: Cairn never writes them.",
+            ],
+            Problems = problems,
+        };
+    }
+
+    private static string FormatLength(TimeSpan t) => string.Create(CultureInfo.InvariantCulture, $"{(int)t.TotalMinutes}:{t.Seconds:00}");
 
     private static AudioInfo ProbeOgg(byte[] bytes, string name)
     {

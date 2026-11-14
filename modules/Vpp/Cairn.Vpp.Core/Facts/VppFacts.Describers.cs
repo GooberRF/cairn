@@ -66,7 +66,8 @@ public static partial class VppFacts
             sheet.Add("Origin", (bytes[17] & 0x20) != 0 ? "top left" : "bottom left");
         }
         if (info.Note is { Length: > 0 } note) sheet.Add("Note", note);
-        if (ext is ".tga" or ".vbm" && (!IsPowerOfTwo(info.Width) || !IsPowerOfTwo(info.Height)))
+        // RF1's texture rule; it does not apply in an N-Gage archive, whose HUD and menu images are any size
+        if (ext is ".tga" or ".vbm" or ".pcx" && input.Context.Package?.Cfl is null && (!IsPowerOfTwo(info.Width) || !IsPowerOfTwo(info.Height)))
         {
             sheet.Warn("The dimensions are not powers of two, which RF's renderer expects for textures.");
         }
@@ -130,6 +131,23 @@ public static partial class VppFacts
         foreach (var (label, value) in sound.Details.Where(d => d.Label is "Header" or "SPU pitch" or "Envelope (ADSR)" or "Flags"))
             sheet.Add(label, value);
         foreach (var problem in sound.Problems.Where(p => p.Severity != SoundSeverity.Info)) sheet.Warn(problem.Message);
+    }
+
+    /// <summary>A FastTracker 2 module (.xm): what libopenmpt reads from it.</summary>
+    private static void DescribeXm(VppFactInput input, VppFactSheetBuilder sheet)
+    {
+        var info = XmModule.ReadInfo(input.ReadAll(), input.Name);
+        if (info.Title.Length > 0) sheet.Add("Title", info.Title);
+        if (info.Artist is { } artist) sheet.Add("Artist", artist);
+        if (info.Tracker.Length > 0) sheet.Add("Tracker", info.Tracker);
+        sheet.Add("Format", info.Format);
+        sheet.Add("Channels", info.Channels);
+        sheet.Add("Patterns", info.Patterns);
+        sheet.Add("Orders", info.Orders);
+        sheet.Add("Instruments", info.Instruments);
+        sheet.Add("Samples", info.Samples);
+        if (info.Subsongs > 1) sheet.Add("Songs", info.Subsongs);
+        sheet.Add("Duration", FormatDuration(info.Duration));
     }
 
     private static void DescribeMesh(VppFactInput input, VppFactSheetBuilder sheet)
@@ -317,7 +335,7 @@ public static partial class VppFacts
         catch (DecoderFallbackException)
         {
             encoding = "8-bit (Windows-1252 or a localised code page)";
-            return Encoding.Latin1.GetString(bytes);
+            return Cairn.Formats.Text.Windows1252.GetString(bytes);
         }
     }
 

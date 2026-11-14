@@ -35,7 +35,7 @@ internal static class LegacyMeshSelfTests
             var v3d = await Open(ctx, box, opened);
             if (ctx.Check(v3d is { IsLegacy: true }, "box.v3d opens as a read-only exporter mesh tab"))
             {
-                ctx.Check(v3d!.IsReadOnly && !v3d.ShowsReadOnlyBanner, "read-only, without the .v3m banner");
+                ctx.Check(v3d!.IsReadOnly, "read-only");
                 ctx.Check(v3d.ConvertBannerText == "Exporter static mesh (.v3d) is read-only in Cairn. Convert to .v3m to use it in the PC game.", $"banner: {v3d.ConvertBannerText}");
                 var kind = ((IDocument)v3d).Kind;
                 ctx.Check(kind.Id == RfaModule.LegacyMeshKind.Id && kind.Extensions[0] == ".v3m", "the shell sees the legacy mesh kind; Save As offers the converted .v3m");

@@ -22,6 +22,12 @@ public sealed record LegacyMesh(string SourceFormat, V3dMeshDescription Descript
     /// <c>.peg</c> packs beside it (see <see cref="LegacyMeshSupport.TexturePackSuffixes"/>).
     /// </summary>
     public bool IsRedFactionII { get; init; }
+
+    /// <summary>
+    /// For a Red Faction for N-Gage scene (<c>.xff</c>): its facts, the textures it names, the files its conversion makes
+    /// and a character's clip; null for every other mesh.
+    /// </summary>
+    public XffMeshParts? Xff { get; init; }
 }
 
 /// <summary>Why a legacy mesh could not be read.</summary>

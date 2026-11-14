@@ -104,6 +104,13 @@ public interface IDocumentKind
     /// </summary>
     IDocument OpenEntry(AssetLocation location, byte[] bytes, string originText) => OpenBytes(bytes, location.ResolvedName, originText);
     /// <summary>
+    /// How strongly this kind takes the file <paramref name="name"/> holding <paramref name="data"/> (the whole file, or
+    /// the start of a very large one), asked only when several kinds take the same extension (<see cref="ContentClaims"/>):
+    /// <see cref="ContentClaims.NotMine"/> for another kind's content; the highest claim opens the file. The default,
+    /// <see cref="ContentClaims.ByName"/>, keeps the choice by name. Any thread; cheap; never throws for bad data.
+    /// </summary>
+    int Claim(string name, ReadOnlySpan<byte> data) => ContentClaims.ByName;
+    /// <summary>
     /// Rebuilds a document from a recovery snapshot of this kind. Throw <see cref="OperationCanceledException"/> when the
     /// user chose to discard it in the kind's own prompt: the shell then deletes the snapshot quietly.
     /// </summary>
@@ -217,9 +224,9 @@ public interface IShellContext
     void AddDocument(IDocument document, bool activate = true);
     /// <summary>Selects <paramref name="document"/>'s tab.</summary>
     void Activate(IDocument document);
-    /// <summary>Opens by extension through the kinds, else the importers. False when nothing opened.</summary>
+    /// <summary>Opens by extension through the kinds (by content when several take it: <see cref="ContentClaims"/>), else the importers. False when nothing opened.</summary>
     bool OpenFile(string path);
-    /// <summary>Loose file: <see cref="OpenFile"/>; archive entry: the kind's <see cref="IDocumentKind.OpenBytes"/>.</summary>
+    /// <summary>Loose file: <see cref="OpenFile"/>; archive entry: the kind's <see cref="IDocumentKind.OpenEntry"/> (chosen as <see cref="OpenFile"/> does).</summary>
     bool OpenLocation(AssetLocation location);
     /// <summary>Save, or Save As when the document has no path or is read-only. False when cancelled or failed.</summary>
     bool Save(IDocument document);
@@ -322,9 +329,18 @@ public interface IAssetConverter
     /// <see cref="TargetsFor(string)"/> when the start of the file is known: a module whose targets depend on what a file
     /// of the name holds (an <c>.rfa</c> from Red Faction II rather than Red Faction) looks at <paramref name="head"/>, its
     /// first bytes (at least its signature and version, usually 16 bytes; empty when not known). By default the name
-    /// alone decides. Cheap; no I/O.
+    /// alone decides. A module that shares an extension with another (<see cref="ContentClaims"/>) lists no targets for
+    /// a file that is not its own, and asks for the whole file with <see cref="HeadLengthFor"/>. Cheap; no I/O.
     /// </summary>
     IReadOnlyList<ConversionTarget> TargetsFor(string sourceName, ReadOnlySpan<byte> head) => TargetsFor(sourceName);
+
+    /// <summary>
+    /// How many leading bytes <see cref="TargetsFor(string, ReadOnlySpan{byte})"/> needs for a file named like
+    /// <paramref name="sourceName"/>: <see cref="ContentClaims.DefaultHeadLength"/> by default, <see cref="ContentClaims.WholeFile"/>
+    /// when the whole content decides. A packfile entry's Convert to submenu reads that much (up to
+    /// <see cref="ContentClaims.MaxBytes"/>); a tab gives its <see cref="IDocumentContent.ContentHead"/>. Cheap; no I/O.
+    /// </summary>
+    int HeadLengthFor(string sourceName) => ContentClaims.DefaultHeadLength;
 }
 
 /// <summary>A file type an <see cref="IAssetConverter"/> makes, as the Convert to submenus list it.</summary>
@@ -355,7 +371,8 @@ public interface IDocumentContent
 
     /// <summary>
     /// The first bytes of the content (see <see cref="IAssetConverter.TargetsFor(string, ReadOnlySpan{byte})"/>), or empty when
-    /// the tab does not say. Cheap; UI thread.
+    /// the tab does not say: as many as the converters' <see cref="IAssetConverter.HeadLengthFor"/> asks for the file name
+    /// (the whole file, as opened, for a type whose content decides). Cheap; UI thread.
     /// </summary>
     ReadOnlyMemory<byte> ContentHead => ReadOnlyMemory<byte>.Empty;
 }
@@ -579,6 +596,13 @@ public interface IArchiveBatchConverter
     /// thread. Returns a one-line summary, or null when cancelled.
     /// </summary>
     Task<string?> ConvertAsync(ArchiveBatchRequest request);
+    /// <summary>
+    /// How strongly this converter takes the entry <paramref name="entryName"/> holding <paramref name="data"/>, asked only
+    /// when another batch converter takes the same name (<see cref="ContentClaims"/>): an entry goes to the converters
+    /// with the highest claim, <see cref="ContentClaims.NotMine"/> leaves it to the others. The default is
+    /// <see cref="ContentClaims.ByName"/>. Any thread; cheap; never throws for bad data.
+    /// </summary>
+    int Claim(string entryName, ReadOnlySpan<byte> data) => ContentClaims.ByName;
 }
 
 /// <summary>One archive entry for <see cref="IArchiveBatchConverter"/>.</summary>
@@ -667,6 +691,14 @@ public interface IAssetPreviewProvider
     /// <param name="fileName">The asset's name (no path).</param>
     /// <param name="siblings">The files beside the asset, or null for none.</param>
     FrameworkElement? CreatePreview(byte[] bytes, string fileName, IAssetSiblings? siblings) => CreatePreview(bytes, fileName);
+
+    /// <summary>
+    /// How strongly this provider takes the file <paramref name="fileName"/> holding <paramref name="data"/> (the whole
+    /// file), asked only when several providers' <see cref="CanPreview"/> take the name (<see cref="ContentClaims"/>):
+    /// <see cref="ContentClaims.NotMine"/> for another module's content; the highest claim shows the preview. The default
+    /// is <see cref="ContentClaims.ByName"/>. Any thread; cheap; never throws for bad data.
+    /// </summary>
+    int Claim(string fileName, ReadOnlySpan<byte> data) => ContentClaims.ByName;
 }
 
 /// <summary>

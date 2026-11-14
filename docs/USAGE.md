@@ -48,6 +48,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
 | Turn a model into brushes for the level editor | [Make a group file from a model](#make-a-group-file-from-a-model) |
 | Use OBJ files | [Import and export OBJ](#import-and-export-obj) |
 | Use Red Faction II's levels, meshes, animations and packfiles | [Use Red Faction II content](#use-red-faction-ii-content) |
+| Use Red Faction for N-Gage's levels, models, characters and music | [Use Red Faction for N-Gage content](#use-red-faction-for-n-gage-content) |
 | Fix something that does not work | [Troubleshooting and FAQ](#troubleshooting-and-faq) |
 
 ## Contents
@@ -70,6 +71,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Find what uses a file](#find-what-uses-a-file) ·
     [Convert the PlayStation 2 version](#convert-the-playstation-2-version) ·
     [Use Red Faction II content](#use-red-faction-ii-content) ·
+    [Use Red Faction for N-Gage content](#use-red-faction-for-n-gage-content) ·
     [Edit the game's tables safely](#edit-the-games-tables-safely)
 - [Animated textures (ATX)](#animated-textures-atx)
   - [Try the ATX samples](#try-the-atx-samples) · [Make a new animated texture](#make-a-new-animated-texture) ·
@@ -91,6 +93,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Import and export OBJ](#import-and-export-obj) ·
     [Convert exporter and PS2 meshes](#convert-exporter-and-ps2-meshes) ·
     [Convert Red Faction II animations](#convert-red-faction-ii-animations) ·
+    [Convert Red Faction for N-Gage models and characters](#convert-red-faction-for-n-gage-models-and-characters) ·
     [See which table lines play a clip](#see-which-table-lines-play-a-clip) ·
     [Fix the problems Cairn reports](#fix-the-problems-cairn-reports) ·
     [Get your work into the game](#get-your-work-into-the-game) · [Good to know](#good-to-know) ·
@@ -121,6 +124,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Open a PEG texture pack on its own](#open-a-peg-texture-pack-on-its-own) ·
     [Open a Red Faction II packfile group](#open-a-red-faction-ii-packfile-group) ·
     [Look inside an Alpine Faction cache pack](#look-inside-an-alpine-faction-cache-pack) ·
+    [Open the Red Faction for N-Gage archive](#open-the-red-faction-for-n-gage-archive) ·
     [Good to know (packfiles)](#good-to-know-packfiles) · [Limitations (packfiles)](#limitations-packfiles)
 - [Tables (TBL)](#tables-tbl)
   - [Open a table](#open-a-table) · [Find your way around a table](#find-your-way-around-a-table) ·
@@ -154,6 +158,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Zoom into the waveform](#zoom-into-the-waveform) ·
     [Convert a sound to WAV or Ogg Vorbis](#convert-a-sound-to-wav-or-ogg-vorbis) ·
     [Convert many sounds in a packfile](#convert-many-sounds-in-a-packfile) ·
+    [Play and convert XM music](#play-and-convert-xm-music) ·
     [Good to know (sounds)](#good-to-know-sounds) · [Limitations (sounds)](#limitations-sounds)
 - [Levels and groups (RFL, RFG)](#levels-and-groups-rfl-rfg)
   - [Open a level or group file](#open-a-level-or-group-file) · [Look around a level](#look-around-a-level) ·
@@ -162,6 +167,7 @@ runs, and shows the Alpine Faction version a feature needs where it matters (for
     [Make a group file from a level](#make-a-group-file-from-a-level) ·
     [Make a group file from a model](#make-a-group-file-from-a-model) ·
     [Convert a Red Faction II level](#convert-a-red-faction-ii-level) ·
+    [Convert a Red Faction for N-Gage level](#convert-a-red-faction-for-n-gage-level) ·
     [Convert many levels in a packfile](#convert-many-levels-in-a-packfile) ·
     [Good to know (levels)](#good-to-know-levels) · [Limitations (levels)](#limitations-levels)
 - [Troubleshooting and FAQ](#troubleshooting-and-faq)
@@ -261,12 +267,14 @@ packfile to keep it). Several entries at once convert with the packfile's batch 
 | Exporter, PS2 and Red Faction II meshes (`.v3d`, `.vcm`, `.rfm`, `.rfc`) | `.v3m` or `.v3c`, glTF |
 | Red Faction II animation (`.rfa`) | Red Faction clip (`.rfa` version 8), glTF |
 | Red Faction II effect (`.rfe`) | Red Faction effect (`.vfx`) |
+| Red Faction for N-Gage model or character (`.xff`) | `.v3m`, or `.v3c` with its walk loop (`.rfa`); glTF, OBJ |
+| Red Faction for N-Gage level (`.xff`) | glTF, OBJ, static mesh (`.v3m`), group file (`.rfg`) |
 | OBJ (`.obj`) | `.v3m`, `.v3c`, glTF, group file (`.rfg`) |
 | glTF (`.gltf`, `.glb`) | OBJ, group file (`.rfg`); **File › Import** builds a clip, mesh or effect from it |
 | Effect (`.vfx`) | glTF |
 | Font (`.vf`) | Image sheet (`.png` with a `.json`) |
-| Sound | WAV, Ogg Vorbis |
-| Image (`.tga`, `.png`, `.jpg`) | DDS |
+| Sound, XM music (`.xm`) | WAV, Ogg Vorbis |
+| Image (`.tga`, `.png`, `.jpg`, `.pcx`) | DDS |
 | PEG texture pack (`.peg`) | `.tga` files |
 | Level (`.rfl`) | glTF, OBJ, static mesh (`.v3m`), group file (`.rfg`) |
 | Group file (`.rfg`) | glTF, OBJ, static mesh (`.v3m`) |
@@ -472,6 +480,33 @@ Faction can use. Nothing in your Red Faction II install is changed.
 
 Red Faction II's other types Cairn does not read can only be extracted.
 
+### Use Red Faction for N-Gage content
+
+Red Faction for N-Gage keeps every asset in one archive, `redfaction.cfl` (in the game's `system\apps\6r09` folder).
+Cairn reads it and the formats inside but never writes them: it previews them, extracts them and converts what Red
+Faction can use.
+
+1. **Open the archive.** Choose **File › Open…** and pick the `.cfl`. It opens as a read-only packfile tab (see
+   [Open the Red Faction for N-Gage archive](#open-the-red-faction-for-n-gage-archive)).
+2. **Levels.** Select a `level_*.xff` to see it in 3D, or **Open in Cairn**. Convert it to a group file (`.rfg`) for
+   Alpine Faction's level editor, or to glTF, OBJ or a static mesh (see
+   [Convert a Red Faction for N-Gage level](#convert-a-red-faction-for-n-gage-level)).
+3. **Models and characters.** Select another `.xff` (props, items, weapons, enemies) and use **Convert to** (or
+   select several and choose **Convert meshes and animations…**); models become `.v3m`, characters `.v3c` with their
+   walk loop as an `.rfa` (see
+   [Convert Red Faction for N-Gage models and characters](#convert-red-faction-for-n-gage-models-and-characters)).
+4. **Textures.** The conversions copy the textures they use beside the output (an option in the Convert window). A
+   converted mesh, static mesh or group file names each `.pcx` texture as `.tga`, as Red Faction's editor and tools
+   take `.tga`, and the copy is written as that `.tga`; the `.tga` textures are copied as they are.
+5. **Sounds and music.** The `.wav` sounds need no conversion either: they are plain 8-bit mono PCM, almost all at
+   11,025 Hz. The songs (`song1.xm` and the rest) play in Cairn and convert to WAV or Ogg Vorbis (see
+   [Play and convert XM music](#play-and-convert-xm-music)).
+6. **Put the results in a packfile** for Alpine Faction, as for anything else you make (see
+   [Release a mod in a packfile](#release-a-mod-in-a-packfile)).
+
+The archive's text files (cutscene scripts and dialogue) preview as text; Red Faction has no use for them. Particle
+systems (`.pr3`) show their facts but do not convert.
+
 ### Edit the game's tables safely
 
 Tables (`weapons.tbl`, `entity.tbl` and the rest) decide what weapons, characters and items are. The game reads them
@@ -587,7 +622,7 @@ simulation of the game's texture format to show roughly what it does to the colo
 
 ## Animations and meshes (RFA, V3C, V3M)
 
-Watch, fix, make and retarget character animations (`.rfa`), edit character meshes (`.v3c`), look at static meshes
+Watch, fix, make and retarget character animations (`.rfa`), edit character meshes (`.v3c`) and static meshes
 (`.v3m`), and swap both with Blender through glTF or OBJ.
 
 ### What you can do
@@ -599,19 +634,21 @@ Watch, fix, make and retarget character animations (`.rfa`), edit character mesh
 - [Make a new animation](#make-a-new-animation), in Cairn or in Blender.
 - [Retarget animations to another character](#retarget-animations-to-another-character), one clip or a whole set.
 - [Edit a character mesh](#edit-a-character-mesh): collision spheres, prop points, textures, levels of detail and
-  bones.
+  bones. Static meshes edit the same way, without bones.
 - [Import and export glTF](#import-and-export-gltf) to animate or model in Blender, including
   [rigging a new mesh to a stock skeleton](#rig-a-new-mesh-to-a-stock-skeleton).
 - [Import and export OBJ](#import-and-export-obj) for modelling tools that prefer it.
 - [Convert exporter, PS2 and Red Faction II meshes](#convert-exporter-and-ps2-meshes) (`.v3d`, `.vcm`, `.rfm`,
   `.rfc`) to `.v3m`/`.v3c`, and [Red Faction II animations](#convert-red-faction-ii-animations) to Red Faction clips.
+- [Convert Red Faction for N-Gage models and characters](#convert-red-faction-for-n-gage-models-and-characters)
+  (`.xff`) to `.v3m`, or `.v3c` with their walk loop.
 - Turn a mesh into brushes for the level editor (see
   [Make a group file from a model](#make-a-group-file-from-a-model)).
 - [See which table lines play a clip](#see-which-table-lines-play-a-clip) and copy ready-made `+State:` and
   `+Action:` lines.
 - [Fix the problems Cairn reports](#fix-the-problems-cairn-reports) before you start the game.
 
-Static meshes (`.v3m`) open read-only. This module doesn't change tables: it writes lines for you to paste, and the
+This module doesn't change tables: it writes lines for you to paste, and the
 [Tables](#tables-tbl) module edits them. Packing files into a `.vpp` is done in [Packfiles](#packfiles-vpp).
 
 **How clips and meshes fit together.**
@@ -708,8 +745,9 @@ Useful while looking:
   selected bones or everything; **1**, **3** and **7** give front, side and top views; **5** switches perspective.
   To reverse the orbit along either axis, see **Tools › Settings… › General › 3D viewport mouse**.
 - The viewport toolbar shows or hides the skeleton, bone names (**Aa**), the grid, collision spheres, prop points
-  and the root's path, and switches between the clip and the bind pose. The eye button picks textured, flat or
-  hidden mesh, full bright and the background.
+  and the root's path, and switches between the clip and the bind pose. The eye button picks textured, flat,
+  wireframe or hidden mesh, edges on the mesh, full bright, the background and **Statistics** (the counts of the LOD
+  shown: submeshes, vertices, triangles, textures, bones, collision spheres and prop points).
 - The speed box under the viewport plays from 0.1× to 4×.
 - **Clip › Compare With…** (**Ctrl+Alt+G**) plays a second clip as a ghost skeleton in step with this one, for
   example a stock original beside your edit. The chip in the viewport header hides it or stops comparing.
@@ -984,7 +1022,7 @@ Name pattern tokens and the other options are under [Batch retarget](REFERENCE.m
 
 ### Edit a character mesh
 
-Open a `.v3c` and use the inspector's **Structure** tab. Select a node in the tree (or click a joint, collision
+Open a `.v3c` (or a static mesh, `.v3m`) and use the inspector's **Structure** tab. Select a node in the tree (or click a joint, collision
 sphere or prop point in the viewport) and edit it in the pane below the tree, or drag it in the viewport with the
 move (**W**) and rotate (**E**) tools. Turn on **Spheres** and **Prop points** in the viewport toolbar to see and
 click them; if a joint wins the click, click the same spot again.
@@ -993,7 +1031,7 @@ click them; if a joint wins the click, click the same spot again.
   it and drag its outline (or the round grip) to change the radius. Or type **CENTRE** and **Radius**, and change
   **Bone**. Spheres have no rotation.
 - **New hit sphere**: select a bone and choose **Mesh › Add Collision Sphere**. Name it as the tables expect
-  (`head`, `torso`…).
+  (`head`, `torso`…). A static mesh has no bones, so its spheres and prop points belong to the whole model.
 - **Weapon held in the wrong spot**: select the prop point and drag it with **W** and **E**, or type its
   **POSITION** and **ORIENTATION**. Pick a preview clip that holds the weapon so you place it in the pose that
   matters; it follows its bone in every other pose. Edits apply to every level of detail.
@@ -1150,6 +1188,7 @@ saves them in their own format.
 | `.vcm` | The exporter's character mesh, with skeleton, collision spheres, prop points and weights | `.v3c` |
 | `.rfm` | Red Faction's PlayStation 2 static mesh, or Red Faction II's static mesh | `.v3m` |
 | `.rfc` | Red Faction's PlayStation 2 character mesh, or Red Faction II's character mesh | `.v3c` |
+| `.xff` | Red Faction for N-Gage's model or character (its levels open in the Levels module) | `.v3m`, or `.v3c` and `.rfa` |
 
 (The tables also use `.vcm` and `.v3d` as spellings of `.v3c` and `.v3m`; those are the PC meshes, not these source
 files.)
@@ -1217,6 +1256,61 @@ control points, so the converted clip moves in straight lines between keys (they
 clip with vertex (face) animation moves the vertices of the Red Faction II mesh it was made for, so it plays as made
 only on the character converted from that mesh. See
 [Red Faction II animation conversion](REFERENCE.md#red-faction-ii-animation-conversion).
+
+### Convert Red Faction for N-Gage models and characters
+
+Red Faction for N-Gage's scenes are `.xff` files in its `redfaction.cfl` archive. Models (props, items, ammunition,
+weapons, doors, vehicles) and characters (the enemies and the player) open here; levels open in the Levels module.
+Cairn tells them apart by what the file holds, not by its name. Cairn never writes `.xff` files.
+
+1. **Open one** from the archive (see [Open the Red Faction for N-Gage archive](#open-the-red-faction-for-n-gage-archive)):
+   select it to see it in the preview, or use **Open in Cairn**. A loose `.xff` opens with **File › Open…**; keep the
+   textures beside it. The tab shows the mesh read-only, with a banner that counts its nodes, meshes, triangles,
+   textures and animation tracks, and a **Convert…** button. **Problems** lists, as information, what converting
+   changes.
+2. **Watch a character walk.** Each N-Gage character has one animation, a walk loop (the game plays it faster or
+   slower with the character's speed). The tab plays it at once: it is the entry under **This file** in **Preview
+   clip**. No other clip is offered, because none fits the character's skeleton.
+3. **Convert** with **Convert…** on the banner, **File › Convert to** or the archive entry's **Convert to**. A model
+   becomes a `.v3m`, a character a `.v3c` and its loop `<name>_walk.rfa` (`enemy_ug.xff` gives `enemy_ug.v3c` and
+   `enemy_ug_walk.rfa`); both also convert to glTF and OBJ. The archive is read only, so the files go next to it or
+   into a folder.
+4. **Many at once**: in the archive, select the `.xff` entries and choose **Convert meshes and animations…**. Levels
+   in the selection are listed as converted by the Levels module, and left out.
+
+The Convert window adds a **Red Faction for N-Gage** section:
+
+- **Scale** (metres per N-Gage unit): 2.35 by default, which makes the N-Gage player as tall as Red Faction's. The
+  files do not say how big they are; the value was measured from the game's sizes. Any value from 0.01 to 100 works,
+  as in the Levels module.
+- **Write the textures the meshes name beside them** (on by default): copies each texture from the same archive or
+  folder next to the converted mesh, under the name the mesh uses. The mesh names each `.pcx` texture as `.tga`, and
+  the copy is written as that `.tga`.
+
+Both choices are remembered, and also used when a conversion runs without the window, as in the Levels module.
+
+What converting does:
+
+- **Kept:** the shape, the UVs and the texture names. The front faces are turned to Red Faction's side.
+- **Characters:** every animated part becomes a bone, weighted fully to it (the N-Gage characters are rigid parts,
+  not skinned); parts that never move hang from an added bone `root`, and animated helpers without geometry are left
+  out. The bind pose is the pose at the start of the walk loop. These are new characters: Red Faction's stock
+  animations do not play on them, and their own clip plays only on them. Opened in Cairn, the converted `.v3c` plays
+  the `<name>_walk.rfa` beside it (under **Beside this file** in **Preview clip**); without it, it starts in the bind
+  pose. The bosses' nano shield (`g_nanoshield`), a sphere the game draws round them only while the shield is up, is
+  left out, as a `.v3c` cannot hide a part.
+- **Approximated:** the material blends. See-through materials become alpha-blended, additive ones (lasers, glows)
+  additive, and the darkening blend, which a Red Faction mesh cannot hold, alpha-blended. Every face is single-sided.
+- **Dropped:** the baked vertex lighting (Red Faction lights the mesh itself) and material settings whose meaning is
+  unknown. Parts drawn only in their vertex colours get a solid colour each from a small generated texture,
+  `<name>_colours.tga`, written beside the mesh. Collision shapes, helper points, lights, sprites and particle
+  emitters are not converted.
+- **Changed names:** a `.pcx` texture is named and written as `.tga`. Texture names longer than 31 characters are
+  shortened, and the copy is written under the new name. 16-bit `.tga` textures that declare an alpha bit no pixel sets are copied with "no alpha" in their header (the
+  pixels are the same), so they draw opaque, as in the N-Gage game.
+- **Missing textures** are named in the report. Five textures are missing from the game's own archive too.
+
+See [Red Faction for N-Gage model conversion](REFERENCE.md#red-faction-for-n-gage-model-conversion).
 
 ### See which table lines play a clip
 
@@ -1286,8 +1380,7 @@ Cairn writes `.rfa`, `.v3c` and `.v3m` files and gives you table lines. Before y
   glTF export and conforming to another mesh drop it; strip it when a clip plays on several meshes.
 - **Files from inside a `.vpp`** open as copies: Save asks where to write. To change a file inside a packfile, open
   the packfile and use **Open in Cairn** on the entry.
-- **Read-only `.v3m`**: Save is greyed out; use **Save As…** for a copy. The other saving rules are under
-  [saving clips and meshes](REFERENCE.md#saving-clips-and-meshes).
+- **Saving** rules are under [saving clips and meshes](REFERENCE.md#saving-clips-and-meshes).
 - **Settings** for this module are under **Tools › Settings… › Animations and meshes**: what library double-click
   does, the viewport display and the time unit ([settings](REFERENCE.md#animations-and-meshes-settings)).
 - **Help**: **F1** in a clip or mesh tab opens the **RFA & V3C format reference** (every stored field and what the
@@ -1310,6 +1403,8 @@ Cairn writes `.rfa`, `.v3c` and `.v3m` files and gives you table lines. Before y
 - **Shift+Left**/**Shift+Right** step ten frames only on the time bar.
 - The Help, Reorder Bones, Texture Browser and clip tool windows do not remember their size.
 - A glTF import started while another dialog is open is not queued.
+- Red Faction for N-Gage characters have one walk loop each and no other animations; their collision shapes, helper
+  points, lights, sprites and particles are not converted.
 
 ## Effects (VFX)
 
@@ -1480,6 +1575,7 @@ undo until you save.
   extracting.
 - Read a level's details, including every file it needs and whether it can be found.
 - Open Red Faction II's packfile groups read-only, to preview, extract and convert what they hold.
+- Open Alpine Faction's cache packs and Red Faction for N-Gage's archive read-only.
 - Extract files, or edit them in another program or in Cairn and put them back.
 - Add, rename, replace and remove entries, and build new packfiles for your mods.
 - Convert images to DDS.
@@ -1510,15 +1606,16 @@ packfile opens. The status bar shows the entry count, the size when saved, pendi
 Click an entry: the preview shows it and the details below describe it. Select several to see their count, total
 size and a bar per type.
 
-- **Images** (`.tga`, `.dds`, `.png`, `.jpg`, `.vbm`) on a checkerboard. **Fit**, **100%** and the mouse wheel zoom;
+- **Images** (`.tga`, `.dds`, `.png`, `.jpg`, `.vbm`, `.pcx`) on a checkerboard. **Fit**, **100%** and the mouse wheel zoom;
   **Alpha** shows the alpha channel alone. A `.dds` with mipmaps has a mip level box; an animated `.vbm` plays.
-- **Sounds** (`.wav`, `.ogg`, `.aif`, `.mp3`, and the PS2 `.vse` and `.vmu`): **Play**, **Stop**, a position slider
-  and a waveform you can click. Turn on **Autoplay sounds** (the speaker button on the main toolbar) to play each
-  sound as soon as you select it; it stays on until you turn it off.
+- **Sounds** (`.wav`, `.ogg`, `.aif`, `.mp3`, the PS2 `.vse` and `.vmu`, and `.xm` music): **Play**, **Stop**, a
+  position slider and a waveform you can click. Turn on **Autoplay sounds** (the speaker button on the main toolbar)
+  to play each sound as soon as you select it; it stays on until you turn it off.
 - **Meshes, clips, effects and animated textures** play in a 3D or animated preview. A clip plays on a character mesh
   with the same number of bones.
 - **Tables** show highlighted and foldable, **fonts** show their characters, **text** shows numbered lines with
-  **Find** (**Ctrl+F**) and **Copy**.
+  **Find** (**Ctrl+F**) and **Copy**. Text that is not UTF-8 is read as Windows-1252, so accented letters show
+  correctly.
 - **Levels and group files** (`.rfl`, `.rfg`) show in 3D, with the level's textures from the same packfile; object
   markers start hidden in this small view (see [Look around a level](#look-around-a-level)).
 - **Other types** show their first bytes in hex.
@@ -1600,8 +1697,8 @@ Every change is an undo step and shows in the **State** column (**added**, **rep
 Alpine Faction loads `name.dds` wherever `name.tga` is asked for, so you can turn a packfile's textures into DDS
 files (smaller, with mipmaps) without changing any level, mesh or table.
 
-1. Select the `.tga`, `.png` or `.jpg` entries (or none, to convert every such image) and choose **Packfile › Convert
-   images to DDS…** (**Ctrl+Shift+D**, or right-click › **Convert to DDS…**).
+1. Select the `.tga`, `.png`, `.jpg` or `.pcx` entries (or none, to convert every such image) and choose
+   **Packfile › Convert images to DDS…** (**Ctrl+Shift+D**, or right-click › **Convert to DDS…**).
 2. Pick the **Format**: **Auto** chooses DXT1 for opaque images, DXT1 with 1-bit alpha or DXT5 from each image's
    transparency. Set **Mipmaps**, the filter, the quality and whether sides are resized to a power of two.
 3. Choose the output: **Replace the originals in the packfile**, **Keep the originals too**, or **Write to a folder**.
@@ -1713,6 +1810,40 @@ A cache pack is read only: nothing can be added, removed, renamed or saved. The 
 it saves it; if that happens while the tab is open, previews and extraction refuse with a message until the pack is
 reloaded.
 
+### Open the Red Faction for N-Gage archive
+
+Red Faction for N-Gage keeps every asset in one X-Forge archive, `redfaction.cfl`, in the game's `system\apps\6r09`
+folder: its levels, models and characters (`.xff`), textures (`.pcx`, `.tga`), sounds (`.wav`), music (`.xm`),
+particle systems (`.pr3`) and text (`.txt`).
+
+1. Choose **File › Open…** and pick the `.cfl`. A file that is not a CFL3 archive, or is damaged, is refused with the
+   reason. An archive inside another file cannot be opened: extract it first.
+2. The archive opens as a packfile tab under a bar that says what it is. With nothing selected, the details pane
+   describes it: its entry count, how many are stored and how many zlib-compressed, its sizes and the names it lists
+   twice.
+3. Filter, sort, preview and read the details as in any packfile. For each entry the details add its
+   **Compression** (stored or zlib), **Packed size**, **Unpacked size** and **Offset**. Levels, models and characters
+   preview in 3D with their textures from the archive, characters walking; text previews show the accented
+   dialogue correctly.
+4. **Extract**, dragging out and **Ctrl+C** work as usual. **Open in Cairn** opens levels, models, characters,
+   sounds and music in tabs, and **Convert to** on an entry, **Convert meshes and animations…**,
+   **Convert sounds…** and **Convert levels…** write into a folder. A file opened from the archive finds its
+   textures in it.
+
+The archive is read only: nothing can be added, removed, renamed or saved. The details of a `.pr3` particle system
+show its known fields (each marked "likely" where the meaning is inferred), its frame textures and, folded, every
+other field raw under **Unknown fields**; it has no preview beyond hex and converts to nothing. A scene (`.xff`) lists
+its kind, geometry, animation, textures, markers and the scenes it places, each checked against the archive.
+
+The Red Faction packfile checks do not apply. The problems list notes entries Cairn cannot read (a compression it
+does not know, or data that does not unpack to its listed size: these cannot be previewed, opened, converted or
+extracted), names listed twice and empty entries. The stock archive lists nine names twice; three of them hold
+different data, and which copy the game reads is not known. Cairn uses the first when it looks a name up (textures);
+**Open in Cairn** and **Open with** on a row open that row's own copy. An archive that lists far more data than its
+size can hold (damaged, or made to exhaust memory) opens without checking every entry: the problems list says how many
+were not checked, and each is unpacked only when you open it. What to do with the files is in
+[Use Red Faction for N-Gage content](#use-red-faction-for-n-gage-content).
+
 ### Good to know (packfiles)
 
 - The game finds files by name, ignoring case; when two loaded packfiles hold the same name, which one wins depends
@@ -1733,6 +1864,8 @@ reloaded.
 - Legacy motion files (`.mvf`) and Photoshop files show as hex.
 - Red Faction II packfile groups are read only, and new ones cannot be made. Packfile groups are not listed in the
   **Packfiles** browser; open them with **File › Open…**.
+- Red Faction for N-Gage's `.cfl` archive is read only, and Cairn never writes one. Its `.pr3` particle systems are
+  only described: too few of their fields are understood to make a Red Faction effect.
 - A packfile inside a packfile cannot be opened directly: extract it first.
 - PS2 levels cannot be converted. MPEG-2 backgrounds have no transparency of their own, and the main menu
   animation's speed is a guess. A `.peg` opened on its own converts every texture with the current settings.
@@ -2146,7 +2279,8 @@ asking** to skip the window; **Tools › Settings… › Volition bitmaps** turn
 ## Sounds (VSE, VMU, WAV, OGG)
 
 The Sounds module plays sound files and converts them to WAV or Ogg Vorbis: the PC game's `.wav`, `.ogg` and `.aif`
-files, and the PlayStation 2 version's sound effects (`.vse`) and music (`.vmu`).
+files, the PlayStation 2 version's sound effects (`.vse`) and music (`.vmu`), and FastTracker 2 music (`.xm`), such
+as Red Faction for N-Gage's songs.
 
 A sound tab shows the play and zoom toolbar at the top, a waveform of each channel in the middle and the details on
 the right. The **Problems** panel is in the bottom pane; the **Sound** menu appears with a sound in front. Sound tabs
@@ -2217,6 +2351,30 @@ a sound tab also writes a WAV.
 This is the quickest way to bring the PS2 version's sounds to the PC game; see
 [Convert the PlayStation 2 version](#convert-the-playstation-2-version).
 
+### Play and convert XM music
+
+An `.xm` file is a FastTracker 2 module: music stored as patterns and instruments, not as a recording. Cairn opens any
+XM file, not only Red Faction for N-Gage's nine songs (`song1.xm` to `song10.xm` in its archive). Other module
+formats (`.mod`, `.s3m`, `.it`) are not opened.
+
+1. **Open it** like any sound: **File › Open…**, or select it in a packfile or the N-Gage archive, where it previews
+   with a waveform and **Play**, and use **Open in Cairn**.
+2. **Play it** with **Space**, **Home** and **Loop** (**L**) as any sound. Cairn renders the module to sound first
+   (44,100 Hz, stereo, 16-bit), so the waveform shows the whole song. It plays the first song once and stops where the song
+   would start over; **Loop** repeats the whole render.
+3. **Read its facts** under **Module** in the details: title, artist and tracker (when the file names them), format,
+   channels, patterns, orders, instruments and samples, the number of songs (when there are several), the song's
+   length, its frequency table, start speed and BPM, and what rendered it. The **Sound** heading describes the
+   render.
+4. **Convert it** with **Sound › Convert…**, **File › Convert to** or the packfile's **Convert sounds…**: the WAV is
+   exactly the render, and Ogg Vorbis works as for any sound. The report says the output is a recording: the patterns
+   and instruments are not kept.
+
+The game does not load `.xm` files, and the packfile checks warn about them (VPP009); convert the music to `.ogg` or
+`.wav` to use it. The render stops at 15 minutes (SND030) for a song that never ends. A module with several songs
+plays and converts only the first (SND031). A damaged module is refused with the reason, or plays as far as it can be
+read.
+
 ### Good to know (sounds)
 
 - The game treats a sound as Ogg Vorbis only when its name ends in lower-case `.ogg`; Cairn always names it that way.
@@ -2233,7 +2391,9 @@ This is the quickest way to bring the PS2 version's sounds to the PC game; see
 - **File › Save As** writes WAV only; use **Convert…** for Ogg Vorbis.
 - MP3 files play in packfile previews but do not open in sound tabs.
 - AIFF loop markers are not read.
-- Cairn never writes `.vse` or `.vmu` files.
+- Cairn never writes `.vse`, `.vmu` or `.xm` files.
+- Music modules other than FastTracker 2 (`.mod`, `.s3m`, `.it`) are not opened, and an `.xm` plays only its first
+  song, once.
 
 ## Levels and groups (RFL, RFG)
 
@@ -2256,6 +2416,7 @@ appears with a level or group file in front.
 - Convert a level to a group file, to bring its brushes and objects into another level in the editor.
 - Turn a model (glTF, OBJ, `.v3m`, `.v3c`) into brushes in a group file.
 - Open and convert Red Faction II levels.
+- Open and convert Red Faction for N-Gage levels, with their enemies, items and triggers.
 
 ### Open a level or group file
 
@@ -2264,6 +2425,9 @@ appears with a level or group file in front.
   packfile finds its textures in the rest of that packfile.
 - **From Red Faction II**: open the `.toc_group` that holds the level (see
   [Open a Red Faction II packfile group](#open-a-red-faction-ii-packfile-group)) and use **Open in Cairn**.
+- **From Red Faction for N-Gage**: open `redfaction.cfl` (see
+  [Open the Red Faction for N-Gage archive](#open-the-red-faction-for-n-gage-archive)) and use **Open in Cairn** on a
+  `level_*.xff`.
 
 The tab opens at once and reads the file in the background; a large level takes a moment. The facts on the left
 describe the level (name, author, format version and which game loads it, properties, statistics and object classes,
@@ -2293,6 +2457,10 @@ flagged at the top. **Copy all** copies the facts as text.
   meshes and more) on request. Walls hide the markers behind them.
 - **Lighting**: **Full bright** draws each texture at its own colours, **Level ambient light** at the level's ambient
   colour, and **Shaded** adds a light from the camera's side to show the shapes. Lightmaps are not drawn.
+- **View**: **Faces and edges** draws each face's outline over the faces (nearer faces hide the edges behind them), and
+  **Edges only** draws the outlines alone, as a wireframe. **Statistics** shows the counts in a corner: faces,
+  triangles, vertices, edges, rooms (or brushes), movers, textures and objects. The edges are redrawn as the camera
+  moves, so a very large level may move less smoothly with them on.
 
 The toolbar counts the triangles and textures drawn, and the textures that are missing. Textures are found beside the
 file first (the rest of its packfile for a level opened from one), then in your search folders and the game. A face
@@ -2409,6 +2577,73 @@ The values start at REDUX's defaults, and **Defaults** puts them back. A number 
 **Convert** off. The report lists every approximation (codes LC090 to LC097): textures translated or kept, lights
 rescaled, coronas turned into lights, what to set by hand for ambient light and fog, and what was not converted.
 
+### Convert a Red Faction for N-Gage level
+
+Red Faction for N-Gage's levels (`level_01a.xff` to `level_12c.xff`, and the deathmatch maps `level_50.xff` to
+`level_54.xff`) are `.xff` scenes in its `redfaction.cfl` archive. They open and convert like any other level,
+read-only (see [Use Red Faction for N-Gage content](#use-red-faction-for-n-gage-content)). Cairn tells a level from a
+model by what the file holds; models and characters open in the Meshes module.
+
+Open the level from the archive, so that the doors, walls and scripts it places and its textures are found there. A
+loose `.xff` needs those files beside it; missing ones are listed in the facts.
+
+**What you see.** The compiled geometry is the level's meshes, one room per area of the level; the brushes are one
+per mesh. The level is scaled to Red Faction's size and its faces turned to face Red Faction's way. Markers show the
+player start, enemies, spawn points, items and triggers. The facts list the format, single player or deathmatch, the
+scale, the rooms (areas, room volumes, portals), the brushes, the files placed as geometry, the objects by class
+("4 placed, 10 spawned by volumes"), what is not converted (flagged), the script triggers and their scripts, the
+textures and where they were found, and missing files.
+
+The Convert window adds a **Red Faction for N-Gage** section:
+
+- **Red Faction metres per N-Gage unit**: 2.35 by default, which makes the N-Gage player Red Faction's size (the
+  files do not say; the value was measured from the game's sizes). Any value from 0.01 to 100 works, as in the Meshes
+  module; anything else turns red. **Default scale** puts it back. The preview uses the value you last converted with.
+- **Copy the textures beside a static mesh or group file** (on by default): writes the textures the level uses
+  beside a `.v3m` or `.rfg`. The `.v3m` or `.rfg` names each `.pcx` texture as `.tga` (Red Faction's editor and
+  levels take `.tga`), and the copy is written as that `.tga`. glTF and OBJ get PNG copies instead, as for any level.
+
+Some 16-bit `.tga` textures declare an alpha bit that no pixel sets (the metal grating of level 10b, the wall panels
+of level 03c). The N-Gage game draws them opaque, and so does Cairn: in the tab, the preview, the copies (written with
+"no alpha" in their header, the pixels the same) and the PNGs, as the Meshes module does. The report names them.
+
+**What becomes what** (report codes LC100 to LC102):
+
+- **Objects** follow a table of N-Gage files to Red Faction classes: the enemies (`enemy_ug.xff` becomes `guard1`,
+  and so on), items, ammunition and weapons, the exploding barrel (clutter `Oil Drum`), the ATV (`Jeep01`) and the
+  sub (`sub`). The player start comes from `player.xff`; deathmatch spawns become multiplayer respawn points. Some
+  rows are best guesses, such as `guard2` for the security commander and `miner1` for Orion; the report lists every
+  class used.
+- **Enemies.** An enemy placed in the level is there from the start. An enemy *spawn point* becomes an entity hidden
+  at the start, and the enemy-group volume named after it becomes a trigger linked to an **UnHide** event that shows
+  it, as the N-Gage game releases enemies when the player walks in. The two are never merged, so no enemy is lost or
+  doubled. A spawn point without a volume stays hidden, and a volume without a spawn point is left out; the report
+  names both.
+- **Triggers.** Script volumes become triggers, and the report names the cutscene script each ran: Red Faction cannot
+  run them, so link the triggers to events yourself. The level end becomes a trigger; link it to a **Load_Level**
+  event.
+- **Doors, buttons and walls** become static geometry: their files hold no animation (the N-Gage game moves them in
+  code), so they cannot become movers. The facts list them as "placed as geometry".
+- **Lighting.** The levels are lit by colours baked into their corners, which Red Faction has no place for. They are
+  dropped, and no lights are made: add lights and build the lighting in the editor. The report counts the flare
+  sprites, which mark where the lamps are.
+- **Materials.** See-through materials become alpha faces, additive ones (lasers, glows) full-bright faces and
+  darkening ones alpha faces. Parts without UVs have no texture.
+- **Not converted** (listed in the report and the facts): the yellow robot, the Dopefish, multiplayer player models,
+  death and damage volumes and other volumes Red Faction has no use for, flare sprites, particle emitters and the
+  N-Gage lights.
+- **Group files** are built the way Red Faction's own levels are: RED's world starts solid and its level build cuts
+  rooms out of it with air brushes. Each area's walls, floors and ceilings become one air brush, with the N-Gage
+  textures. Each doorway becomes a short tunnel into the next room, so the rooms overlap and join when the level is
+  built. The tunnel's sides carry on the walls beside them, so a hallway keeps its walls where it crosses into the next
+  area; only its far end, inside the next room, is invisible. Any other hole, such as behind glass, a grate or a placed door, becomes a short recess textured like
+  the wall. Props, decals, see-through and glowing parts and the placed doors and walls are detail brushes. An area
+  with only props has no air brush of its own; its props sit in the rooms around it. A group file cannot hold the
+  player start, so the report gives its position: place it there in the editor.
+
+The table is a plain list of N-Gage file names and Red Faction classes, given in full in the
+[reference](REFERENCE.md#red-faction-for-n-gage-levels).
+
 ### Convert many levels in a packfile
 
 1. In the packfile, select the levels and group files (tick **Levels** in the **File types** panel to list only them).
@@ -2442,6 +2677,9 @@ rescaled, coronas turned into lights, what to set by hand for ambient light and 
   missing; light and corona conversion follows REDUX and is an approximation. The packfile preview of a Red Faction II
   level uses only its group's texture packs.
 - The PlayStation 2 version's levels are not read.
+- Red Faction for N-Gage levels: doors and buttons do not move, no lights are made, the cutscene scripts do not run,
+  and untextured parts stay untextured. The object table's classes are the closest Red Faction ones, and some are
+  guesses. The scale (2.35) was measured, not read from the files.
 
 ## Troubleshooting and FAQ
 
@@ -2480,7 +2718,7 @@ name loaded later does not win. By default a level packfile cannot replace the g
 - It came from inside a packfile (from a library, for example). Cairn never writes back into a packfile that way. To
   change the file inside the packfile, open the packfile and use **Open in Cairn** on the entry (see
   [Edit a file and put it back](#edit-a-file-and-put-it-back)).
-- It is a static mesh (`.v3m`) or an exporter or PS2 mesh: these open read-only. Use **Save As…** or **Convert…**.
+- It is an exporter or PS2 mesh: these open read-only. Use **Convert…**.
 - It is a sound: sound tabs only play and convert.
 - It is a level or group file, a Red Faction II animation or a Red Faction II packfile group: these open read-only.
   Use **Convert to**, or extract.
@@ -2505,6 +2743,9 @@ What you copied still pastes inside Cairn; try again for other programs.
 
 **A sound does not play.** Check **Volume** on a sound tab and Windows' own volume. MP3 files play only in packfile
 previews. A damaged file says why in **Problems**; the other sounds still play.
+
+**An `.xm` says "The XM player (cairn-openmpt.dll) is missing from this installation".** The music player ships with
+Cairn; install Cairn again (the portable build carries it inside the program).
 
 **The preview differs from the game.** Previews follow the game's rules, but some things are approximations: texture
 format simulation, effect particles under spacewarps and blending. The game is the final check.
@@ -2596,6 +2837,9 @@ the level is built; a **detail** brush is drawn and collided with but not cut in
 
 **Cache pack (`.cache`).** Alpine Faction's own store of data it fetched or built, such as the map browser's level
 previews (`alpine_cache\map_thumbs.cache`). Cairn opens it read-only.
+
+**CFL archive (`.cfl`).** The X-Forge archive Red Faction for N-Gage keeps every asset in (`redfaction.cfl`). Cairn
+opens it read-only; its scenes are `.xff` files.
 
 **Clip (`.rfa`).** One character animation: a walk, a reload, a death. Tables spell clips `.mvf`. Red Faction II's
 animations are `.rfa` files too, in a version Red Faction cannot play; Cairn converts them.

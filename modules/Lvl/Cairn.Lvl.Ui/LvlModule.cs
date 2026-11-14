@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using Cairn.Assets;
 using Cairn.Lvl.Model;
+using Cairn.Lvl.Reading;
 using Cairn.Lvl.Ui.Documents;
 using Cairn.Lvl.Ui.Preview;
 using Cairn.Ui.Documents;
@@ -28,7 +29,7 @@ public sealed partial class LvlModule : ModuleBase, IAssetPreviewProvider, IAsse
     private readonly List<MenuContribution> _menus = [];
     private readonly List<ShortcutInfo> _shortcuts = [];
     private ModuleSettings? _store;
-    private LvlKind? _levelKind, _groupKind;
+    private LvlKind? _levelKind, _groupKind, _xffKind;
 
     public LvlModule()
     {
@@ -48,6 +49,12 @@ public sealed partial class LvlModule : ModuleBase, IAssetPreviewProvider, IAsse
     /// <summary>The group file kind (.rfg).</summary>
     public LvlKind GroupKind => _groupKind ??= new LvlKind(this, "lvl.group", "Group file", [".rfg"], "Red Faction group files (*.rfg)|*.rfg", "Red Faction editor group");
 
+    /// <summary>
+    /// The Red Faction for N-Gage level kind (.xff). Models and characters share the extension and belong to the meshes
+    /// module: the kind claims a scene only when its content is a level.
+    /// </summary>
+    public LvlKind XffKind => _xffKind ??= new LvlKind(this, "lvl.xff", "N-Gage level", [".xff"], "Red Faction for N-Gage scenes (*.xff)|*.xff", "Red Faction for N-Gage scene");
+
     /// <summary>The module's settings ("lvl." keys).</summary>
     public LvlSettings Settings { get; }
 
@@ -61,7 +68,7 @@ public sealed partial class LvlModule : ModuleBase, IAssetPreviewProvider, IAsse
     /// <summary>The open level and group documents.</summary>
     public IReadOnlyList<LvlDocument> OpenDocuments => _documents;
 
-    public override IReadOnlyList<IDocumentKind> DocumentKinds => [LevelKind, GroupKind];
+    public override IReadOnlyList<IDocumentKind> DocumentKinds => [LevelKind, GroupKind, XffKind];
     public override IReadOnlyList<MenuContribution> Menus => _menus;
     public override IReadOnlyList<ShortcutInfo> Shortcuts => _shortcuts;
     public override IReadOnlyList<HelpTopic> HelpTopics { get; } = [new HelpTopic("lvl.levels", "Levels and groups (.rfl, .rfg)", LvlHelp.Build)];
@@ -118,6 +125,34 @@ public sealed partial class LvlModule : ModuleBase, IAssetPreviewProvider, IAsse
     }
 
     /// <summary>
+    /// An <c>.xff</c> is previewed, and taken by the "Convert levels…" batch, only when it is a level (models and
+    /// characters are the meshes module's); other names go by their extension.
+    /// </summary>
+    public int Claim(string fileName, ReadOnlySpan<byte> data) => LvlKind.ClaimOf(fileName, data);
+
+    /// <summary>
+    /// How a Red Faction for N-Gage level is read: at the remembered scale, with the files it places (doors, walls)
+    /// and the scripts it names read through <paramref name="files"/> (its <c>.cfl</c> or folder). Any thread once made.
+    /// </summary>
+    internal XffLevelReadOptions XffReadOptions(Func<string, byte[]?>? files) => new() { Scale = Settings.XffScale, ReadFile = files };
+
+    /// <summary>Reads files beside a level: among <paramref name="siblings"/> (its packfile) first, then through <paramref name="resolver"/>. Any thread.</summary>
+    internal static Func<string, byte[]?>? FilesBeside(IAssetSiblings? siblings, AssetResolver? resolver)
+    {
+        if (siblings is null && resolver is null) return null;
+        return name =>
+        {
+            try
+            {
+                if (siblings?.Read(name) is { } own) return own;
+                return resolver?.Resolve(name) is { } location && Path.GetFileName(location.ResolvedName).Equals(Path.GetFileName(name), StringComparison.OrdinalIgnoreCase)
+                    ? location.ReadAllBytes() : null;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return null; }
+        };
+    }
+
+    /// <summary>
     /// Where a tab's level finds its textures: the document's resolver (its folder, the rest of its packfile for a work
     /// copy, the game data), with a Red Faction II level's .peg packs first (its own, then its install's shared ones). UI thread.
     /// </summary>
@@ -129,13 +164,26 @@ public sealed partial class LvlModule : ModuleBase, IAssetPreviewProvider, IAsse
         return LvlTexturePacks.ResolverFor(source, siblings is null ? doc.FilePath : null, siblings, under, Rf2InstallOf(doc)) ?? doc.Resolver;
     }
 
+    /// <summary>
+    /// What a tab's 3D view draws its level's textures with: <see cref="ResolverFor"/>, with a Red Faction for N-Gage
+    /// level's 16-bit textures made opaque where their alpha bit is never set (<see cref="LvlXffTextures"/>; its
+    /// conversions apply that fix themselves). UI thread.
+    /// </summary>
+    internal AssetResolver ViewResolverFor(LvlDocument doc, LvlSource source)
+    {
+        if (source.Level is not { IsXff: true }) return ResolverFor(doc, source);
+        var under = base.Shell.Assets.ResolverFor(doc.FilePath is { } path ? Path.GetDirectoryName(path) : null);
+        return LvlXffTextures.ResolverFor(source, AssetSiblings.For(base.Shell, doc.FilePath), under) ?? doc.Resolver;
+    }
+
     // ── diagnostic options ────────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Diagnostic runs: <c>--lvl-open name</c> opens a level or group file from the game data (or a path);
     /// <c>--lvl-geometry compiled|brushes</c>, <c>--lvl-hide class,class</c> (face classes: portal, detail, sky, invisible,
     /// holes, liquid, alpha, fullbright, scrolling, normal), <c>--lvl-lighting fullbright|ambient|shaded</c>,
-    /// <c>--lvl-markers on|off</c>, <c>--lvl-both-sides on</c>, <c>--lvl-camera yaw,pitch[,zoom]</c>,
+    /// <c>--lvl-markers on|off</c>, <c>--lvl-both-sides on</c>, <c>--lvl-edges over|only|off</c>, <c>--lvl-stats on</c>,
+    /// <c>--lvl-camera yaw,pitch[,zoom]</c>,
     /// <c>--lvl-fly x,y,z,yaw,pitch</c> or <c>--lvl-fly start</c> (fly camera at that eye, or the player's), <c>--lvl-pick fx,fy</c>
     /// (click at that fraction of the view) and <c>--lvl-build on</c> (build a preview above the size limit) apply to the
     /// first level tab once its preview is built; <c>--lvl-facts Section</c> then expands that group of the facts and
@@ -199,6 +247,9 @@ public sealed partial class LvlModule : ModuleBase, IAssetPreviewProvider, IAsse
             scene.Lighting = lighting.ToLowerInvariant() switch { "ambient" => LvlLighting.LevelAmbient, "shaded" => LvlLighting.Shaded, _ => LvlLighting.FullBright };
         if (options.TryGetValue("lvl-markers", out var markers)) scene.MarkerKinds = markers.Equals("off", StringComparison.OrdinalIgnoreCase) ? LvlMarkerKinds.None : LvlMarkerKinds.All;
         if (options.TryGetValue("lvl-both-sides", out var both)) scene.BothSides = !both.Equals("off", StringComparison.OrdinalIgnoreCase);
+        if (options.TryGetValue("lvl-edges", out var edges))
+            scene.Edges = edges.ToLowerInvariant() switch { "over" => LvlEdges.OverFaces, "only" => LvlEdges.Only, _ => LvlEdges.Off };
+        if (options.TryGetValue("lvl-stats", out var stats)) scene.ShowStatistics = !stats.Equals("off", StringComparison.OrdinalIgnoreCase);
         scene.UpdateLayout();
         if (options.TryGetValue("lvl-camera", out var camera) && Numbers(camera) is { Length: >= 2 } angles && angles.All(double.IsFinite))
         {
@@ -265,6 +316,13 @@ public sealed class LvlKind(LvlModule module, string id, string displayName, IRe
 
     public IDocument Open(string path) => Create(AtomicFile.ReadAllBytes(path, MaxLevelBytes), Path.GetFileName(path), Path.GetFullPath(path), null);
 
+    /// <summary>The <c>.xff</c> kind takes a scene only when it is a level; the others go by their extension.</summary>
+    public int Claim(string name, ReadOnlySpan<byte> data) => ClaimOf(name, data);
+
+    /// <summary>The content claim on <paramref name="name"/>: for an <c>.xff</c>, recognised when it is a level, else not ours.</summary>
+    internal static int ClaimOf(string name, ReadOnlySpan<byte> data) =>
+        !LvlSource.IsXffName(name) ? ContentClaims.ByName : LvlSource.IsXffLevel(data, name) ? ContentClaims.Recognised : ContentClaims.NotMine;
+
     public IDocument OpenBytes(byte[] bytes, string displayName, string originText) => Create(bytes, displayName, null, originText);
 
     /// <summary>A packfile entry of the game data: the document remembers the packfile.</summary>
@@ -293,7 +351,11 @@ internal static class LvlSignatures
     public static void Check(byte[] bytes, string name)
     {
         uint magic = bytes.Length >= 4 ? BitConverter.ToUInt32(bytes, 0) : 0;
-        if (LvlSource.IsGroupName(name))
+        if (LvlSource.IsXffName(name))
+        {
+            if (!Cairn.Formats.XForge.XffFile.LooksLikeXff(bytes)) throw new Cairn.Formats.AssetFormatException($"'{name}' is not a Red Faction for N-Gage scene (no X-Forge scene root).");
+        }
+        else if (LvlSource.IsGroupName(name))
         {
             if (magic != Reading.RfgReader.Magic) throw new Cairn.Formats.AssetFormatException($"'{name}' is not a Red Faction group file (no group file signature).");
         }

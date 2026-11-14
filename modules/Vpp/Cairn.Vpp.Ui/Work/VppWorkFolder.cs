@@ -60,11 +60,21 @@ public sealed class VppWorkFolder : IDisposable
     /// Extracts <paramref name="item"/> (off the UI thread) unless a copy already exists: an existing copy may hold
     /// the user's unsaved-into-the-packfile edits, so it is reused rather than overwritten.
     /// </summary>
-    public async Task<string> PrepareAsync(VppItem item)
+    /// <param name="item">The entry.</param>
+    /// <param name="package">The snapshot <paramref name="item"/> is in.</param>
+    public async Task<string> PrepareAsync(VppItem item, VppPackage package)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var tracked = _copies.Values.FirstOrDefault(c => c.Sources.Contains(item.Source))
-            ?? _copies.Values.FirstOrDefault(c => string.Equals(c.EntryName, item.Name, StringComparison.OrdinalIgnoreCase));
+        ArgumentNullException.ThrowIfNull(package);
+        // A copy is the entry's by its data source; by name only when none of the copy's sources is in the package any
+        // more (a save or an edit gave its entry a new one). A copy whose source another item still has is that item's:
+        // the other copy of a name an archive lists twice.
+        var tracked = _copies.Values.FirstOrDefault(c => c.Sources.Contains(item.Source));
+        if (tracked is null)
+        {
+            var current = package.Items.Select(i => i.Source).ToHashSet();
+            tracked = _copies.Values.FirstOrDefault(c => string.Equals(c.EntryName, item.Name, StringComparison.OrdinalIgnoreCase) && !c.Sources.Any(current.Contains));
+        }
         if (tracked is not null && File.Exists(tracked.Path)) return tracked.Path;
         VppWorkRoot.CreateFolder(System.IO.Path.GetDirectoryName(Root)!, System.IO.Path.GetFileName(Root));
         // never extract over a path another copy uses (it may hold that entry's edits): "name (2).ext" instead

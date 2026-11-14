@@ -152,6 +152,37 @@ public static class HelpDocuments
             + "their weights are 1/16 steps; when the same-named .v3d or .vcm is beside a .rfm or .rfc (the same packfile or "
             + "folder), Cairn converts that instead and says so. Material flag 0x8 (a texture with alpha) is not set; the "
             + "engine does not read material flags."));
+        Add(document, Heading2("Red Faction for N-Gage models and characters (.xff)"));
+        Add(document, Body(
+            "Red Faction for N-Gage's scenes are .xff files in its redfaction.cfl archive. Models (props, items, weapons, doors) "
+            + "and characters (enemies, players) open here, read-only, with their .pcx and .tga textures from the same archive "
+            + "or folder; levels open in the Levels module. Cairn tells them apart by what the file holds, not by its name. A "
+            + "character has one animation, a walk loop the game plays faster or slower with its speed: the tab plays it (it "
+            + "is the entry under This file in Preview clip), and no other clip is offered, as none fits its skeleton. The "
+            + "converted .v3c plays the <name>_walk.rfa beside it (under Beside this file); a .v3c whose skeleton no stock mesh "
+            + "has otherwise plays only a clip of its own packfile, else starts in the bind pose, as a stock clip with as many "
+            + "bones would scatter its parts."));
+        Add(document, Body(
+            "A model converts to .v3m, a character to .v3c and <name>_walk.rfa, both also to glTF and OBJ (Convert to, or "
+            + "Convert meshes and animations… in the archive; the archive is read only, so the files go next to it or into a "
+            + "folder). The Convert window's Red Faction for N-Gage section sets the scale, 2.35 Red Faction metres per N-Gage "
+            + "unit by default (measured from the game's sizes; the files do not say), from 0.01 to 100 as in the Levels "
+            + "module, and whether the textures the meshes name are written beside them (a .pcx as the .tga the mesh names, as "
+            + "Red Faction's tools take .tga). Both are remembered, and a "
+            + "conversion without the window uses them too."));
+        Add(document, Body(
+            "Positions are scaled and the front faces turned to Red Faction's side. A model is one submesh per mesh node; a "
+            + "character is one submesh with one bone per animated part, each part weighted fully to its bone (parts that do "
+            + "not move hang from an added bone 'root'), its bind pose the start of the loop. The loop becomes one looping "
+            + "version 8 clip, with keys at the game's interval (33 ms); a scene whose tracks declare a range needing more "
+            + "than 2,000 keys a bone converts without it, and the report says why. These are new characters: Red Faction's stock "
+            + "animations do not fit them. See-through materials become alpha-blended, additive ones additive, and the "
+            + "darkening blend alpha-blended; faces are single-sided. The baked vertex lighting is dropped; parts drawn only "
+            + "in vertex colours get solid colours from <name>_colours.tga, written beside the mesh. The bosses' nano shield "
+            + "(g_nanoshield), drawn only while the shield is up, is left out, as a .v3c cannot hide a part. Texture names over 31 "
+            + "characters are shortened, and 16-bit .tga files that declare an alpha bit no pixel sets are copied marked as "
+            + "opaque, as the N-Gage game draws them (the Levels module does the same). Collision shapes, helper points, lights, sprites and particles are "
+            + "not converted. The report (LEG100 in the tab) lists every change."));
         Add(document, Heading2("Red Faction II animations (.rfa version 9)"));
         Add(document, Body(
             "Red Faction II's clips are .rfa files of version 9, with shorter keys (no eases, no control points). They open "

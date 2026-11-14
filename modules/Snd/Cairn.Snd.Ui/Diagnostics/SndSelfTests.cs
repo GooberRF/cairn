@@ -17,6 +17,7 @@ internal static class SndSelfTests
     internal static IReadOnlyList<(string Name, byte[] Bytes, int Rate, int Channels, long Frames, bool Loops)> Samples()
     {
         var tone = SyntheticSounds.Sine(300, 37, 9000);
+        var xm = SyntheticSounds.Xm();
         return
         [
             ("shot.vse", SyntheticSounds.OneShotVse(400), 22050, 1, 400 * 28, false),
@@ -25,7 +26,101 @@ internal static class SndSelfTests
             ("music.vmu", SyntheticSounds.Music(2000), 44100, 2, 2000 * 28, true),
             ("tone.wav", SoundWriter.Wav16(tone, 1, 22050, new SoundLoop(1000, 5000, true, "test")), 22050, 1, tone.Length, true),
             ("tone.aif", SyntheticSounds.Aiff(tone, 1, 22050), 22050, 1, tone.Length, false),
+            // a module renders to stereo at 44.1 kHz; its length is the render's (the XM player ships with Cairn)
+            .. XmModule.IsAvailable ? new[] { ("song.xm", xm, XmModule.SampleRate, 2, XmModule.Render(xm, "song.xm").Samples.LongLength / 2, false) } : [],
         ];
+    }
+
+    /// <summary>
+    /// A FastTracker 2 module opens read-only with its facts and a non-silent render of one pass, offers WAV and Ogg
+    /// (never .xm), converts from a tab and from a packfile batch, and a damaged one is refused cleanly.
+    /// </summary>
+    [SelfTest("snd.xm")]
+    public static async Task Xm(SelfTestContext ctx)
+    {
+        if (Module(ctx) is not { } module) { ctx.Skip("no sounds module in this build"); return; }
+        if (!ctx.Check(XmModule.IsAvailable, $"the XM player loads ({XmModule.Version ?? XmModule.MissingMessage})")) return;
+        string folder = TempFolder("xm");
+        try
+        {
+            byte[] bytes = SyntheticSounds.Xm("Self-test song");
+            string path = Path.Combine(folder, "theme.xm");
+            File.WriteAllBytes(path, bytes);
+            if (!ctx.Check(ctx.Shell.OpenFile(path) && ctx.Shell.ActiveDocument is SndDocument, "theme.xm opens in a sound tab")) return;
+            var doc = (SndDocument)ctx.Shell.ActiveDocument!;
+            await ctx.SettleAsync();
+            var view = (SndDocumentView)doc.View;
+            // the Module rows come after the Sound rows ("Format" is in both)
+            string Detail(string label) => view.DetailRows.LastOrDefault(r => r.Label == label).Value ?? "";
+            ctx.Check(view.DetailRows.FirstOrDefault(r => r.Label == "Format").Value == "FastTracker 2 module" && Detail("Format") == "FastTracker 2 v1.04" && Detail("Title") == "Self-test song" && Detail("Tracker") == "Cairn tests",
+                $"facts: format '{Detail("Format")}', title '{Detail("Title")}', tracker '{Detail("Tracker")}'");
+            ctx.Check(Detail("Module channels") == "2" && Detail("Patterns") == "1" && Detail("Orders") == "1" && Detail("Instruments") == "1"
+                && Detail("Instrument samples") == "1" && Detail("Song length") == "0:01",
+                $"facts: {Detail("Module channels")} channels, {Detail("Patterns")} pattern, {Detail("Orders")} order, {Detail("Instruments")} instrument, {Detail("Instrument samples")} sample, length {Detail("Song length")}");
+            ctx.Check(Detail("Rendered by").StartsWith("libopenmpt 0.8.9", StringComparison.Ordinal), $"rendered by '{Detail("Rendered by")}'");
+            var sound = doc.Sound;
+            double song = SyntheticSounds.XmLength.TotalSeconds;
+            int peak = sound.Samples.Length == 0 ? 0 : sound.Samples.Max(s => Math.Abs((int)s));
+            ctx.Check(sound.SampleRate == 44100 && sound.Channels == 2 && sound.Duration.TotalSeconds >= song - 0.01 && sound.Duration.TotalSeconds <= song + 1 && peak > 2000,
+                $"one pass rendered: {sound.RateAndChannels}, {sound.Duration.TotalSeconds:0.000} s (the song is {song:0.000} s), peak {peak}");
+            ctx.Check(doc.IsReadOnly && !doc.IsDirty && sound.Loop is null && sound.Problems.Count == 0, "read-only, no loop, no problems");
+            ctx.Check(doc.StatusItems.FirstOrDefault()?.Text == "XM module · 44,100 Hz stereo", $"status bar: {doc.StatusItems.FirstOrDefault()?.Text}");
+            ctx.Check(view.Wave.ActualWidth > 0 && doc.Peaks is not null, "the waveform is laid out");
+            doc.Play();
+            await Task.Delay(200);
+            ctx.Check(doc.IsPlaying && doc.Position > 0, $"plays (silently in a diagnostic run): {doc.Position} frames");
+            doc.Stop();
+
+            // never written as .xm: Convert to… offers WAV and Ogg only, and Save As refuses .xm
+            var targets = module.TargetsFor("theme.xm").Select(t => t.Extension).ToList();
+            ctx.Check(targets.SequenceEqual([".wav", ".ogg"]) && !module.CanConvert("theme.xm", ".xm"), $"Convert to… offers {string.Join(", ", targets)}");
+            string asXm = Path.Combine(folder, "copy.xm");
+            try { doc.SaveTo(asXm); ctx.Check(false, "Save As .xm is refused"); }
+            catch (InvalidOperationException) { ctx.Check(!File.Exists(asXm), "Save As .xm is refused (modules are never written)"); }
+
+            // from the tab: WAV (the render exactly) and Ogg Vorbis
+            var wav = await module.ConvertDocumentAsync(doc, new SndConvertChoice(SoundTarget.Folder, folder, new SoundConvertOptions(), Replace: false));
+            if (ctx.Check(wav is { Count: 1 } && Path.GetFileName(wav[0]) == "theme.wav", $"converted to {(wav is { Count: 1 } ? Path.GetFileName(wav[0]) : "nothing")}"))
+            {
+                var back = SoundDecoder.Decode(File.ReadAllBytes(wav![0]), "theme.wav");
+                ctx.Check(back.SampleRate == 44100 && back.Channels == 2 && back.Samples.AsSpan().SequenceEqual(sound.Samples), $"the WAV holds the render exactly ({back.FrameCount:N0} frames)");
+            }
+            var ogg = await module.ConvertDocumentAsync(doc, new SndConvertChoice(SoundTarget.Folder, folder, new SoundConvertOptions { Format = SoundOutputFormat.Ogg }, Replace: false));
+            if (ctx.Check(ogg is { Count: 1 } && Path.GetFileName(ogg[0]) == "theme.ogg", $"converted to {(ogg is { Count: 1 } ? Path.GetFileName(ogg[0]) : "nothing")}"))
+            {
+                var back = SoundDecoder.Decode(File.ReadAllBytes(ogg![0]), "theme.ogg");
+                ctx.Check(back.Codec == "Vorbis" && back.Channels == 2 && back.FrameCount == sound.FrameCount && Snr(sound.Samples, back.Samples) > 12,
+                    $"the Ogg decodes to {back.RateAndChannels}, {back.FrameCount:N0} frames, SNR {Snr(sound.Samples, back.Samples):0.0} dB");
+            }
+            ctx.Check(SoundConversion.Notes(sound, new SoundConvertOptions()).Any(n => n.Contains("recording of it", StringComparison.Ordinal)), "the report says the WAV is a recording of the module");
+            ctx.Shell.Close(doc);
+
+            // a packfile batch ("Convert sounds…") takes .xm entries, and a damaged one is listed, not fatal
+            ctx.Check(module.CanConvert("music.xm"), "Convert sounds… takes .xm entries");
+            var added = new List<(string Name, byte[] Bytes)>();
+            var request = new Cairn.Ui.Modules.ArchiveBatchRequest("music.vpp", null,
+                [new("theme.xm", bytes.Length, () => bytes), new("broken.xm", 40, () => bytes[..40])])
+            {
+                Interactive = false,
+                Options = new SndConvertChoice(SoundTarget.IntoPackfile, null, new SoundConvertOptions(), false),
+                AddFiles = (_, files, _) => { added.AddRange(files); return [.. files.Select(f => f.Name)]; },
+            };
+            string? summary = await module.ConvertAsync(request);
+            ctx.Check(added.Count == 1 && added[0].Name == "theme.wav" && SoundDecoder.Decode(added[0].Bytes, "theme.wav").Samples.AsSpan().SequenceEqual(sound.Samples),
+                $"into the packfile: {string.Join(", ", added.Select(a => a.Name))} ({summary})");
+            ctx.Check(module.LastBatch?.Any(r => r.SourceName == "broken.xm" && !r.Succeeded && !r.Skipped) == true, "broken.xm is listed as not converted; the batch goes on");
+
+            try
+            {
+                module.Kind.OpenBytes(bytes[..60], "cut.xm", "cut.xm (self-test)");
+                ctx.Check(false, "a module cut inside its header is refused");
+            }
+            catch (Cairn.Formats.AssetFormatException ex)
+            {
+                ctx.Check(ex.Message.Contains("cut off", StringComparison.Ordinal), $"a module cut inside its header is refused: {ex.Message}");
+            }
+        }
+        finally { TryDelete(folder); }
     }
 
     private static string TempFolder(string what)

@@ -1,0 +1,71 @@
+// Red Faction for N-Gage (.xff) objects -> Red Faction classes, for converting N-Gage levels.
+//
+// One row per scene file a level places (a 1006 prefab), by its file name (case does not matter):
+//   "kind":   "entity" (entity.tbl), "item" (items.tbl), "clutter" (clutter.tbl) or "playerStart";
+//   "class":  the exact Red Faction class name (not used for "playerStart");
+//   "marker": entities only: the enemy type the scene's own marker gives (32xx). A level's 42xx spawn point
+//             spawns the entity whose marker is the spawn's type minus 1000;
+//   "count":  items only: what the item gives (items.tbl's $Count).
+// Rows under "leftOut" are scenes with no Red Faction counterpart: they are not converted and the report lists them.
+// To change a mapping, change its "class" (for example the barrel's "Oil Drum" to "Ultor Barrel Yellow").
+{
+  "objects": {
+    "enemy_ug.xff":            { "kind": "entity", "class": "guard1",            "marker": 3202 },
+    "enemy_esg.xff":           { "kind": "entity", "class": "elite",             "marker": 3201 },
+    "enemy_rtg.xff":           { "kind": "entity", "class": "riot_guard",        "marker": 3206 },
+    "enemy_scmdr.xff":         { "kind": "entity", "class": "guard2",            "marker": 3211 },
+    "enemy_smbot.xff":         { "kind": "entity", "class": "Spike",             "marker": 3205 },
+    "enemy_mrchvy.xff":        { "kind": "entity", "class": "merc_heavy",        "marker": 3215 },
+    "enemy_mtnt.xff":          { "kind": "entity", "class": "mutant1",           "marker": 3220 },
+    "enemy_trrt.xff":          { "kind": "entity", "class": "Auto Turret",       "marker": 3222 },
+    "weapon_sntrygn.xff":      { "kind": "entity", "class": "Stationary Turret", "marker": 3223 },
+    "enemy_scrtr.xff":         { "kind": "entity", "class": "Sea_Creature",      "marker": 3209 },
+    "enemy_sub.xff":           { "kind": "entity", "class": "sub",               "marker": 3224 },
+    "enemy_mnr.xff":           { "kind": "entity", "class": "miner1",            "marker": 3207 },
+    "enemy_orn.xff":           { "kind": "entity", "class": "miner1",            "marker": 3213 },
+    "enemy_mdc.xff":           { "kind": "entity", "class": "medic1",            "marker": 3219 },
+    "enemy_hendrix.xff":       { "kind": "entity", "class": "comp_tech",         "marker": 3221 },
+    "enemy_gryphon.xff":       { "kind": "entity", "class": "admin_male",        "marker": 3212 },
+    "enemy_eos.xff":           { "kind": "entity", "class": "eos",               "marker": 3210 },
+    "enemy_capek.xff":         { "kind": "entity", "class": "Capek",             "marker": 3214 },
+    "enemy_masako.xff":        { "kind": "entity", "class": "masako",            "marker": 3216 },
+    "enemy.xff":               { "kind": "entity", "class": "env_guard" },
+
+    "item_healthpack.xff":     { "kind": "item", "class": "Medical Kit",          "count": 25 },
+    "item_armor.xff":          { "kind": "item", "class": "Suit Repair",          "count": 25 },
+    "item_envrost.xff":        { "kind": "item", "class": "Miner Envirosuit",     "count": 1 },
+    "ammo_pstl.xff":           { "kind": "item", "class": "12mm_ammo",            "count": 32 },
+    "ammo_ssltrfl.xff":        { "kind": "item", "class": "5.56mm_ammo",          "count": 42 },
+    "ammo_hvy.xff":            { "kind": "item", "class": "7.62mm_ammo",          "count": 99 },
+    "ammo_snprrfl.xff":        { "kind": "item", "class": ".50cal_ammo",          "count": 6 },
+    "ammo_rcktlnchr.xff":      { "kind": "item", "class": "rocket_launcher_ammo", "count": 6 },
+    "ammo_rldrvr.xff":         { "kind": "item", "class": "railgun_bolts",        "count": 8 },
+    "ammo_flmthrwr.xff":       { "kind": "item", "class": "Napalm",               "count": 100 },
+    "ammo_cntrlbtn.xff":       { "kind": "item", "class": "riot_stick_battery",   "count": 100 },
+    "weapon_ultrpstl.xff":     { "kind": "item", "class": "Handgun",              "count": 16 },
+    "weapon_smg.xff":          { "kind": "item", "class": "Machine Pistol",       "count": 32 },
+    "weapon_assltrfl.xff":     { "kind": "item", "class": "Assault Rifle",        "count": 42 },
+    "weapon_shtgn.xff":        { "kind": "item", "class": "Shotgun",              "count": 8 },
+    "weapon_snprrfl.xff":      { "kind": "item", "class": "Sniper Rifle",         "count": 6 },
+    "weapon_rcktlnchr.xff":    { "kind": "item", "class": "rocket launcher",      "count": 6 },
+    "weapon_hvymchngn.xff":    { "kind": "item", "class": "heavy machine gun",    "count": 99 },
+    "weapon_rldrvr.xff":       { "kind": "item", "class": "rail gun",             "count": 8 },
+    "weapon_rtshld.xff":       { "kind": "item", "class": "riot shield",          "count": 1 },
+    "weapon_fsnrcktlnchr.xff": { "kind": "item", "class": "shoulder cannon",      "count": 1 },
+    "weapon_rmtchrg.xff":      { "kind": "item", "class": "Remote Charge",        "count": 1 },
+    "weapon_grnd.xff":         { "kind": "item", "class": "grenades",             "count": 3 },
+
+    "exploding_barrel.xff":    { "kind": "clutter", "class": "Oil Drum" },
+    "player.xff":              { "kind": "playerStart" },
+    "vehicle_atv.xff":         { "kind": "entity", "class": "Jeep01" },
+    "vehicle_sub.xff":         { "kind": "entity", "class": "sub" }
+  },
+  "leftOut": {
+    "enemy_lrbt.xff":        "a yellow robot with no Red Faction counterpart",
+    "enemy_dopefish.xff":    "the Dopefish easter egg, which Red Faction does not have",
+    "enemy_trpd.xff":        "a torpedo (a projectile, not a placed object)",
+    "item_ammo.xff":         "a generic ammunition box with no Red Faction counterpart",
+    "player_client.xff":     "a multiplayer player model (Red Faction places none)",
+    "player_server.xff":     "a multiplayer player model (Red Faction places none)"
+  }
+}

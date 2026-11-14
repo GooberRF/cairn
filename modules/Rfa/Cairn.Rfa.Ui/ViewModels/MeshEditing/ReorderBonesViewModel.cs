@@ -228,7 +228,7 @@ public sealed class ReorderBonesViewModel : ObservableObject
         Error = null;
         if (_document.IsReadOnly)
         {
-            Error = "Static meshes open read-only.";
+            Error = MeshStructureViewModel.ReadOnlyReason(_document);
             return false;
         }
         if (!HasChanges) return true;

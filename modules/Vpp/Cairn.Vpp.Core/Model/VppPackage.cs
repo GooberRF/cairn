@@ -98,7 +98,7 @@ public sealed class VppPackage
             for (int i = 0; i < items.Length && same; i++) same = ReferenceEquals(items[i], Items[i]) || items[i] == Items[i];
             if (same) return this;
         }
-        return new VppPackage(Path, items, Stamp) { OriginalCount = OriginalCount, HeaderArchiveSize = HeaderArchiveSize, Rf2 = Rf2, Cache = Cache };
+        return new VppPackage(Path, items, Stamp) { OriginalCount = OriginalCount, HeaderArchiveSize = HeaderArchiveSize, Rf2 = Rf2, Cache = Cache, Cfl = Cfl };
     }
 
     /// <summary>The size a packfile with these entry sizes occupies on disk.</summary>
@@ -162,8 +162,14 @@ public sealed class VppPackage
     /// </summary>
     public Alpine.CachePackInfo? Cache { get; init; }
 
-    /// <summary>True when the package may not be edited or saved (a Red Faction II packfile group or an Alpine Faction cache pack).</summary>
-    public bool IsReadOnly => Rf2 is not null || Cache is not null;
+    /// <summary>
+    /// For an X-Forge CFL archive (<c>.cfl</c>, Red Faction for N-Gage): what the archive says. Such a package is read
+    /// only (<see cref="IsReadOnly"/>); null for a packfile.
+    /// </summary>
+    public XForge.CflArchiveInfo? Cfl { get; init; }
+
+    /// <summary>True when the package may not be edited or saved (a Red Faction II packfile group, an Alpine Faction cache pack or a CFL archive).</summary>
+    public bool IsReadOnly => Rf2 is not null || Cache is not null || Cfl is not null;
 
     /// <summary>
     /// True when the entry list is exactly the packfile's on disk (same entries, names, sizes and order),

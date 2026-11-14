@@ -16,6 +16,17 @@ public enum LvlLighting
     Shaded,
 }
 
+/// <summary>Whether the 3D preview draws the faces' edges.</summary>
+public enum LvlEdges
+{
+    /// <summary>The faces only.</summary>
+    Off,
+    /// <summary>The faces with their edges over them.</summary>
+    OverFaces,
+    /// <summary>The edges only (a wireframe).</summary>
+    Only,
+}
+
 /// <summary>Where the Convert window writes.</summary>
 public enum LvlOutputPlace
 {
@@ -78,6 +89,20 @@ public sealed class LvlSettings(Func<ModuleSettings?> store)
         set => store()?.Set("bothSides", value);
     }
 
+    /// <summary>Whether the preview draws the faces' edges.</summary>
+    public LvlEdges Edges
+    {
+        get => store()?.Get("edges", LvlEdges.Off) is { } e && Enum.IsDefined(e) ? e : LvlEdges.Off;
+        set => store()?.Set("edges", value);
+    }
+
+    /// <summary>True to show the counts (faces, triangles, brushes…) in a corner of the preview.</summary>
+    public bool ShowStatistics
+    {
+        get => store()?.Get("statistics", false) ?? false;
+        set => store()?.Set("statistics", value);
+    }
+
     /// <summary>The Convert window's last target.</summary>
     public LvlConvertTarget Target
     {
@@ -113,6 +138,12 @@ public sealed class LvlSettings(Func<ModuleSettings?> store)
             Target = value.Target;
         }
     }
+
+    /// <summary>
+    /// Red Faction metres per Red Faction for N-Gage unit: what N-Gage levels are previewed and (unless the Convert
+    /// window says otherwise) converted at. The Convert window's choice, remembered with its other options.
+    /// </summary>
+    public float XffScale => Options.Xff.Scale;
 
     /// <summary>What meshes, glTF and OBJ files last became in a group file (brush kind, level of detail, objects).</summary>
     public RfgImportOptions RfgImport
@@ -150,6 +181,7 @@ public sealed class LvlSettings(Func<ModuleSettings?> store)
         public bool ObjMetadata { get; set; } = true;
         public LvlV3mGrouping V3mGrouping { get; set; }
         public Rf2Dto? Rf2 { get; set; }
+        public XffDto? Xff { get; set; }
 
         public static LvlOptionsDto From(LvlConvertOptions o) => new()
         {
@@ -165,6 +197,7 @@ public sealed class LvlSettings(Func<ModuleSettings?> store)
             ObjMetadata = o.ObjMetadata,
             V3mGrouping = o.V3mGrouping,
             Rf2 = Rf2Dto.From(o.Rf2),
+            Xff = new XffDto { Scale = o.Xff.Scale, CopyTextures = o.Xff.CopyTextures },
         };
 
         public LvlConvertOptions ToOptions(LvlConvertTarget target) => new()
@@ -182,7 +215,18 @@ public sealed class LvlSettings(Func<ModuleSettings?> store)
             ObjMetadata = ObjMetadata,
             V3mGrouping = Enum.IsDefined(V3mGrouping) ? V3mGrouping : LvlV3mGrouping.PerBrush,
             Rf2 = Rf2?.ToOptions() ?? new LvlRf2Options(),
+            Xff = Xff?.ToOptions() ?? new LvlXffOptions(),
         };
+    }
+
+    /// <summary>The persisted shape of <see cref="LvlXffOptions"/>.</summary>
+    public sealed class XffDto
+    {
+        public float Scale { get; set; } = Cairn.Formats.XForge.XffSpace.RfScale;
+        public bool CopyTextures { get; set; } = true;
+
+        /// <summary>The options; a stored scale out of range (damaged or hand-edited) is not remembered, so the default is used, as the Meshes module does.</summary>
+        public LvlXffOptions ToOptions() => new() { Scale = Cairn.Formats.XForge.XffSpace.IsValidScale(Scale) ? Scale : Cairn.Formats.XForge.XffSpace.RfScale, CopyTextures = CopyTextures };
     }
 
     /// <summary>The persisted shape of <see cref="LvlRf2Options"/> (its plain values; the packs and clutter table come from the source).</summary>

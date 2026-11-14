@@ -9,6 +9,8 @@ public enum ImageContainer
     Vbm,
     Png,
     Jpeg,
+    /// <summary>ZSoft PCX: read, never written.</summary>
+    Pcx,
 }
 
 /// <summary>

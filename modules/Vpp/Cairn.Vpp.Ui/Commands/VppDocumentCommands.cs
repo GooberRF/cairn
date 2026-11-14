@@ -415,11 +415,14 @@ public sealed class VppDocumentCommands(VppDocument doc)
         // A Red Faction II group may list a file it does not have (skipped and reported), and one file twice under names
         // that differ only in case (one file on Windows: written once, and the status says so).
         var missing = new List<string>();
+        var unreadable = new List<string>();
         var sameData = new Dictionary<string, string>(StringComparer.Ordinal);
         int writtenOnce = 0;
         foreach (var i in items)
         {
             if (i.Source is MissingFileSource) { missing.Add(i.Name); continue; }
+            // a CFL entry with a compression Cairn does not read, or one that is corrupt: skipped and reported
+            if (i.Source is XForge.CflEntrySource { Problem: not null }) { unreadable.Add(i.Name); continue; }
             string file = VppWorkFolder.SafeFileName(i.Name);
             if (DataKey(i.Source) is { } key)
             {
@@ -511,6 +514,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
         if (skipped > 0) renamedNote += $"; {skipped:N0} skipped";
         if (writtenOnce > 0) renamedNote += $"; {writtenOnce:N0} listed twice under names that differ only in case, written once";
         if (missing.Count > 0) renamedNote += $"; {missing.Count:N0} not on disk ({string.Join(", ", missing.Take(3))}{(missing.Count > 3 ? ", ..." : "")})";
+        if (unreadable.Count > 0) renamedNote += $"; {unreadable.Count:N0} that cannot be read skipped ({string.Join(", ", unreadable.Take(3))}{(unreadable.Count > 3 ? ", ..." : "")})";
         if (!quiet || renamedNote.Length > 0) doc.ShowStatus((written.Count == 1 ? $"Extracted {Path.GetFileName(written[0])} to {folder}" : $"Extracted {written.Count:N0} files to {folder}") + renamedNote);
         return written;
     }
@@ -520,6 +524,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     {
         FileSource f => "file|" + Path.GetFullPath(f.FilePath).ToUpperInvariant(),
         ArchiveSource a => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"archive|{Path.GetFullPath(a.ArchivePath).ToUpperInvariant()}|{a.Offset}|{a.Length}"),
+        XForge.CflEntrySource c => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"cfl|{Path.GetFullPath(c.ArchivePath).ToUpperInvariant()}|{c.Entry.Offset}"),
         _ => null,
     };
 
@@ -555,7 +560,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
         if (!doc.EnsureReadable(items)) return;
         foreach (var item in items)
         {
-            var path = await doc.Work.PrepareAsync(item);
+            var path = await doc.Work.PrepareAsync(item, doc.Current);
             if (doc.Shell.IsDiagnosticRun) { doc.ShowStatus($"Work copy ready: {path}"); continue; }
             if (VppShellLaunch.Open(path, OwnerHandle) is { } error) Dialogs.ShowError($"Could not open {item.Name}", error);
         }
@@ -564,7 +569,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     public async Task OpenWithAsync()
     {
         if (!HasSingleSelection || !doc.EnsureReadable(Selected)) return;
-        var path = await doc.Work.PrepareAsync(Selected[0]);
+        var path = await doc.Work.PrepareAsync(Selected[0], doc.Current);
         if (doc.Shell.IsDiagnosticRun) { doc.ShowStatus($"Work copy ready: {path}"); return; }
         if (VppShellLaunch.OpenWith(path, OwnerHandle) is { } error) Dialogs.ShowError($"Could not open {Selected[0].Name}", error);
     }
@@ -576,7 +581,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     /// True when a Cairn module opens <paramref name="item"/>'s type; in a Red Faction II group not a file missing on disk.
     /// </summary>
     private bool OpensInCairn(VppItem item) => doc.Module.CairnOpens(item.Name)
-        && !(doc.IsReadOnly && item.Source is MissingFileSource);
+        && !(doc.IsReadOnly && item.Source is MissingFileSource or XForge.CflEntrySource { Problem: not null });
 
     /// <summary>Opens the selected entry's work copy in a Cairn tab; saving that tab offers to update the packfile.</summary>
     public Task OpenInCairnAsync() => CanOpenInCairn ? OpenInCairnAsync(Selected[0]) : Task.CompletedTask;
@@ -585,7 +590,7 @@ public sealed class VppDocumentCommands(VppDocument doc)
     public async Task OpenInCairnAsync(VppItem item)
     {
         if (doc.IsBusy || !OpensInCairn(item) || !doc.EnsureReadable([item])) return;
-        var path = await doc.Work.PrepareAsync(item);
+        var path = await doc.Work.PrepareAsync(item, doc.Current);
         doc.Shell.OpenFile(path);
     }
 

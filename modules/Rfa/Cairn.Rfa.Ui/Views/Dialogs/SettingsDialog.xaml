@@ -143,6 +143,10 @@
                          ToolTip="Draw the mesh in one neutral colour" AutomationProperties.Name="Flat mesh">
               <AccessText Text="_Flat" />
             </RadioButton>
+            <RadioButton GroupName="MeshMode" Margin="0,0,14,0" IsChecked="{Binding Display.IsMeshWireframe, Mode=TwoWay}"
+                         ToolTip="Draw the edges of the mesh's triangles only" AutomationProperties.Name="Wireframe mesh">
+              <AccessText Text="Wireframe" />
+            </RadioButton>
             <RadioButton GroupName="MeshMode" IsChecked="{Binding Display.IsMeshOff, Mode=TwoWay}"
                          ToolTip="Do not draw the mesh" AutomationProperties.Name="Hide the mesh">
               <AccessText Text="_Hidden" />
@@ -166,6 +170,12 @@
             </CheckBox>
             <CheckBox Margin="0,0,0,6" IsChecked="{Binding Display.ShowRootPath, Mode=TwoWay}" ToolTip="The root bone's path over the clip" AutomationProperties.Name="Root motion path">
               <AccessText Text="Root _motion path" />
+            </CheckBox>
+            <CheckBox Margin="0,0,0,6" IsChecked="{Binding Display.ShowEdges, Mode=TwoWay}" ToolTip="The triangles' edges over a textured or flat mesh" AutomationProperties.Name="Edges on the mesh">
+              <AccessText Text="Edges on the mesh" />
+            </CheckBox>
+            <CheckBox Margin="0,0,0,6" IsChecked="{Binding Display.ShowStatistics, Mode=TwoWay}" ToolTip="Vertex, triangle, bone and other counts in a corner of the viewport" AutomationProperties.Name="Statistics">
+              <AccessText Text="Statistics" />
             </CheckBox>
             <CheckBox Margin="0,0,0,6" IsChecked="{Binding Display.FullBright, Mode=TwoWay}" ToolTip="Unlit textures" AutomationProperties.Name="Full bright">
               <AccessText Text="Full bright" />

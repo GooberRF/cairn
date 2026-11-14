@@ -14,7 +14,7 @@ namespace Cairn.Rfa.Ui.ViewModels;
 public sealed class LegacyMeshTools(RfaWorkspace workspace)
 {
     private const string TargetKey = "legacyConvert.target", FolderKey = "legacyConvert.folder", ReplaceKey = "legacyConvert.replace",
-        Rf2TexturesKey = "legacyConvert.rf2Textures";
+        Rf2TexturesKey = "legacyConvert.rf2Textures", XffScaleKey = "legacyConvert.xffScale", XffTexturesKey = "legacyConvert.xffTextures";
 
     private IShellContext? Host => workspace.Host;
 
@@ -27,6 +27,9 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
         Settings.Get<bool>(ReplaceKey))
     {
         Rf2Textures = Enum.TryParse<Rf2TextureMode>(Settings.Get<string>(Rf2TexturesKey), out var mode) ? mode : Rf2TextureMode.Translate,
+        XffScale = float.TryParse(Settings.Get<string>(XffScaleKey), NumberStyles.Float, CultureInfo.InvariantCulture, out float scale) && Cairn.Formats.XForge.XffSpace.IsValidScale(scale)
+            ? scale : Cairn.Formats.XForge.XffSpace.RfScale,
+        XffWriteTextures = Settings.Get(XffTexturesKey, true),
     };
 
     private void Remember(LegacyConvertChoice choice)
@@ -35,6 +38,8 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
         Settings.Set(TargetKey, choice.Target.ToString());
         Settings.Set(ReplaceKey, choice.Replace);
         Settings.Set(Rf2TexturesKey, choice.Rf2Textures.ToString());
+        Settings.Set(XffScaleKey, choice.XffScale.ToString("R", CultureInfo.InvariantCulture));
+        Settings.Set(XffTexturesKey, choice.XffWriteTextures);
         if (choice.Target == LegacyConvertTarget.Folder && choice.Folder is { } folder) Settings.Set(FolderKey, folder);
     }
 
@@ -87,19 +92,16 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
 
     /// <summary>
     /// The conversion of a tab's mesh (its twin's for a PS2 mesh when one is beside it; a Red Faction II mesh's texture
-    /// names translated, or kept with its textures from the .peg packs beside it, as <paramref name="rf2Textures"/> says).
+    /// names translated, or kept with its textures from the .peg packs beside it; an N-Gage scene at the chosen scale, with
+    /// its textures from beside it or not), as <paramref name="choice"/> says (the last choice when null).
     /// </summary>
     /// <exception cref="AssetFormatException">It cannot be converted; the message says why.</exception>
-    public LegacyMeshConversion Convert(MeshDocumentViewModel doc, Rf2TextureMode rf2Textures = Rf2TextureMode.Translate)
+    public LegacyMeshConversion Convert(MeshDocumentViewModel doc, LegacyConvertChoice? choice = null)
     {
         ArgumentNullException.ThrowIfNull(doc);
         if (doc.Legacy is not { } legacy) throw new AssetFormatException($"{doc.DisplayName} is not an exporter or PS2 mesh.");
-        var options = new LegacyConvertOptions
-        {
-            Rf2Textures = rf2Textures,
-            // read only for what needs pixels: kept textures, or a character's atlas
-            TexturePacks = LegacyMeshTextures.PacksForTab(legacy, doc.DisplayName, doc.FilePath, doc.FilePath is null ? null : AssetSiblings.For(Host, doc.FilePath)),
-        };
+        // read only for what needs pixels: kept textures, or a character's atlas
+        var options = (choice ?? Defaults).Options(LegacyMeshTextures.PacksForTab(legacy, doc.DisplayName, doc.FilePath, doc.FilePath is null ? null : AssetSiblings.For(Host, doc.FilePath)));
         return LegacyMeshSupport.Convert(legacy.Bytes, doc.DisplayName, SiblingReader(doc), options);
     }
 
@@ -115,9 +117,10 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
         ArgumentNullException.ThrowIfNull(doc);
         LegacyMeshConversion conversion;
         bool rf2 = doc.Legacy?.Mesh?.IsRedFactionII == true;
+        var xff = doc.Legacy?.Mesh?.Xff;
         try
         {
-            conversion = Convert(doc, choice?.Rf2Textures ?? Defaults.Rf2Textures);
+            conversion = Convert(doc, choice ?? Defaults);
         }
         catch (AssetFormatException ex)
         {
@@ -133,10 +136,11 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
             IReadOnlyList<string> translated = conversion.Report, kept = conversion.Report;
             if (rf2)
             {
-                var other = Convert(doc, defaults.Rf2Textures == Rf2TextureMode.Translate ? Rf2TextureMode.KeepOriginals : Rf2TextureMode.Translate);
+                var other = Convert(doc, defaults with { Rf2Textures = defaults.Rf2Textures == Rf2TextureMode.Translate ? Rf2TextureMode.KeepOriginals : Rf2TextureMode.Translate });
                 (translated, kept) = defaults.Rf2Textures == Rf2TextureMode.Translate ? (conversion.Report, other.Report) : (other.Report, conversion.Report);
             }
-            var item = new LegacyConvertItem(doc.DisplayName, conversion.OutputName, translated, IsRedFactionII: rf2, KeepTexturesReport: rf2 ? kept : null);
+            var item = new LegacyConvertItem(doc.DisplayName, conversion.OutputName, translated, IsRedFactionII: rf2, KeepTexturesReport: rf2 ? kept : null,
+                IsXff: xff is not null, ClipName: conversion.Clip?.OutputName);
             var window = new LegacyMeshConvertWindow(workspace.Dialogs, [item], packfile, nextTo, defaults, NoNextToReason(SourceFolder(doc)))
             {
                 Owner = Host.MainWindow,
@@ -144,9 +148,9 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
             if (window.ShowDialog() != true || window.Result is not { } chosen) return Task.FromResult<IReadOnlyList<string>?>(null);
             Remember(chosen);
             choice = chosen;
-            if (rf2 && chosen.Rf2Textures != defaults.Rf2Textures)
+            if ((rf2 && chosen.Rf2Textures != defaults.Rf2Textures) || (xff is not null && (chosen.XffScale != defaults.XffScale || chosen.XffWriteTextures != defaults.XffWriteTextures)))
             {
-                try { conversion = Convert(doc, chosen.Rf2Textures); }
+                try { conversion = Convert(doc, chosen); }
                 catch (AssetFormatException ex)
                 {
                     workspace.Dialogs.ShowError($"Could not convert {doc.DisplayName}", ex.Message);
@@ -264,7 +268,9 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
     internal static IReadOnlyList<string> WriteFiles(string folder, IReadOnlyList<LegacyMeshConversion> conversions, bool replace, out List<string> errors,
         IReadOnlyList<Rf2ClipConversion>? clips = null, IReadOnlyCollection<string>? protectedPaths = null)
     {
-        var meshes = WriteMeshes(folder, [.. conversions.Select(c => (c.OutputName, c.Bytes)), .. (clips ?? []).Select(c => (c.OutputName, c.Bytes))], replace, out errors, protectedPaths ?? []);
+        // an N-Gage character's clip goes right after its mesh
+        var meshes = WriteMeshes(folder, [.. conversions.SelectMany(c => c.Clip is { } clip ? new[] { (c.OutputName, c.Bytes), (clip.OutputName, clip.Bytes) } : [(c.OutputName, c.Bytes)]),
+            .. (clips ?? []).Select(c => (c.OutputName, c.Bytes))], replace, out errors, protectedPaths ?? []);
         if (errors.Count > 0 && meshes.Count == 0) return meshes;
         var written = new List<string>(meshes);
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -393,7 +399,15 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
             var rf2 = await Task.Run(() => meshEntries.Where(e => e.Name.EndsWith(".rfm", StringComparison.OrdinalIgnoreCase) || e.Name.EndsWith(".rfc", StringComparison.OrdinalIgnoreCase))
                 .Where(e => { try { return LegacyMeshSupport.IsRedFactionII(e.Read()); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return false; } })
                 .Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase));
-            var items = meshEntries.Select(e => new LegacyConvertItem(e.Name, Path.ChangeExtension(e.Name, OutputExtensionByName(e.Name)), null, IsRedFactionII: rf2.Contains(e.Name)))
+            // an N-Gage scene is a model or a character by its content (a character also makes its clip)
+            var xffKinds = await Task.Run(() => meshEntries.Where(e => LegacyMeshSupport.IsXffName(e.Name))
+                .Select(e => { try { return (e.Name, Kind: Cairn.Formats.XForge.XffClassifier.TryClassify(e.Read(), e.Name)); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return (e.Name, Kind: null); } })
+                .ToDictionary(x => x.Name, x => x.Kind, StringComparer.OrdinalIgnoreCase));
+            var items = meshEntries.Select(e => xffKinds.TryGetValue(e.Name, out var kind)
+                    ? new LegacyConvertItem(e.Name, Path.ChangeExtension(e.Name, kind == Cairn.Formats.XForge.XffKind.Character ? ".v3c" : ".v3m"), null,
+                        Error: kind is Cairn.Formats.XForge.XffKind.Level ? "a level, which the Levels module converts" : kind is null ? "not a readable N-Gage scene" : null,
+                        IsXff: true, ClipName: kind == Cairn.Formats.XForge.XffKind.Character ? XffMeshConverter.ClipName(e.Name) : null)
+                    : new LegacyConvertItem(e.Name, Path.ChangeExtension(e.Name, OutputExtensionByName(e.Name)), null, IsRedFactionII: rf2.Contains(e.Name)))
                 .Concat(clipEntries.Select(e => new LegacyConvertItem(e.Name, e.Name, null, IsClip: true))).ToList();
             var window = new LegacyMeshConvertWindow(workspace.Dialogs, items, packfile, nextTo, Defaults, NoNextToReason(request.ArchiveFolder)) { Owner = Host.MainWindow };
             if (window.ShowDialog() != true || window.Result is not { } chosen) return null;
@@ -402,8 +416,8 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
         }
         var defaults = Defaults;
         choice ??= new LegacyConvertChoice(packfile is not null ? LegacyConvertTarget.IntoPackfile : LegacyConvertTarget.Folder,
-            nextTo ?? workspace.DefaultOutputFolder(defaults.Folder), defaults.Replace) { Rf2Textures = defaults.Rf2Textures };
-        var rf2Textures = choice.Rf2Textures;
+            nextTo ?? workspace.DefaultOutputFolder(defaults.Folder), defaults.Replace) { Rf2Textures = defaults.Rf2Textures, XffScale = defaults.XffScale, XffWriteTextures = defaults.XffWriteTextures };
+        var chosenOptions = choice;
 
         var converted = new List<LegacyMeshConversion>();
         var clips = new List<Rf2ClipConversion>();
@@ -430,11 +444,7 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
                         continue;
                     }
                     // a Red Faction II mesh: the .peg entries beside it, read only for kept textures or a character's atlas
-                    var options = new LegacyConvertOptions
-                    {
-                        Rf2Textures = rf2Textures,
-                        TexturePacks = LegacyMeshSupport.IsRedFactionII(bytes) ? LegacyMeshTextures.PacksForEntry(entry.Name, byName.Values, request.ArchiveName) : null,
-                    };
+                    var options = chosenOptions.Options(LegacyMeshSupport.IsRedFactionII(bytes) ? LegacyMeshTextures.PacksForEntry(entry.Name, byName.Values, request.ArchiveName) : null);
                     var conversion = LegacyMeshSupport.Convert(bytes, entry.Name, name => byName.TryGetValue(name, out var twin) ? twin.Read() : null, options);
                     if (!outputs.Add(conversion.OutputName))
                     {
@@ -458,7 +468,8 @@ public sealed class LegacyMeshTools(RfaWorkspace workspace)
 
         string where;
         var errors = new List<string>();
-        var files = converted.Select(c => (c.OutputName, c.Bytes)).Concat(clips.Select(c => (c.OutputName, c.Bytes))).ToList();
+        var files = converted.SelectMany(c => c.Clip is { } clip ? new[] { (c.OutputName, c.Bytes), (clip.OutputName, clip.Bytes) } : [(c.OutputName, c.Bytes)])
+            .Concat(clips.Select(c => (c.OutputName, c.Bytes))).ToList();
         if (choice.Target == LegacyConvertTarget.IntoPackfile && request.AddFiles is { } add)
         {
             string label = (converted.Count, clips.Count) switch

@@ -34,6 +34,7 @@ public sealed class VppDetailsPane : AssetDetailsPane
             // a Red Faction II group shows what it says about itself until a file is selected
             if (package?.Rf2 is { } rf2) ShowDetails(GroupDetails(rf2, package));
             else if (package?.Cache is { } cache) ShowDetails(CacheDetails(cache, package));
+            else if (package?.Cfl is { } cfl) ShowDetails(CflDetails(cfl, package));
             else ShowMessage("Select a file to see its details.");
             return;
         }
@@ -63,6 +64,14 @@ public sealed class VppDetailsPane : AssetDetailsPane
             if (sheet[label] is { } value) rows.Add(new(entry, label, value));
         switch (item.Source)
         {
+            case Cairn.Vpp.XForge.CflEntrySource c:
+                var cv = CultureInfo.CurrentCulture;
+                rows.Add(new(entry, "Compression", c.Problem is not null && c.Entry.IsSupported ? c.Entry.CompressionText + " (corrupt: " + c.Problem + ")" : c.Entry.CompressionText,
+                    Flagged: c.Problem is not null));
+                rows.Add(new(entry, "Packed size", string.Format(cv, "{0:N0} bytes", c.Entry.PackedSize)));
+                rows.Add(new(entry, "Unpacked size", string.Format(cv, "{0:N0} bytes", c.Entry.UnpackedSize)));
+                rows.Add(new(entry, "Offset", string.Format(cv, "{0:N0} (0x{0:X})", c.Entry.Offset)));
+                break;
             case ArchiveSource a when package?.Path is { } path && string.Equals(Path.GetFullPath(a.ArchivePath), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase):
                 rows.Add(new(entry, "Offset", string.Format(CultureInfo.CurrentCulture, "{0:N0} (0x{0:X})", a.Offset)));
                 break;
@@ -152,6 +161,18 @@ public sealed class VppDetailsPane : AssetDetailsPane
             rows.Add(new(type ? "Types" : "Cache pack", type ? label[5..] : label, value));
         }
         return new AssetDetails(Path.GetFileName(cache.PackPath), rows, []);
+    }
+
+    /// <summary>An X-Forge CFL archive's own facts (format, counts of each compression, sizes, types).</summary>
+    internal static AssetDetails CflDetails(Cairn.Vpp.XForge.CflArchiveInfo cfl, VppPackage package)
+    {
+        var rows = new List<AssetDetailRow>();
+        foreach (var (label, value) in cfl.Facts(package.Items))
+        {
+            bool type = label.StartsWith("Type ", StringComparison.Ordinal);
+            rows.Add(new(type ? "Types" : "CFL archive", type ? label[5..] : label, value, Flagged: label is "Unsupported" or "Corrupt"));
+        }
+        return new AssetDetails(Path.GetFileName(cfl.ArchivePath), rows, []);
     }
 
     private static AssetDetails Summary(IReadOnlyList<VppItem> selection, IReadOnlyList<VppProblem>? problems)

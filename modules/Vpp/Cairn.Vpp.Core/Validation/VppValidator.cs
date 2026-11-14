@@ -68,7 +68,7 @@ public static class VppValidator
     /// <summary>Extensions whose loaders keep the name in a 32-byte slot (textures, sounds, bitmap fonts).</summary>
     public static IReadOnlySet<string> ShortNameExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        ".tga", ".vbm", ".dds", ".png", ".jpg", ".jpeg", ".atx", ".wav", ".ogg", ".vf",
+        ".tga", ".vbm", ".dds", ".png", ".jpg", ".jpeg", ".atx", ".pcx", ".wav", ".ogg", ".vf",
     };
 
     /// <summary>True when the game loads files of this name's type through a 32-byte name slot and the name does not fit.</summary>
@@ -114,6 +114,8 @@ public static class VppValidator
         if (package.Rf2 is not null) return Rf2.Rf2Packfiles.Validate(package);
         // nor does an Alpine Faction cache pack
         if (package.Cache is not null) return Alpine.CachePacks.Validate(package);
+        // nor does an X-Forge CFL archive
+        if (package.Cfl is not null) return XForge.CflArchives.Validate(package);
         var problems = new List<VppProblem>();
         var seen = new Dictionary<string, string>(VppNames.Comparer);
         var identical = IdenticalDuplicates(package);
@@ -257,6 +259,7 @@ public static class VppValidator
             {
                 problems.Add(new("VPP009", VppSeverity.Warning, Ps2.Ps2Packfiles.IsPs2Name(name)
                     ? $"'{name}' is from the PlayStation 2 version: the PC game does not load {ext} files." + (Ps2.Ps2Packfiles.IsPeg(name) ? " Select it and use Convert to .tga... (right-click, or the Packfile menu) to turn its textures into .tga files." : string.Empty)
+                    : ext is ".xff" or ".pr3" or ".cfl" ? $"'{name}' is from Red Faction for N-Gage: the PC game does not load {ext} files."
                     : $"'{name}': the game does not load {ext} files.", name));
             }
             if (ext == ".rfa" && name.IndexOf('.') < name.Length - 4)
